@@ -8,8 +8,8 @@ import { ensureDefaultScheme } from '../shared/plan-data';
 import type { PlanCategoryData } from '../shared/plan-category-manager';
 import { ensureUncategorizedCategory, UNCATEGORIZED_CATEGORY_ID } from '../shared/plan-category-manager';
 import type { DayTemplateData } from '../shared/template-manager';
-import type { EventBlock, ExecutionRecord, InboxData, ImprovementData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
-import { DEFAULT_INBOX_DATA, DEFAULT_IMPROVEMENT_DATA, migrateOkrConditions, migrateOkrEntries, migrateOkrRecordCards } from '../datatypes/domain';
+import type { EventBlock, ExecutionRecord, InboxData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
+import { DEFAULT_INBOX_DATA, migrateOkrConditions, migrateOkrEntries, migrateOkrRecordCards } from '../datatypes/domain';
 import type { WorkbenchData } from '../datatypes/card';
 import { defaultWorkbenchData } from '../datatypes/card';
 import type { GtdData } from '../datatypes/gtd';
@@ -37,8 +37,6 @@ export interface PluginData {
     workbench: WorkbenchData;
     /** GTD 数据（收集箱等） */
     gtdData: GtdData;
-    /** 改进数据（改进视图右侧可填写列表，按周键存储） */
-    improvementData: ImprovementData;
     /** 原型任务（界面视图任务面板新建的主线 / 支线任务） */
     prototypeTasks: PrototypeTask[];
     /** 时间盒数据（界面视图时间盒面板的格子涂色） */
@@ -51,16 +49,8 @@ export interface PluginData {
     prototypeTaskMetaMigrationDone?: number;
     /** OKR 记录卡片的填写结果（顶层独立存储，不挂在任务上，避免任务对象膨胀） */
     recordEntries: OkrRecordEntry[];
-    /** 当前正在执行的事件 id（日执行视图顶部执行卡片，随主数据一起持久化） */
-    executingEventId?: string;
-    /** 当前进行中的任务（日执行视图 / 界面视图「今天任务」计时，随主数据一起持久化） */
+    /** 当前进行中的任务（界面视图「今天任务」计时，随主数据一起持久化） */
     runningTask?: RunningTask;
-    /** 周计划视图是否折叠习惯任务（随主数据一起持久化） */
-    habitsCollapsed?: boolean;
-    /** 周计划视图是否激活「时间计划」模式（随主数据一起持久化） */
-    timePlanActive?: boolean;
-    /** 时间计划模式下是否在日历上显示习惯任务（随主数据一起持久化，默认显示） */
-    timePlanShowHabits?: boolean;
 }
 
 /**
@@ -108,18 +98,13 @@ export class BaseRepo {
             plannedWeeks: d.plannedWeeks,
             workbench: d.workbench,
             gtdData: d.gtdData,
-            improvementData: d.improvementData,
             prototypeTasks: d.prototypeTasks,
             timeBoxData: d.timeBoxData,
             planAssignmentData: d.planAssignmentData,
             taskExecutionData: d.taskExecutionData,
             prototypeTaskMetaMigrationDone: d.prototypeTaskMetaMigrationDone,
             recordEntries: d.recordEntries,
-            executingEventId: d.executingEventId,
             runningTask: d.runningTask,
-            habitsCollapsed: d.habitsCollapsed,
-            timePlanActive: d.timePlanActive,
-            timePlanShowHabits: d.timePlanShowHabits,
             cacheDirName: this.cacheDirName,
             cacheEnabled: this.cacheEnabled,
             helpDismissed: this.helpDismissed,
@@ -253,13 +238,6 @@ export class BaseRepo {
         // 兼容旧数据：确保 items / sources 字段存在
         if (!Array.isArray(initialGtdData.items)) initialGtdData.items = [];
         if (!Array.isArray(initialGtdData.sources)) initialGtdData.sources = [];
-        // 改进数据（兼容旧数据：默认空）
-        const initialImprovementData = (savedData.improvementData && typeof savedData.improvementData === 'object')
-            ? savedData.improvementData as ImprovementData
-            : DEFAULT_IMPROVEMENT_DATA;
-        if (!initialImprovementData.byWeek || typeof initialImprovementData.byWeek !== 'object') {
-            initialImprovementData.byWeek = {};
-        }
         // 原型任务（兼容旧数据：默认空数组）
         const initialPrototypeTasks = parsePrototypeTasks(savedData.prototypeTasks);
         // 时间盒数据（兼容旧数据：默认空）
@@ -290,18 +268,8 @@ export class BaseRepo {
         }
         // OKR 记录卡片填写结果（顶层独立存储，兼容旧数据：默认空）
         const initialOkrEntries = migrateOkrEntries(savedData.recordEntries ?? savedData.okrEntries);
-        // 当前正在执行的事件 id（兼容旧数据：默认无）
-        const initialExecutingEventId = typeof savedData.executingEventId === 'string'
-            ? savedData.executingEventId
-            : undefined;
         // 当前进行中的任务（兼容旧数据：默认无）
         const initialRunningTask = parseRunningTask(savedData.runningTask);
-        // 周计划视图是否折叠习惯任务（兼容旧数据：默认不折叠）
-        const initialHabitsCollapsed = savedData.habitsCollapsed === true;
-        // 周计划视图是否激活「时间计划」模式（兼容旧数据：默认未激活）
-        const initialTimePlanActive = savedData.timePlanActive === true;
-        // 时间计划模式下是否显示习惯任务（兼容旧数据：默认显示）
-        const initialTimePlanShowHabits = savedData.timePlanShowHabits !== false;
 
         // 存入仓库实例，作为唯一数据源（视图重建时从这里读取最新数据）
         this.data = {
@@ -314,18 +282,13 @@ export class BaseRepo {
             plannedWeeks: initialPlannedWeeks,
             workbench: initialWorkbench,
             gtdData: initialGtdData,
-            improvementData: initialImprovementData,
             prototypeTasks: initialPrototypeTasks,
             timeBoxData: initialTimeBoxData,
             planAssignmentData: initialPlanAssignmentData,
             taskExecutionData: initialTaskExecutionData,
             prototypeTaskMetaMigrationDone: prototypeTaskMetaMigrated ? 1 : initialPrototypeTaskMetaVersion,
             recordEntries: initialOkrEntries,
-            executingEventId: initialExecutingEventId,
             runningTask: initialRunningTask,
-            habitsCollapsed: initialHabitsCollapsed,
-            timePlanActive: initialTimePlanActive,
-            timePlanShowHabits: initialTimePlanShowHabits,
         };
 
         // 转换后立即落盘，避免下次启动重复执行
@@ -431,6 +394,10 @@ function parseRunningTask(raw: unknown): RunningTask | undefined {
         return undefined;
     }
     const task: RunningTask = { inboxId: r.inboxId, start: r.start, dayKey: r.dayKey };
+    // 计时来源（界面视图写入 prototype；省略时按收集盒任务处理）
+    if (r.source === 'prototype' || r.source === 'inbox') task.source = r.source;
+    // 实际开始时刻（Unix 毫秒时间戳，用于精确计算已用时长；旧数据无此字段）
+    if (typeof r.startedAt === 'number') task.startedAt = r.startedAt;
     // 兼容旧数据：end 为可选字段
     if (typeof r.end === 'number') task.end = r.end;
     // 兼容旧数据：endDayOffset 为可选字段（跨天记录）

@@ -1,10 +1,10 @@
-// PDCA 领域仓库：封装计划事件、执行记录、周计划标记、改进项的增删改业务逻辑。
+// PDCA 领域仓库：封装计划事件、执行记录、周计划标记、进行中任务的增删改业务逻辑。
 // 视图不再直接 push/splice 数据，改调本仓库方法；底层仍操作 base-repo 持有的同一引用。
-import type { EventBlock, ExecutionRecord, ImprovementData, ImprovementItem, RunningTask } from '../datatypes/domain';
+import type { EventBlock, ExecutionRecord, RunningTask } from '../datatypes/domain';
 import type { BaseRepo } from './base-repo';
 
 /**
- * PDCA 领域仓库：只管 events / executions / plannedWeeks / improvementData / 执行状态。
+ * PDCA 领域仓库：只管 events / executions / plannedWeeks / 进行中任务。
  * 通过 baseRepo 拿到数据引用，写操作后由调用方触发 baseRepo.saveAll()。
  */
 export class PdcaRepo {
@@ -27,16 +27,6 @@ export class PdcaRepo {
     /** 已制定周计划的周键列表引用（视图读取用） */
     get plannedWeeks(): string[] {
         return this.baseRepo.data!.plannedWeeks;
-    }
-
-    /** 改进数据引用（视图读取用） */
-    get improvementData(): ImprovementData {
-        return this.baseRepo.data!.improvementData;
-    }
-
-    /** 当前正在执行的事件 id（视图读取用） */
-    get executingEventId(): string | undefined {
-        return this.baseRepo.data!.executingEventId;
     }
 
     /** 当前进行中的任务（视图读取用） */
@@ -92,12 +82,7 @@ export class PdcaRepo {
         this.executions.length = 0;
     }
 
-    // ===== 执行状态（正在执行的事件 / 进行中的任务）=====
-
-    /** 设置当前正在执行的事件 id（传 undefined 清除） */
-    setExecutingEventId(id: string | undefined): void {
-        this.baseRepo.data!.executingEventId = id;
-    }
+    // ===== 进行中的任务 ======
 
     /** 设置当前进行中的任务（传 undefined 清除） */
     setRunningTask(task: RunningTask | undefined): void {
@@ -120,38 +105,5 @@ export class PdcaRepo {
     /** 某周是否已制定周计划 */
     isWeekPlanned(weekKey: string): boolean {
         return this.plannedWeeks.includes(weekKey);
-    }
-
-    // ===== 改进项 =====
-
-    /** 取某周的改进项列表（不存在则初始化） */
-    getWeekImprovements(weekKey: string): ImprovementItem[] {
-        if (!this.improvementData.byWeek[weekKey]) {
-            this.improvementData.byWeek[weekKey] = [];
-        }
-        return this.improvementData.byWeek[weekKey];
-    }
-
-    /** 新增一条改进项 */
-    addImprovement(weekKey: string, text: string): ImprovementItem {
-        const item: ImprovementItem = {
-            id: `imp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            text,
-            createdAt: Date.now(),
-        };
-        this.getWeekImprovements(weekKey).push(item);
-        return item;
-    }
-
-    /** 删除一条改进项 */
-    removeImprovement(weekKey: string, id: string): void {
-        const items = this.getWeekImprovements(weekKey);
-        this.improvementData.byWeek[weekKey] = items.filter(i => i.id !== id);
-    }
-
-    /** 更新一条改进项的文本（原地修改，保持数组引用不变） */
-    updateImprovement(weekKey: string, id: string, text: string): void {
-        const target = this.getWeekImprovements(weekKey).find(i => i.id === id);
-        if (target) target.text = text;
     }
 }

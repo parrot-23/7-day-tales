@@ -26,7 +26,7 @@ export interface EventBlock {
     weekKey?: WeekKey;
 }
 
-/** 进行中任务（日执行视图 / 界面视图「今天任务」开始计时后写入，随主数据一起持久化） */
+/** 进行中任务（界面视图「今天任务」开始计时后写入，随主数据一起持久化） */
 export interface RunningTask {
     /** 来源任务 id（source 为 inbox 时是收集盒任务 id，prototype 时是原型任务 id） */
     inboxId: string;
@@ -528,25 +528,6 @@ export interface InboxData {
 /** 默认空收集盒数据 */
 export const DEFAULT_INBOX_DATA: InboxData = {
     items: [],
-};
-
-/** 单条改进项（改进视图右侧可填写列表） */
-export interface ImprovementItem {
-    id: string;
-    /** 改进内容文本 */
-    text: string;
-    createdAt: number;
-}
-
-/** 改进数据：按周键存储改进项列表 */
-export interface ImprovementData {
-    /** 周键 → 该周的改进项列表 */
-    byWeek: Record<string, ImprovementItem[]>;
-}
-
-/** 默认空改进数据 */
-export const DEFAULT_IMPROVEMENT_DATA: ImprovementData = {
-    byWeek: {},
 };
 
 /**
