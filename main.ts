@@ -1,0 +1,307 @@
+import { Plugin } from 'obsidian';
+
+import { VIEW_TYPE_MAIN, MainView } from './src/main-view';
+import type { FileData } from './src/datatypes/domain';
+import { BaseRepo, type PluginData } from './src/repos/base-repo';
+import { GtdRepo } from './src/repos/gtd-repo';
+import { PdcaRepo } from './src/repos/pdca-repo';
+import { WorkbenchRepo } from './src/repos/workbench-repo';
+import { InboxRepo } from './src/repos/inbox-repo';
+import { CategoryRepo } from './src/repos/category-repo';
+import { TemplateRepo } from './src/repos/template-repo';
+import { PlanSchemeRepo } from './src/repos/plan-scheme-repo';
+import { PrototypeTaskRepo } from './src/repos/prototype-task-repo';
+import { TaskExecutionRepo } from './src/repos/task-execution-repo';
+import { TimeBoxRepo } from './src/repos/timebox-repo';
+import { PlanAssignmentRepo } from './src/repos/plan-assignment-repo';
+import { initI18n, t, getLangDebugInfo } from './src/i18n';
+import { initLogger, log } from './src/shared/logger';
+import { downloadImageToCache } from './src/helper/cache-image';
+import { HelpModal } from './src/helper/help-modal';
+import { ParrotPlanSettingTab } from './src/system/setting-tab';
+import { RunningTaskStatusBar } from './src/system/status-bar';
+
+export default class ParrotPlanPlugin extends Plugin {
+    /** 基础数据仓库：唯一数据源 + 唯一保存出口 */
+    repo: BaseRepo;
+
+    /** GTD 领域仓库 */
+    gtdRepo: GtdRepo;
+
+    /** PDCA 领域仓库 */
+    pdcaRepo: PdcaRepo;
+
+    /** 工作台领域仓库 */
+    workbenchRepo: WorkbenchRepo;
+
+    /** 收集盒领域仓库 */
+    inboxRepo: InboxRepo;
+
+    /** 分类领域仓库 */
+    categoryRepo: CategoryRepo;
+
+    /** 日模板领域仓库 */
+    templateRepo: TemplateRepo;
+
+    /** 时间计划方案领域仓库 */
+    planSchemeRepo: PlanSchemeRepo;
+
+    /** 原型任务领域仓库（界面视图任务面板） */
+    prototypeTaskRepo: PrototypeTaskRepo;
+
+    /** 时间盒领域仓库（界面视图时间盒面板） */
+    timeBoxRepo: TimeBoxRepo;
+
+    /** 任务执行记录领域仓库（界面视图「今天任务」计时） */
+    taskExecutionRepo: TaskExecutionRepo;
+
+    /** 计划排布领域仓库（界面视图计划面板周视图的任务排布） */
+    planAssignmentRepo: PlanAssignmentRepo;
+
+    /** 状态栏「进行中任务」显示（插件加载即创建，不依赖主视图是否打开） */
+    private statusBar?: RunningTaskStatusBar;
+
+    /**
+     * 插件持有的唯一数据源（委托给 BaseRepo）。
+     * 视图重建（registerView 工厂再次调用）时从这里读取最新数据，
+     * 避免用 onload 时的旧快照导致内存中的新数据丢失。
+     */
+    get data(): PluginData | null {
+        return this.repo.data;
+    }
+
+    /** 缓存目录名称（随主数据一起持久化） */
+    get cacheDirName(): string {
+        return this.repo.cacheDirName;
+    }
+
+    /** 是否启用缓存（随主数据一起持久化） */
+    get cacheEnabled(): boolean {
+        return this.repo.cacheEnabled;
+    }
+
+    /** 是否已勾选「不再提示」帮助弹窗（随主数据一起持久化） */
+    get helpDismissed(): boolean {
+        return this.repo.helpDismissed;
+    }
+
+    /** 是否启用剧本模式（随主数据一起持久化，默认关闭） */
+    get scriptModeEnabled(): boolean {
+        return this.repo.scriptModeEnabled;
+    }
+
+    /**
+     * 唯一的数据保存出口（委托给 BaseRepo）。
+     * 所有视图与设置项都通过此方法保存。
+     */
+    async saveAll(): Promise<void> {
+        await this.repo.saveAll();
+    }
+
+    /** 保存缓存目录名称 */
+    async saveCacheDirName(name: string): Promise<void> {
+        await this.repo.saveCacheDirName(name);
+    }
+
+    /** 保存是否启用缓存 */
+    async saveCacheEnabled(enabled: boolean): Promise<void> {
+        await this.repo.saveCacheEnabled(enabled);
+    }
+
+    /** 保存「不再提示」帮助弹窗标记 */
+    async saveHelpDismissed(dismissed: boolean): Promise<void> {
+        await this.repo.saveHelpDismissed(dismissed);
+    }
+
+    /** 保存是否启用剧本模式 */
+    async saveScriptModeEnabled(enabled: boolean): Promise<void> {
+        await this.repo.saveScriptModeEnabled(enabled);
+    }
+
+    async onload() {
+        // 初始化 i18n（跟随 Obsidian 界面语言）
+        initI18n();
+
+        // 初始化日志（清空上一次的日志内容）
+        await initLogger(this.app);
+        log('插件 onload 开始');
+        // 记录语言检测的原始信息，便于排查 i18n 显示问题
+        log('i18n 语言检测:', getLangDebugInfo());
+        log('i18n 视图标题:', t('view.title'));
+
+        // 初始化数据仓库并加载数据
+        this.repo = new BaseRepo(this);
+        await this.repo.load();
+        this.gtdRepo = new GtdRepo(this.repo);
+        this.pdcaRepo = new PdcaRepo(this.repo);
+        this.workbenchRepo = new WorkbenchRepo(this.repo);
+        this.inboxRepo = new InboxRepo(this.repo);
+        this.categoryRepo = new CategoryRepo(this.repo);
+        this.templateRepo = new TemplateRepo(this.repo);
+        this.planSchemeRepo = new PlanSchemeRepo(this.repo);
+        this.prototypeTaskRepo = new PrototypeTaskRepo(this.repo);
+        this.timeBoxRepo = new TimeBoxRepo(this.repo);
+        this.taskExecutionRepo = new TaskExecutionRepo(this.repo);
+        this.planAssignmentRepo = new PlanAssignmentRepo(this.repo);
+
+        // 注册视图
+        this.registerView(
+            VIEW_TYPE_MAIN,
+            (leaf) => {
+                // 每次创建视图都从插件实例读取最新数据，避免使用旧快照
+                const d = this.data!;
+                log('创建主视图（registerView 工厂被调用）', {
+                    events: d.events.length,
+                    executions: d.executions.length,
+                });
+                return new MainView(leaf, this, d.categoryData,
+                    d.events, d.executions, d.inboxData, d.plannedWeeks, d.workbench,
+                    this.cacheDirName,
+                );
+            }
+        );
+
+        // Ribbon 图标
+        this.addRibbonIcon('calendar-clock', t('ribbon.open'), async () => {
+            await this.openMainView();
+        });
+
+        // 命令面板
+        this.addCommand({
+            id: 'open-week-schedule',
+            name: t('command.open'),
+            callback: async () => {
+                await this.openMainView();
+            }
+        });
+
+        // 设置页
+        this.addSettingTab(new ParrotPlanSettingTab(this.app, this));
+
+        // 状态栏：进行中任务（任务名称：时长）
+        // 在插件加载时创建，保证主视图未打开时也能显示
+        this.initStatusBar();
+
+        // 文件/文件夹在 vault 内被移动或重命名时，同步更新任务中引用的路径
+        this.registerEvent(
+            this.app.vault.on('rename', (file, oldPath) => {
+                void this.handleVaultRename(oldPath, file.path);
+            }),
+        );
+
+        // 缓存启用时，把说明图片下载到缓存目录
+        void downloadImageToCache(this.app, this.cacheDirName, this.cacheEnabled);
+    }
+
+    /**
+     * vault 内文件/文件夹被移动或重命名后，更新任务中引用的路径：
+     * 文件板块的 path、收集篮子的 path（文件夹移动时同步更新其下所有文件路径）。
+     * 有变更时保存数据并刷新已打开的主视图。
+     */
+    private async handleVaultRename(oldPath: string, newPath: string): Promise<void> {
+        const d = this.data;
+        if (!d || oldPath === newPath) return;
+
+        // 文件本身被重命名，或所在文件夹被移动/重命名
+        const remap = (path: string | undefined): string | undefined => {
+            if (!path) return path;
+            if (path === oldPath) return newPath;
+            if (path.startsWith(`${oldPath}/`)) return `${newPath}${path.slice(oldPath.length)}`;
+            return path;
+        };
+
+        let changed = false;
+        for (const item of d.inboxData.items) {
+            for (const section of item.sections ?? []) {
+                if (section.type !== 'file') continue;
+                for (const fileItem of (section.data as FileData).items) {
+                    const next = remap(fileItem.path);
+                    if (next !== fileItem.path) {
+                        fileItem.path = next;
+                        changed = true;
+                    }
+                }
+            }
+            for (const entry of item.basket ?? []) {
+                const next = remap(entry.path);
+                if (next !== entry.path) {
+                    entry.path = next;
+                    changed = true;
+                }
+            }
+        }
+        if (!changed) return;
+
+        await this.saveAll();
+        for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MAIN)) {
+            if (leaf.view instanceof MainView) {
+                await leaf.view.refresh();
+            }
+        }
+    }
+
+    /**
+     * 初始化状态栏「进行中任务」显示。
+     * 状态栏元素由插件创建（随插件卸载自动清理），不依赖主视图是否打开。
+     */
+    private initStatusBar(): void {
+        this.statusBar = new RunningTaskStatusBar(
+            this,
+            () => this.pdcaRepo.runningTask,
+            (inboxId) => this.data?.inboxData.items.find(i => i.id === inboxId && !i.removed),
+        );
+        this.statusBar.init();
+    }
+
+    /** 刷新状态栏中的「进行中任务」显示（进行中任务变化时由主视图调用） */
+    renderStatusBarRunningTask(): void {
+        this.statusBar?.render();
+    }
+
+    /**
+     * 打开主视图（Ribbon 图标 / 命令面板共用入口）。
+     * 帮助弹窗在此处触发：仅在用户主动打开插件时弹出，而非 Obsidian 启动时。
+     */
+    private async openMainView(): Promise<void> {
+        const { workspace } = this.app;
+        let leaf = workspace.getLeavesOfType(VIEW_TYPE_MAIN)[0];
+        if (!leaf) {
+            // 在主编辑区新建标签页打开（而非当前活动 leaf，避免落到右侧边栏）
+            leaf = workspace.getLeaf('tab');
+            await leaf.setViewState({ type: VIEW_TYPE_MAIN });
+        }
+        await workspace.revealLeaf(leaf);
+
+        // 未勾选「不再提示」时，打开插件后弹出帮助弹窗
+        if (!this.helpDismissed) {
+            new HelpModal(this.app, this.cacheDirName, (dismissed) => {
+                void this.saveHelpDismissed(dismissed);
+            }).open();
+        }
+    }
+
+    onunload() {
+        log('插件 onunload（卸载/重载）');
+        // 清理状态栏定时器与元素
+        this.statusBar?.destroy();
+        this.statusBar = undefined;
+        // 只保存数据，不 detach leaf（否则会打乱用户布局）
+        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MAIN);
+        for (const leaf of leaves) {
+            if (leaf.view instanceof MainView) {
+                void leaf.view.save();
+            }
+        }
+    }
+
+    /** 清空全部插件数据并重置为默认值 */
+    async clearAllData(): Promise<void> {
+        await this.repo.clearAll();
+        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MAIN);
+        for (const leaf of leaves) {
+            if (leaf.view instanceof MainView) {
+                await leaf.view.resetData();
+            }
+        }
+    }
+}

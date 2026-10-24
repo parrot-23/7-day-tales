@@ -1,0 +1,11 @@
+{
+  "id": "executed-task-count",
+  "name": "执行任务总数",
+  "mode": "system",
+  "renderer": "stats",
+  "description": "展示用户执行的任务总数",
+  "source": {
+    "dataSource": "executions",
+    "aggregation": "executed-task-count"
+  }
+}

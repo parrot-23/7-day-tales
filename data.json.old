@@ -1,0 +1,3248 @@
+{
+  "version": 1,
+  "dayTemplateData": {
+    "dayTemplates": [
+      {
+        "id": "325e78a5-2f61-48be-902d-707a97e310ef",
+        "name": "工作日",
+        "ranges": [
+          {
+            "start": 0,
+            "end": 360,
+            "sort": "rest"
+          },
+          {
+            "start": 360,
+            "end": 720,
+            "sort": "work"
+          }
+        ]
+      }
+    ],
+    "dayProperties": [
+      {
+        "day": 2,
+        "templateId": "325e78a5-2f61-48be-902d-707a97e310ef"
+      },
+      {
+        "day": 3,
+        "templateId": "325e78a5-2f61-48be-902d-707a97e310ef"
+      },
+      {
+        "day": 4,
+        "templateId": "325e78a5-2f61-48be-902d-707a97e310ef"
+      },
+      {
+        "day": 5,
+        "templateId": "325e78a5-2f61-48be-902d-707a97e310ef"
+      },
+      {
+        "day": 6,
+        "templateId": "325e78a5-2f61-48be-902d-707a97e310ef"
+      }
+    ]
+  },
+  "timeBlockCategoryData": {
+    "categories": [
+      {
+        "id": "uncategorized",
+        "label": "未分类",
+        "color": "#888888"
+      },
+      {
+        "id": "work",
+        "label": "工作",
+        "color": "#4c8dff"
+      },
+      {
+        "id": "rest",
+        "label": "休息",
+        "color": "#43b581"
+      },
+      {
+        "id": "play",
+        "label": "娱乐",
+        "color": "#f2a65a"
+      }
+    ]
+  },
+  "schemeData": {
+    "schemes": [
+      {
+        "id": "default",
+        "name": "默认方案",
+        "days": [
+          {
+            "day": 1,
+            "ranges": [
+              {
+                "id": "r_1791888398287",
+                "start": 0,
+                "end": 360,
+                "sort": "rest"
+              },
+              {
+                "id": "r_1791888407425",
+                "start": 360,
+                "end": 720,
+                "sort": "work"
+              },
+              {
+                "id": "r_1792289752068",
+                "start": 750,
+                "end": 870,
+                "sort": "work"
+              }
+            ]
+          },
+          {
+            "day": 2,
+            "ranges": [
+              {
+                "start": 0,
+                "end": 360,
+                "sort": "rest",
+                "id": "r_1791888713674_b942"
+              },
+              {
+                "start": 360,
+                "end": 720,
+                "sort": "work",
+                "id": "r_1791888713674_auo1"
+              }
+            ]
+          },
+          {
+            "day": 3,
+            "ranges": [
+              {
+                "start": 0,
+                "end": 360,
+                "sort": "rest",
+                "id": "r_1791888713674_kzew"
+              },
+              {
+                "start": 360,
+                "end": 720,
+                "sort": "work",
+                "id": "r_1791888713674_od8k"
+              }
+            ]
+          },
+          {
+            "day": 4,
+            "ranges": [
+              {
+                "start": 0,
+                "end": 360,
+                "sort": "rest",
+                "id": "r_1791888713674_61d0"
+              },
+              {
+                "start": 360,
+                "end": 720,
+                "sort": "work",
+                "id": "r_1791888713674_lxma"
+              }
+            ]
+          },
+          {
+            "day": 5,
+            "ranges": [
+              {
+                "start": 0,
+                "end": 360,
+                "sort": "rest",
+                "id": "r_1792173513447_s7n8"
+              },
+              {
+                "start": 360,
+                "end": 720,
+                "sort": "work",
+                "id": "r_1792173513447_4445"
+              }
+            ]
+          },
+          {
+            "day": 6,
+            "ranges": [
+              {
+                "start": 0,
+                "end": 360,
+                "sort": "rest",
+                "id": "r_1792173513447_2o5z"
+              },
+              {
+                "start": 360,
+                "end": 720,
+                "sort": "work",
+                "id": "r_1792173513447_1fbn"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "scheme_mvbahd7i",
+        "name": "新测试",
+        "days": [
+          {
+            "day": 1,
+            "ranges": [
+              {
+                "id": "r_1792174605200",
+                "start": 210,
+                "end": 330,
+                "sort": "rest"
+              },
+              {
+                "id": "r_1792243022843",
+                "start": 450,
+                "end": 1140,
+                "sort": "work"
+              }
+            ]
+          },
+          {
+            "day": 3,
+            "ranges": [
+              {
+                "id": "r_1792174606199",
+                "start": 480,
+                "end": 600,
+                "sort": "rest"
+              },
+              {
+                "id": "r_1792174609186",
+                "start": 870,
+                "end": 990,
+                "sort": "rest"
+              },
+              {
+                "id": "r_1792290526327",
+                "start": 240,
+                "end": 360,
+                "sort": "work"
+              }
+            ]
+          },
+          {
+            "day": 6,
+            "ranges": [
+              {
+                "id": "r_1792174607162",
+                "start": 570,
+                "end": 690,
+                "sort": "rest"
+              }
+            ]
+          },
+          {
+            "day": 2,
+            "ranges": [
+              {
+                "id": "r_1792243074301",
+                "start": 240,
+                "end": 360,
+                "sort": "uncategorized"
+              },
+              {
+                "id": "r_1792243079537",
+                "start": 660,
+                "end": 780,
+                "sort": "rest"
+              }
+            ]
+          },
+          {
+            "day": 4,
+            "ranges": [
+              {
+                "id": "r_1792290537321",
+                "start": 570,
+                "end": 690,
+                "sort": "work"
+              }
+            ]
+          },
+          {
+            "day": 5,
+            "ranges": [
+              {
+                "id": "r_1792290759017",
+                "start": 210,
+                "end": 330,
+                "sort": "work"
+              }
+            ]
+          },
+          {
+            "day": 7,
+            "ranges": [
+              {
+                "id": "r_1792292043908",
+                "start": 330,
+                "end": 1440,
+                "sort": "work"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "defaultSchemeId": "default",
+    "activeSchemeId": "scheme_mvbahd7i"
+  },
+  "events": [
+    {
+      "id": "ev_1791044383880",
+      "day": 7,
+      "start": 120,
+      "end": 180,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791044384140",
+      "day": 7,
+      "start": 390,
+      "end": 450,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W40",
+      "replacedFromInboxId": "inbox_1791017400854"
+    },
+    {
+      "id": "ev_1791044384376",
+      "day": 7,
+      "start": 510,
+      "end": 570,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791044384564",
+      "day": 7,
+      "start": 720,
+      "end": 780,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791044384796",
+      "day": 7,
+      "start": 840,
+      "end": 900,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791044395154",
+      "day": 4,
+      "start": 690,
+      "end": 750,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791045924198",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791045926890",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791045955430",
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "day": 7,
+      "start": 120,
+      "end": 180,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "id": "ev_1791128546901_vxov",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 7,
+      "start": 390,
+      "end": 450,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "replacedFromInboxId": "inbox_1791017400854",
+      "id": "ev_1791128546901_w2if",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 7,
+      "start": 510,
+      "end": 570,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "id": "ev_1791128546901_ak2c",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 7,
+      "start": 720,
+      "end": 780,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "id": "ev_1791128546901_jf9e",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 7,
+      "start": 840,
+      "end": 900,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "id": "ev_1791128546901_90pn",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 4,
+      "start": 690,
+      "end": 750,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "id": "ev_1791128546901_biuq",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1791128546901_l9li",
+      "weekKey": "2026-W41"
+    },
+    {
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1791128546901_2ulq",
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791177472124",
+      "day": 1,
+      "start": 510,
+      "end": 570,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791177472480",
+      "day": 1,
+      "start": 990,
+      "end": 1050,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791177472732",
+      "day": 1,
+      "start": 1170,
+      "end": 1230,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791177473156",
+      "day": 1,
+      "start": 840,
+      "end": 900,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791177473460",
+      "day": 1,
+      "start": 660,
+      "end": 720,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "completed": false,
+      "weekKey": "2026-W41",
+      "replacedFromInboxId": "inbox_1791047576076"
+    },
+    {
+      "id": "ev_1791244119701",
+      "day": 2,
+      "start": 600,
+      "end": 660,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791244119950",
+      "day": 2,
+      "start": 810,
+      "end": 870,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791244120157",
+      "day": 2,
+      "start": 1020,
+      "end": 1080,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270222316",
+      "day": 2,
+      "start": 360,
+      "end": 420,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "ev_1791270270305",
+      "day": 2,
+      "start": 450,
+      "end": 510,
+      "title": "new2",
+      "categoryId": "work",
+      "inboxId": "inbox_1791047576076",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270425739",
+      "day": 3,
+      "start": 750,
+      "end": 810,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270426418",
+      "day": 3,
+      "start": 840,
+      "end": 900,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270427869",
+      "day": 3,
+      "start": 1020,
+      "end": 1080,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270428992",
+      "day": 3,
+      "start": 1110,
+      "end": 1170,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270429681",
+      "day": 3,
+      "start": 1170,
+      "end": 1230,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270430252",
+      "day": 3,
+      "start": 1260,
+      "end": 1320,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270431545",
+      "day": 4,
+      "start": 900,
+      "end": 960,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270432037",
+      "day": 4,
+      "start": 810,
+      "end": 870,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270432420",
+      "day": 4,
+      "start": 1020,
+      "end": 1080,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270432861",
+      "day": 4,
+      "start": 1140,
+      "end": 1200,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270433308",
+      "day": 4,
+      "start": 1260,
+      "end": 1320,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270434257",
+      "day": 5,
+      "start": 1260,
+      "end": 1320,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270435335",
+      "day": 5,
+      "start": 990,
+      "end": 1050,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270435934",
+      "day": 5,
+      "start": 810,
+      "end": 870,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270437359",
+      "day": 5,
+      "start": 600,
+      "end": 660,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270439258",
+      "day": 3,
+      "start": 510,
+      "end": 570,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270439630",
+      "day": 4,
+      "start": 540,
+      "end": 600,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270439926",
+      "day": 3,
+      "start": 630,
+      "end": 690,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270440870",
+      "day": 5,
+      "start": 720,
+      "end": 780,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "completed": false,
+      "weekKey": "2026-W41",
+      "replacedFromInboxId": "inbox_1791045111854"
+    },
+    {
+      "id": "ev_1791270563542",
+      "day": 3,
+      "start": 900,
+      "end": 960,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270566166",
+      "day": 3,
+      "start": 960,
+      "end": 1020,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270572856",
+      "day": 2,
+      "start": 690,
+      "end": 750,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791270663702",
+      "day": 2,
+      "start": 1110,
+      "end": 1170,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335590551",
+      "day": 2,
+      "start": 210,
+      "end": 270,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335591282",
+      "day": 3,
+      "start": 270,
+      "end": 330,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335591832",
+      "day": 3,
+      "start": 180,
+      "end": 240,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335592187",
+      "day": 4,
+      "start": 210,
+      "end": 270,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335593060",
+      "day": 4,
+      "start": 330,
+      "end": 390,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335593497",
+      "day": 5,
+      "start": 360,
+      "end": 420,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335593828",
+      "day": 5,
+      "start": 240,
+      "end": 300,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335594816",
+      "day": 6,
+      "start": 270,
+      "end": 330,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335595308",
+      "day": 6,
+      "start": 390,
+      "end": 450,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791335601742",
+      "day": 2,
+      "start": 120,
+      "end": 180,
+      "title": "test · 清单",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336023460",
+      "day": 3,
+      "start": 120,
+      "end": 180,
+      "title": "test · 清单 · 测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336027623",
+      "day": 2,
+      "start": 330,
+      "end": 390,
+      "title": "test · 清单 · 测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336030621",
+      "day": 3,
+      "start": 360,
+      "end": 420,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336035058",
+      "day": 4,
+      "start": 420,
+      "end": 480,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336036862",
+      "day": 5,
+      "start": 480,
+      "end": 540,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336039052",
+      "day": 6,
+      "start": 540,
+      "end": 600,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336039929",
+      "day": 6,
+      "start": 660,
+      "end": 720,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336040968",
+      "day": 6,
+      "start": 750,
+      "end": 810,
+      "title": "test · 清单 · 不错欧",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336061149",
+      "day": 4,
+      "start": 120,
+      "end": 180,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336067194",
+      "day": 5,
+      "start": 120,
+      "end": 180,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336069824",
+      "day": 1,
+      "start": 240,
+      "end": 300,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336070677",
+      "day": 1,
+      "start": 330,
+      "end": 390,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336071418",
+      "day": 1,
+      "start": 420,
+      "end": 480,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791336072261",
+      "day": 1,
+      "start": 90,
+      "end": 150,
+      "title": "test · 清单 · 测试很长的一个名称会如何显示呢",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791338501254",
+      "day": 3,
+      "start": 420,
+      "end": 480,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791338502610",
+      "day": 3,
+      "start": 690,
+      "end": 750,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791338503334",
+      "day": 3,
+      "start": 570,
+      "end": 630,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791461565404",
+      "day": 6,
+      "start": 1170,
+      "end": 1230,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791461565998",
+      "day": 6,
+      "start": 1320,
+      "end": 1380,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791461568302",
+      "day": 5,
+      "start": 1140,
+      "end": 1200,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791461572338",
+      "day": 7,
+      "start": 1110,
+      "end": 1170,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791463073227",
+      "day": 2,
+      "start": 900,
+      "end": 960,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791473950199",
+      "day": 2,
+      "start": 1230,
+      "end": 1290,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791473951043",
+      "day": 2,
+      "start": 1350,
+      "end": 1410,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791473952806",
+      "day": 1,
+      "start": 1320,
+      "end": 1380,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791473953859",
+      "day": 1,
+      "start": 1080,
+      "end": 1140,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791473954824",
+      "day": 1,
+      "start": 720,
+      "end": 780,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791533500063",
+      "day": 5,
+      "start": 930,
+      "end": 990,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "completed": false,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "ev_1791886228879",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42",
+      "estimatedMinutes": 60
+    },
+    {
+      "id": "ev_1791886231831",
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791886232878",
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791887062874",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42",
+      "estimatedMinutes": 60
+    },
+    {
+      "id": "ev_1791887063250",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791887286003",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791887286451",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791888330610",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1791888331288",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "good",
+      "categoryId": "play",
+      "inboxId": "inbox_1791045953442",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792002391803",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792002977961",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792003656235",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792003658119",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42",
+      "estimatedMinutes": 60
+    },
+    {
+      "id": "ev_1792003659107",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792003659515",
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792003660336",
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792139134846",
+      "day": 5,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42",
+      "estimatedMinutes": 30
+    },
+    {
+      "id": "ev_1792287631686",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792287632893",
+      "day": 5,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792287633905",
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792287911083",
+      "day": 3,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "ev_1792288346120",
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W42"
+    },
+    {
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "estimatedMinutes": 60,
+      "id": "ev_1792293121270_fd8z",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_bl0m",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_urt2",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "estimatedMinutes": 60,
+      "id": "ev_1792293121270_06n2",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_mq1o",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_gtp6",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "哈哈",
+      "categoryId": "play",
+      "inboxId": "inbox_1791338498719",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_750d",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_0y0r",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_qio2",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_y9nq",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_ymit",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_9886",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "睡觉",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791530708590",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_k0v7",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 5,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "work",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "estimatedMinutes": 30,
+      "id": "ev_1792293121270_wutf",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_vkf0",
+      "weekKey": "2026-W43"
+    },
+    {
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "id": "ev_1792293121270_cyhf",
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792541078806",
+      "day": 3,
+      "start": 0,
+      "end": 1440,
+      "title": "test",
+      "categoryId": "uncategorized",
+      "inboxId": "inbox_1791017400854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43",
+      "estimatedMinutes": 0
+    },
+    {
+      "id": "ev_1792564365947",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792564366335",
+      "day": 5,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792564366775",
+      "day": 6,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792564367235",
+      "day": 2,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792564367655",
+      "day": 1,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792564368387",
+      "day": 7,
+      "start": 0,
+      "end": 1440,
+      "title": "new",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791045111854",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792667839137",
+      "day": 3,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792667839436",
+      "day": 4,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792667839716",
+      "day": 5,
+      "start": 0,
+      "end": 1440,
+      "title": "测试",
+      "categoryId": "work",
+      "inboxId": "inbox_1791334395528",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "ev_1792667887489",
+      "day": 3,
+      "start": 0,
+      "end": 1440,
+      "title": "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest",
+      "categoryId": "rest",
+      "inboxId": "inbox_1791336673035",
+      "allDay": true,
+      "completed": false,
+      "weekKey": "2026-W43"
+    }
+  ],
+  "executions": [
+    {
+      "id": "exec_1791045097729",
+      "eventId": "ev_1791044383880",
+      "inboxId": "inbox_1791017400854",
+      "day": 7,
+      "start": 120,
+      "end": 180,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "exec_1791045132656",
+      "inboxId": "inbox_1791045111854",
+      "day": 7,
+      "start": 32,
+      "end": 32,
+      "weekKey": "2026-W40"
+    },
+    {
+      "id": "exec_1791177484034",
+      "eventId": "ev_1791177472124",
+      "inboxId": "inbox_1791047576076",
+      "day": 1,
+      "start": 510,
+      "end": 570,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791178117653",
+      "inboxId": "inbox_1791045111854",
+      "day": 1,
+      "start": 808,
+      "end": 808,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791247372070",
+      "inboxId": "inbox_1791045953442",
+      "day": 2,
+      "start": 615,
+      "end": 645,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791338595040",
+      "eventId": "ev_1791338503334",
+      "inboxId": "inbox_1791338498719",
+      "day": 3,
+      "start": 570,
+      "end": 630,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791450296373",
+      "eventId": "ev_1791128546901_biuq",
+      "inboxId": "inbox_1791017400854",
+      "day": 4,
+      "start": 690,
+      "end": 750,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791450408637",
+      "eventId": "ev_1791270439630",
+      "inboxId": "inbox_1791045111854",
+      "day": 4,
+      "start": 540,
+      "end": 600,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1791529803275",
+      "eventId": "ev_1791270440870",
+      "inboxId": "inbox_1791336673035",
+      "day": 5,
+      "start": 720,
+      "end": 780,
+      "weekKey": "2026-W41",
+      "replaced": true
+    },
+    {
+      "id": "exec_1791530049567",
+      "eventId": "ev_1791336036862",
+      "inboxId": "inbox_1791017400854",
+      "day": 5,
+      "start": 480,
+      "end": 540,
+      "weekKey": "2026-W41"
+    },
+    {
+      "id": "exec_1792004231295",
+      "inboxId": "inbox_1791017400854",
+      "day": 4,
+      "start": 177,
+      "end": 177,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792058106145",
+      "inboxId": "inbox_1791334395528",
+      "day": 4,
+      "start": 730,
+      "end": 1330,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131746666",
+      "inboxId": "inbox_1791017400854",
+      "day": 5,
+      "start": 170,
+      "end": 200,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131760874",
+      "inboxId": "inbox_1791334395528",
+      "day": 5,
+      "start": 315,
+      "end": 345,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131802741",
+      "inboxId": "inbox_1791017400854",
+      "day": 5,
+      "start": 420,
+      "end": 450,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131806445",
+      "inboxId": "inbox_1791334395528",
+      "day": 5,
+      "start": 575,
+      "end": 605,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131808791",
+      "inboxId": "inbox_1791530708590",
+      "day": 5,
+      "start": 725,
+      "end": 755,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792131810207",
+      "inboxId": "inbox_1791530708590",
+      "day": 5,
+      "start": 780,
+      "end": 810,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792180610192",
+      "inboxId": "inbox_1791336673035",
+      "day": 6,
+      "start": 430,
+      "end": 844,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792217951519",
+      "inboxId": "inbox_1791334395528",
+      "day": 6,
+      "start": 849,
+      "end": 859,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792244730703",
+      "inboxId": "inbox_1791334395528",
+      "day": 6,
+      "start": 1305,
+      "end": 1305,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792255837948",
+      "inboxId": "inbox_1791334395528",
+      "day": 7,
+      "start": 50,
+      "end": 50,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792256370025",
+      "inboxId": "inbox_1791334395528",
+      "day": 7,
+      "start": 59,
+      "end": 59,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792256377695",
+      "inboxId": "inbox_1791334395528",
+      "day": 7,
+      "start": 59,
+      "end": 59,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792256891590",
+      "inboxId": "inbox_1791336673035",
+      "day": 6,
+      "start": 68,
+      "end": 68,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792256909823",
+      "inboxId": "inbox_1791338498719",
+      "day": 7,
+      "start": 215,
+      "end": 245,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792287285834",
+      "inboxId": "inbox_1791334395528",
+      "day": 7,
+      "start": 574,
+      "end": 604,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792315861950",
+      "inboxId": "inbox_1791017400854",
+      "day": 7,
+      "start": 675,
+      "end": 705,
+      "weekKey": "2026-W42"
+    },
+    {
+      "id": "exec_1792409216262",
+      "inboxId": "inbox_1791017400854",
+      "day": 1,
+      "start": 1166,
+      "end": 1196,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792411420247",
+      "inboxId": "inbox_1791338498719",
+      "day": 1,
+      "start": 0,
+      "end": 30,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792411734280",
+      "inboxId": "inbox_1791017400854",
+      "day": 1,
+      "start": 1208,
+      "end": 1208,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792447894157",
+      "inboxId": "inbox_1791334395528",
+      "day": 2,
+      "start": 371,
+      "end": 401,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792462277603",
+      "inboxId": "inbox_1791334395528",
+      "day": 2,
+      "start": 611,
+      "end": 641,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792463826074",
+      "inboxId": "inbox_1791017400854",
+      "day": 2,
+      "start": 637,
+      "end": 667,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792463950480",
+      "inboxId": "inbox_1791530708590",
+      "day": 2,
+      "start": 0,
+      "end": 6,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792463956279",
+      "inboxId": "inbox_1791017400854",
+      "day": 2,
+      "start": 639,
+      "end": 669,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792463958543",
+      "inboxId": "inbox_1791334395528",
+      "day": 2,
+      "start": 639,
+      "end": 669,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792463966683",
+      "inboxId": "inbox_1791334395528",
+      "day": 2,
+      "start": 0,
+      "end": 6,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792547396961",
+      "inboxId": "inbox_1791017400854",
+      "day": 3,
+      "start": 570,
+      "end": 589,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792705713577",
+      "inboxId": "inbox_1791017400854",
+      "day": 5,
+      "start": 348,
+      "end": 378,
+      "weekKey": "2026-W43"
+    },
+    {
+      "id": "exec_1792705735351",
+      "inboxId": "inbox_1791017400854",
+      "day": 5,
+      "start": 348,
+      "end": 348,
+      "weekKey": "2026-W43"
+    }
+  ],
+  "inboxData": {
+    "items": [
+      {
+        "id": "inbox_1791017400854",
+        "title": "test",
+        "description": "这是一个测试的任务计划。",
+        "categoryId": "uncategorized",
+        "createdAt": 1791017400854,
+        "assignedDayKeys": [
+          "2026-09-28",
+          "2026-09-29",
+          "2026-10-03",
+          "2026-10-01",
+          "2026-10-04",
+          "2026-09-30",
+          "2026-10-07",
+          "2026-10-06",
+          "2026-10-05",
+          "2026-10-08",
+          "2026-10-09",
+          "2026-10-10",
+          "2026-10-11",
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15",
+          "2026-10-16",
+          "2026-10-17",
+          "2026-10-18",
+          "2026-10-21"
+        ],
+        "assignedWeekKeys": [
+          "2026-W18",
+          "2026-W41",
+          "2026-W42",
+          "2026-W43"
+        ],
+        "sections": [
+          {
+            "id": "sec_1792672250314_bclm2",
+            "type": "file",
+            "title": "123",
+            "data": {
+              "items": [
+                {
+                  "id": "sec_item_1792673262121_wkgyb",
+                  "text": "2026-10-22 日记录.md",
+                  "path": "未命名/2026-10-22 日记录.md"
+                }
+              ],
+              "namePattern": "{{date}} 日记录",
+              "folder": "未命名"
+            }
+          }
+        ],
+        "okr": {
+          "conditions": [
+            {
+              "id": "okr_1792452626822_yzi2i",
+              "type": "milestone",
+              "target": 0,
+              "title": "里程碑1",
+              "items": [
+                {
+                  "id": "okr_item_1792452626822_2fp9r",
+                  "text": "里程碑1",
+                  "done": false
+                }
+              ],
+              "dueDate": "2027-02-20",
+              "subtaskIds": [
+                "inbox_1791334395528"
+              ]
+            }
+          ]
+        },
+        "dueDate": "2026-10-25",
+        "status": "inProgress",
+        "habitTime": 1380,
+        "habitTimeEnabled": false,
+        "basket": [
+          {
+            "id": "basket_1792076691847_sbjmw",
+            "text": "插件。可能需要将gtd、pdca整个的数据操作逻辑全都抽象出来。这样在工作台等多个卡片中添加功能的时候才能一次性引用。",
+            "createdAt": 1792076691847
+          },
+          {
+            "id": "basket_1792414305069_oe4vt",
+            "text": "asf",
+            "createdAt": 1792414305069
+          },
+          {
+            "id": "basket_1792414311175_kpph7",
+            "text": "asdf",
+            "createdAt": 1792414311175
+          }
+        ],
+        "improvements": [
+          {
+            "id": "improve_1792286574763_j3yaj",
+            "text": "按",
+            "done": false,
+            "createdAt": 1792286574763
+          },
+          {
+            "id": "improve_1792417304328_znkvb",
+            "text": "as",
+            "done": false,
+            "createdAt": 1792417304328
+          }
+        ],
+        "taskType": "oneTime",
+        "estimatedMinutes": 0,
+        "doneDayKeys": [
+          "2026-10-19"
+        ],
+        "undoneDayKeys": [],
+        "records": [
+          {
+            "id": "okr_1792458160236_b5o7c",
+            "fields": [
+              {
+                "id": "okr_item_1792458160236_fyzu0",
+                "type": "text",
+                "name": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inbox_1791047576076",
+        "title": "new2",
+        "description": "",
+        "categoryId": "work",
+        "createdAt": 1791047576076,
+        "parentId": "inbox_1791338498719",
+        "assignedWeekKeys": [
+          "2026-W16"
+        ],
+        "assignedDayKeys": [
+          "2026-10-05",
+          "2026-10-08",
+          "2026-10-06",
+          "2026-09-29"
+        ],
+        "sections": [
+          {
+            "id": "sec_1791358974080_mkboo",
+            "type": "file",
+            "title": "关联文件",
+            "data": {
+              "items": [
+                {
+                  "id": "sec_item_1791358975024_7moz3",
+                  "text": "",
+                  "path": "Untitled 2.base"
+                },
+                {
+                  "id": "sec_item_1791358985807_z12pm",
+                  "text": "欢迎.md",
+                  "path": "欢迎.md"
+                }
+              ]
+            }
+          }
+        ],
+        "records": [
+          {
+            "id": "okr_1792535549237_9boae",
+            "fields": [
+              {
+                "id": "okr_item_1792535549237_ma49z",
+                "type": "text",
+                "name": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inbox_1791045953442",
+        "title": "good",
+        "description": "",
+        "categoryId": "play",
+        "createdAt": 1791045953442,
+        "assignedDayKeys": [
+          "2026-10-04",
+          "2026-10-12",
+          "2026-10-13"
+        ],
+        "assignedWeekKeys": [
+          "2026-W42"
+        ],
+        "status": "inProgress"
+      },
+      {
+        "id": "inbox_1791045111854",
+        "title": "new",
+        "description": "",
+        "categoryId": "rest",
+        "createdAt": 1791045111854,
+        "assignedWeekKeys": [
+          "2026-W43"
+        ],
+        "assignedDayKeys": [
+          "2026-09-28",
+          "2026-10-01",
+          "2026-10-07",
+          "2026-10-08",
+          "2026-10-09",
+          "2026-10-21",
+          "2026-10-22",
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-20",
+          "2026-10-19",
+          "2026-10-25"
+        ],
+        "parentId": "inbox_1791045953442",
+        "records": [
+          {
+            "id": "okr_1792564341838_0ars5",
+            "fields": [
+              {
+                "id": "okr_item_1792564341838_iir6n",
+                "type": "text",
+                "name": ""
+              }
+            ]
+          }
+        ],
+        "taskType": "habit",
+        "habitTimeEnabled": true
+      },
+      {
+        "id": "inbox_1791530684988",
+        "title": "日常",
+        "description": "",
+        "categoryId": "uncategorized",
+        "createdAt": 1791530684988,
+        "status": "done"
+      },
+      {
+        "id": "inbox_1791334395528",
+        "title": "测试",
+        "description": "森asdadasdfsafa",
+        "categoryId": "work",
+        "createdAt": 1791334395528,
+        "parentId": "inbox_1791017400854",
+        "assignedWeekKeys": [
+          "2026-W47",
+          "2026-W48",
+          "2026-W49",
+          "2026-W41",
+          "2026-W39",
+          "2026-W37",
+          "2026-W38",
+          "2026-W40",
+          "2026-W42",
+          "2026-W43"
+        ],
+        "assignedDayKeys": [
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15",
+          "2026-10-17",
+          "2026-10-16",
+          "2026-10-18",
+          "2026-10-21",
+          "2026-10-22",
+          "2026-10-23"
+        ],
+        "status": "inProgress",
+        "habitTimeEnabled": true,
+        "improvements": [
+          {
+            "id": "improve_1792140649214_90kkq",
+            "text": "改进以下",
+            "done": false,
+            "createdAt": 1792140649214
+          }
+        ],
+        "taskType": "habit",
+        "basket": [
+          {
+            "id": "basket_1792410805741_wfwu6",
+            "text": "测试",
+            "createdAt": 1792410805741
+          }
+        ],
+        "records": [
+          {
+            "id": "okr_1792462050230_4sxm3",
+            "fields": [
+              {
+                "id": "okr_item_1792462050230_zpjhu",
+                "type": "number",
+                "name": "写下任意一个数字"
+              }
+            ]
+          }
+        ],
+        "doneDayKeys": [
+          "2026-10-19"
+        ],
+        "undoneDayKeys": []
+      },
+      {
+        "id": "inbox_1791336673035",
+        "title": "testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest",
+        "description": "",
+        "categoryId": "rest",
+        "createdAt": 1791336673035,
+        "parentId": "inbox_1791017400854",
+        "assignedDayKeys": [
+          "2026-10-05",
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-21",
+          "2026-10-22",
+          "2026-10-24",
+          "2026-10-23",
+          "2026-10-25",
+          "2026-10-20"
+        ],
+        "assignedWeekKeys": [
+          "2026-W42",
+          "2026-W49",
+          "2026-W39",
+          "2026-W43",
+          "2026-W44",
+          "2026-W45",
+          "2026-W47",
+          "2026-W38",
+          "2026-W37",
+          "2026-W40",
+          "2026-W41",
+          "2026-W36",
+          "2026-W10",
+          "2026-W14",
+          "2026-W17",
+          "2026-W07",
+          "2026-W16",
+          "2026-W18",
+          "2026-W30",
+          "2026-W23",
+          "2026-W25",
+          "2026-W28",
+          "2026-W27",
+          "2026-W29",
+          "2026-W24",
+          "2026-W26",
+          "2026-W31",
+          "2026-W32",
+          "2026-W34",
+          "2026-W33",
+          "2026-W22",
+          "2026-W21",
+          "2026-W35",
+          "2026-W06",
+          "2026-W05",
+          "2026-W11",
+          "2026-W12",
+          "2026-W13",
+          "2026-W09",
+          "2026-W08"
+        ],
+        "records": [
+          {
+            "id": "okr_1792535550452_880eg",
+            "fields": [
+              {
+                "id": "okr_item_1792535550452_jlugz",
+                "type": "text",
+                "name": ""
+              }
+            ]
+          }
+        ],
+        "taskType": "oneTime",
+        "habitTimeEnabled": false,
+        "status": "paused"
+      },
+      {
+        "id": "inbox_1791338498719",
+        "title": "哈哈",
+        "description": "这样",
+        "categoryId": "play",
+        "createdAt": 1791338498719,
+        "parentId": "inbox_1791017400854",
+        "assignedDayKeys": [
+          "2026-10-07",
+          "2026-10-05",
+          "2026-10-06",
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15",
+          "2026-10-16",
+          "2026-10-17",
+          "2026-10-18"
+        ],
+        "assignedWeekKeys": [
+          "2026-W49",
+          "2026-W39",
+          "2026-W46",
+          "2026-W47",
+          "2026-W38",
+          "2026-W37",
+          "2026-W40",
+          "2026-W41",
+          "2026-W34",
+          "2026-W36",
+          "2026-W35",
+          "2026-W48",
+          "2026-W16",
+          "2026-W27",
+          "2026-W19",
+          "2026-W33",
+          "2026-W32",
+          "2026-W29",
+          "2026-W42"
+        ],
+        "status": "inProgress",
+        "habitTimeEnabled": false,
+        "estimatedMinutes": 0,
+        "taskType": "oneTime",
+        "okr": {
+          "conditions": [
+            {
+              "id": "okr_1792451881313_4m1j4",
+              "type": "milestone",
+              "target": 0,
+              "title": "里程碑1",
+              "items": [
+                {
+                  "id": "okr_item_1792451881313_s02og",
+                  "text": "里程碑1",
+                  "done": false
+                }
+              ],
+              "subtaskIds": [
+                "inbox_1791047576076"
+              ]
+            },
+            {
+              "id": "okr_1792451893998_ph5ao",
+              "type": "milestone",
+              "target": 0,
+              "title": "里程碑2",
+              "items": [
+                {
+                  "id": "okr_item_1792451893998_scrvf",
+                  "text": "里程碑1",
+                  "done": false
+                }
+              ]
+            }
+          ]
+        },
+        "basket": [
+          {
+            "id": "basket_1792450537154_il36k",
+            "text": "asd",
+            "createdAt": 1792450537154
+          }
+        ],
+        "records": [
+          {
+            "id": "okr_1792535550774_7wt5f",
+            "fields": [
+              {
+                "id": "okr_item_1792535550774_ft0s3",
+                "type": "text",
+                "name": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inbox_1791530708590",
+        "title": "睡觉",
+        "description": "",
+        "categoryId": "rest",
+        "createdAt": 1791530708590,
+        "parentId": "inbox_1791530684988",
+        "assignedWeekKeys": [
+          "2026-W42"
+        ],
+        "habitTimeEnabled": true,
+        "habitTime": 1260,
+        "assignedDayKeys": [
+          "2026-10-12",
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15",
+          "2026-10-17",
+          "2026-10-16",
+          "2026-10-18"
+        ],
+        "status": "done",
+        "okr": {
+          "conditions": [
+            {
+              "id": "okr_1792284810424_uptik",
+              "type": "milestone",
+              "target": 0,
+              "title": "里程碑1",
+              "items": []
+            }
+          ]
+        },
+        "taskType": "habit"
+      },
+      {
+        "id": "inbox_1792003607347",
+        "title": "日常",
+        "description": "",
+        "categoryId": "uncategorized",
+        "createdAt": 1792003607347,
+        "removed": true
+      }
+    ],
+    "weekGoalOnly": true,
+    "dayGoalOnly": false,
+    "collapsedIds": [
+      "sec_1791336748153_w4c77",
+      "sec_1791358974080_mkboo",
+      "sec_1791470748601_k7b6u",
+      "sec_1791470852830_b4xj2",
+      "sec_1791472752150_9e1q0",
+      "sec_1791532118879_12b82",
+      "sec_1791330943868_cdopg"
+    ],
+    "listScrollTop": 138.39285278320312,
+    "focusTaskIds": [
+      "inbox_1791017400854"
+    ]
+  },
+  "plannedWeeks": [
+    "2026-W40",
+    "2026-W41"
+  ],
+  "workbench": {
+    "instances": [
+      {
+        "id": "c5ddb75c-013a-48b5-9a79-cbc4a91ee1e7",
+        "templateId": "day-execution-chart",
+        "mode": "stats",
+        "title": "日执行统计",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "by-day",
+          "chart": "bar",
+          "params": {
+            "metric": "count"
+          }
+        },
+        "col": 1,
+        "row": 37
+      },
+      {
+        "id": "bae2a9cc-a6fa-488e-a8f8-b60e2fc3356f",
+        "templateId": "calendar",
+        "mode": "calendar",
+        "title": "",
+        "col": 2,
+        "row": 2,
+        "width": 300,
+        "height": 270
+      },
+      {
+        "id": "8eeebe28-1527-4aba-a816-d4cdcb7f42eb",
+        "templateId": "clock",
+        "mode": "clock",
+        "title": "",
+        "col": 14,
+        "row": 3,
+        "width": 300,
+        "height": 120
+      },
+      {
+        "id": "3ed3e0eb-746f-4663-bfad-08361b79e5bf",
+        "templateId": "timelog",
+        "mode": "timelog",
+        "title": "时间记录",
+        "col": 27,
+        "row": 50,
+        "timelogRows": [
+          {
+            "id": "c18273b3-0601-4e95-aaea-fd9b92b3c488",
+            "kind": "manual"
+          }
+        ]
+      },
+      {
+        "id": "0e0a7386-aa53-4e8c-81a4-598998acb7ec",
+        "templateId": "day-execution-chart",
+        "mode": "system",
+        "title": "日执行统计",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "by-day",
+          "chart": "bar",
+          "params": {
+            "metric": "count"
+          }
+        },
+        "col": 0,
+        "row": 16
+      },
+      {
+        "id": "8e27399f-805e-49a7-b31b-1f46077e0b1f",
+        "templateId": "task-stats",
+        "mode": "system",
+        "title": "任务统计",
+        "source": {
+          "dataSource": "tasks",
+          "aggregation": "count"
+        },
+        "col": 14,
+        "row": 13
+      },
+      {
+        "id": "757a8fdc-60ee-465d-9e14-a6dea5bb58db",
+        "templateId": "executed-task-count",
+        "mode": "system",
+        "title": "执行任务总数",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "executed-task-count"
+        },
+        "col": 36,
+        "row": 20
+      },
+      {
+        "id": "d7a82bd0-2887-417f-990b-e2f68956f907",
+        "templateId": "execution-total-duration",
+        "mode": "system",
+        "title": "执行总时长",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "total-duration"
+        },
+        "col": 27,
+        "row": 2
+      },
+      {
+        "id": "04278582-372a-4b5c-990b-0aa2d7e062e4",
+        "templateId": "hbar-chart",
+        "mode": "chart",
+        "title": "条形图",
+        "source": {
+          "dataSource": "events",
+          "aggregation": "by-category",
+          "chart": "hbar",
+          "params": {
+            "metric": "count"
+          }
+        },
+        "col": 0,
+        "row": 25
+      },
+      {
+        "id": "4c4d06a8-e070-4fd9-813e-d6b668768804",
+        "templateId": "line-chart",
+        "mode": "chart",
+        "title": "折线图",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "by-day",
+          "chart": "line",
+          "params": {
+            "metric": "count"
+          }
+        },
+        "col": 27,
+        "row": 11
+      },
+      {
+        "id": "949184b0-c88f-4b72-b387-cef19e08e25f",
+        "templateId": "custom-list",
+        "mode": "form",
+        "title": "自定义列表",
+        "col": 13,
+        "row": 23,
+        "timelogRows": [
+          {
+            "id": "9dc50d5b-1bde-4ab6-acfe-a78d402630dd",
+            "kind": "task",
+            "taskId": "inbox_1791334395528"
+          },
+          {
+            "id": "fe7300ce-a5c6-4b57-b3f9-f074e2e224b4",
+            "kind": "task",
+            "taskId": "inbox_1791045953442"
+          }
+        ],
+        "width": 570,
+        "height": 240
+      },
+      {
+        "id": "2d1062f8-94a2-442d-829f-dd861eae125a",
+        "templateId": "donut-chart",
+        "mode": "chart",
+        "title": "环形图",
+        "source": {
+          "dataSource": "executions",
+          "aggregation": "by-category",
+          "chart": "donut",
+          "params": {
+            "metric": "count"
+          }
+        },
+        "col": 17,
+        "row": 36,
+        "width": 300,
+        "height": 390
+      }
+    ],
+    "layouts": [
+      {
+        "id": "default",
+        "name": "默认布局",
+        "instances": [
+          {
+            "id": "c5ddb75c-013a-48b5-9a79-cbc4a91ee1e7",
+            "templateId": "day-execution-chart",
+            "mode": "stats",
+            "title": "日执行统计",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "by-day",
+              "chart": "bar",
+              "params": {
+                "metric": "count"
+              }
+            },
+            "col": 1,
+            "row": 37
+          },
+          {
+            "id": "bae2a9cc-a6fa-488e-a8f8-b60e2fc3356f",
+            "templateId": "calendar",
+            "mode": "calendar",
+            "title": "",
+            "col": 2,
+            "row": 2,
+            "width": 300,
+            "height": 270
+          },
+          {
+            "id": "8eeebe28-1527-4aba-a816-d4cdcb7f42eb",
+            "templateId": "clock",
+            "mode": "clock",
+            "title": "",
+            "col": 14,
+            "row": 3,
+            "width": 300,
+            "height": 120
+          },
+          {
+            "id": "3ed3e0eb-746f-4663-bfad-08361b79e5bf",
+            "templateId": "timelog",
+            "mode": "timelog",
+            "title": "时间记录",
+            "col": 27,
+            "row": 50,
+            "timelogRows": [
+              {
+                "id": "c18273b3-0601-4e95-aaea-fd9b92b3c488",
+                "kind": "manual"
+              }
+            ]
+          },
+          {
+            "id": "0e0a7386-aa53-4e8c-81a4-598998acb7ec",
+            "templateId": "day-execution-chart",
+            "mode": "system",
+            "title": "日执行统计",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "by-day",
+              "chart": "bar",
+              "params": {
+                "metric": "count"
+              }
+            },
+            "col": 0,
+            "row": 16
+          },
+          {
+            "id": "8e27399f-805e-49a7-b31b-1f46077e0b1f",
+            "templateId": "task-stats",
+            "mode": "system",
+            "title": "任务统计",
+            "source": {
+              "dataSource": "tasks",
+              "aggregation": "count"
+            },
+            "col": 14,
+            "row": 13
+          },
+          {
+            "id": "757a8fdc-60ee-465d-9e14-a6dea5bb58db",
+            "templateId": "executed-task-count",
+            "mode": "system",
+            "title": "执行任务总数",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "executed-task-count"
+            },
+            "col": 36,
+            "row": 20
+          },
+          {
+            "id": "d7a82bd0-2887-417f-990b-e2f68956f907",
+            "templateId": "execution-total-duration",
+            "mode": "system",
+            "title": "执行总时长",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "total-duration"
+            },
+            "col": 27,
+            "row": 2
+          },
+          {
+            "id": "04278582-372a-4b5c-990b-0aa2d7e062e4",
+            "templateId": "hbar-chart",
+            "mode": "chart",
+            "title": "条形图",
+            "source": {
+              "dataSource": "events",
+              "aggregation": "by-category",
+              "chart": "hbar",
+              "params": {
+                "metric": "count"
+              }
+            },
+            "col": 0,
+            "row": 25
+          },
+          {
+            "id": "4c4d06a8-e070-4fd9-813e-d6b668768804",
+            "templateId": "line-chart",
+            "mode": "chart",
+            "title": "折线图",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "by-day",
+              "chart": "line",
+              "params": {
+                "metric": "count"
+              }
+            },
+            "col": 27,
+            "row": 11
+          },
+          {
+            "id": "949184b0-c88f-4b72-b387-cef19e08e25f",
+            "templateId": "custom-list",
+            "mode": "form",
+            "title": "自定义列表",
+            "col": 13,
+            "row": 23,
+            "timelogRows": [
+              {
+                "id": "9dc50d5b-1bde-4ab6-acfe-a78d402630dd",
+                "kind": "task",
+                "taskId": "inbox_1791334395528"
+              },
+              {
+                "id": "fe7300ce-a5c6-4b57-b3f9-f074e2e224b4",
+                "kind": "task",
+                "taskId": "inbox_1791045953442"
+              }
+            ],
+            "width": 570,
+            "height": 240
+          },
+          {
+            "id": "2d1062f8-94a2-442d-829f-dd861eae125a",
+            "templateId": "donut-chart",
+            "mode": "chart",
+            "title": "环形图",
+            "source": {
+              "dataSource": "executions",
+              "aggregation": "by-category",
+              "chart": "donut",
+              "params": {
+                "metric": "count"
+              }
+            },
+            "col": 17,
+            "row": 36,
+            "width": 300,
+            "height": 390
+          }
+        ]
+      }
+    ],
+    "activeLayoutId": "default"
+  },
+  "gtdData": {
+    "items": [
+      {
+        "id": "e7e5cd0f-7014-4451-a155-448748a46487",
+        "content": "测试",
+        "createdAt": 1791961892684,
+        "status": "processed"
+      },
+      {
+        "id": "2fafdc30-5f81-4ab7-8028-4012496dcb5b",
+        "content": "还是不错的。",
+        "createdAt": 1791961896353,
+        "status": "processed"
+      },
+      {
+        "id": "e59e8766-e8f9-44f8-b524-19aa149de7ab",
+        "content": "哎送福",
+        "createdAt": 1792004801424,
+        "status": "processed"
+      },
+      {
+        "id": "5e28cfcb-ff6a-4efb-91bf-fd58769dd4c0",
+        "content": "测试一下功能。",
+        "createdAt": 1792049453168,
+        "status": "processed"
+      },
+      {
+        "id": "423af737-e1d8-4a58-95e2-14a20bdf57ea",
+        "content": "添加一个新的内容如何呢？",
+        "createdAt": 1792049754890,
+        "status": "processed"
+      },
+      {
+        "id": "dac46723-7c1d-4005-aff9-2680d1639436",
+        "content": "gg",
+        "createdAt": 1792049771014,
+        "status": "processed"
+      },
+      {
+        "id": "41fcf384-38cd-4669-8a1b-5b4f92d386f0",
+        "content": "好的测试。",
+        "createdAt": 1792049865139,
+        "status": "processed"
+      },
+      {
+        "id": "3a5b051e-355a-4e69-8031-ab5790289323",
+        "content": "gg",
+        "createdAt": 1792049881384,
+        "status": "processed"
+      },
+      {
+        "id": "8bfb3e1d-adb2-4b8e-852f-057f68bac436",
+        "content": "插件。可能需要将gtd、pdca整个的数据操作逻辑全都抽象出来。这样在工作台等多个卡片中添加功能的时候才能一次性引用。",
+        "createdAt": 1792073833668,
+        "status": "processed"
+      },
+      {
+        "id": "7a938553-58e8-4198-bfc8-a909b2668e9d",
+        "content": "测试",
+        "createdAt": 1792076677261,
+        "status": "processed"
+      },
+      {
+        "id": "37e51048-363e-4e14-820e-c99ae12534a2",
+        "content": "gg",
+        "createdAt": 1792141038193,
+        "status": "inbox"
+      },
+      {
+        "id": "e588609e-453c-48e4-9875-39034c21b1a3",
+        "content": "非",
+        "createdAt": 1792171389537,
+        "status": "inbox"
+      },
+      {
+        "id": "1a4cc262-464e-421f-876d-5669362d71c6",
+        "content": "森",
+        "createdAt": 1792181948298,
+        "status": "inbox"
+      }
+    ],
+    "sources": []
+  },
+  "improvementData": {
+    "byWeek": {
+      "2026-W42": [
+        {
+          "id": "imp_1792137638780_179",
+          "text": "哈哈哈",
+          "createdAt": 1792137638780
+        }
+      ],
+      "2026-W43": []
+    }
+  },
+  "prototypeTasks": [
+    {
+      "id": "prototype_1792793325550_5tcsa",
+      "name": "test",
+      "type": "main",
+      "createdAt": 1792793325550
+    },
+    {
+      "id": "prototype_1792795005801_dswov",
+      "name": "哈哈",
+      "type": "main",
+      "parentId": "prototype_1792793325550_5tcsa",
+      "createdAt": 1792795005801
+    },
+    {
+      "id": "prototype_1792795014768_v5piy",
+      "name": "哈哈",
+      "type": "main",
+      "parentId": "prototype_1792793325550_5tcsa",
+      "createdAt": 1792795014768
+    },
+    {
+      "id": "prototype_1792795430030_fl1fp",
+      "name": "更",
+      "type": "main",
+      "parentId": "prototype_1792795005801_dswov",
+      "createdAt": 1792795430030
+    }
+  ],
+  "recordEntries": [],
+  "habitsCollapsed": true,
+  "timePlanActive": false,
+  "timePlanShowHabits": true,
+  "cacheDirName": ".parrot-plan/cache",
+  "cacheEnabled": true,
+  "helpDismissed": true,
+  "scriptModeEnabled": false
+}

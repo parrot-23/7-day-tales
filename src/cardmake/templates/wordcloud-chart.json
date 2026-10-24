@@ -1,0 +1,12 @@
+{
+  "id": "wordcloud-chart",
+  "name": "词云",
+  "mode": "chart",
+  "renderer": "stats",
+  "description": "任务标题关键词词频（词云）",
+  "source": {
+    "dataSource": "tasks",
+    "aggregation": "wordcloud",
+    "chart": "wordcloud"
+  }
+}

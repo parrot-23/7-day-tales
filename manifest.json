@@ -1,0 +1,9 @@
+{
+  "id": "7-day tales",
+  "name": "Parrot Plan",
+  "version": "2.0.0",
+  "minAppVersion": "1.13.0",
+  "description": "A weekly schedule planner with time blocks, event planning, and execution tracking.",
+  "author": "parrot-23",
+  "isDesktopOnly": true
+}

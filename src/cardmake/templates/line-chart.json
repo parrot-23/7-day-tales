@@ -1,0 +1,15 @@
+{
+  "id": "line-chart",
+  "name": "折线图",
+  "mode": "chart",
+  "renderer": "stats",
+  "description": "按天统计执行次数（折线图）",
+  "source": {
+    "dataSource": "executions",
+    "aggregation": "by-day",
+    "chart": "line",
+    "params": {
+      "metric": "count"
+    }
+  }
+}

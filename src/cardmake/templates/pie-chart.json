@@ -1,0 +1,15 @@
+{
+  "id": "pie-chart",
+  "name": "饼图",
+  "mode": "chart",
+  "renderer": "stats",
+  "description": "按分类统计执行记录占比（饼图）",
+  "source": {
+    "dataSource": "executions",
+    "aggregation": "by-category",
+    "chart": "pie",
+    "params": {
+      "metric": "count"
+    }
+  }
+}

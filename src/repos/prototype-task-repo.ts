@@ -1,0 +1,38 @@
+// 原型任务领域仓库：管理界面视图「任务面板」新建的主线 / 支线任务原型。
+// 通过 baseRepo 拿到 prototypeTasks 引用，写操作后由调用方触发 baseRepo.saveAll()。
+import type { PrototypeTask, PrototypeTaskType } from '../datatypes/prototype-task';
+import type { BaseRepo } from './base-repo';
+
+export class PrototypeTaskRepo {
+    private baseRepo: BaseRepo;
+
+    constructor(baseRepo: BaseRepo) {
+        this.baseRepo = baseRepo;
+    }
+
+    /** 原型任务列表引用（视图读取用） */
+    get tasks(): PrototypeTask[] {
+        return this.baseRepo.data!.prototypeTasks;
+    }
+
+    /** 新增原型任务（parentId 存在时作为该任务的子任务） */
+    add(name: string, type: PrototypeTaskType, parentId?: string): PrototypeTask {
+        const task: PrototypeTask = {
+            id: `prototype_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            name,
+            type,
+            createdAt: Date.now(),
+        };
+        if (parentId) task.parentId = parentId;
+        this.tasks.push(task);
+        return task;
+    }
+
+    /** 更新任务的描述 / 分类（任务不存在时忽略） */
+    update(taskId: string, patch: { description?: string; categoryId?: string }): void {
+        const task = this.tasks.find((item) => item.id === taskId);
+        if (!task) return;
+        if (patch.description !== undefined) task.description = patch.description;
+        if (patch.categoryId !== undefined) task.categoryId = patch.categoryId;
+    }
+}

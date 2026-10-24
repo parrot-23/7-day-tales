@@ -1,0 +1,26 @@
+# Intellij
+*.iml
+.idea
+
+# npm
+node_modules
+package-lock.json
+
+# build
+main.js
+*.js.map
+yarn.lock
+
+# backup
+*.bak
+*.log
+*.bak1
+
+# obsidian
+data.json
+.hotreload
+parrot-plan.log
+parrot-plan.log
+parrot-plan.log
+
+
