@@ -18,6 +18,7 @@ import type { InboxRepo } from './repos/inbox-repo';
 import type { CategoryRepo } from './repos/category-repo';
 import type { TemplateRepo } from './repos/template-repo';
 import type { PlanSchemeRepo } from './repos/plan-scheme-repo';
+import type { PrototypeTaskRepo } from './repos/prototype-task-repo';
 import { t } from './i18n';
 import { log } from './shared/logger';
 import { HelpModal } from './helper/help-modal';
@@ -175,6 +176,11 @@ export class MainView extends ItemView {
     /** 从插件实例获取 PDCA 领域仓库 */
     private pdcaRepo(): PdcaRepo {
         return (this.plugin as Plugin & { pdcaRepo: PdcaRepo }).pdcaRepo;
+    }
+
+    /** 从插件实例获取原型任务仓库（界面视图进行中任务用） */
+    private prototypeTaskRepo(): PrototypeTaskRepo {
+        return (this.plugin as Plugin & { prototypeTaskRepo: PrototypeTaskRepo }).prototypeTaskRepo;
     }
 
     /** 从插件实例获取工作台领域仓库 */
@@ -379,7 +385,7 @@ export class MainView extends ItemView {
      * 无进行中任务时清空并隐藏；有则显示任务名与已用时长，点击跳转到「界面」一级视图首页。
      * 同时启动每分钟刷新已用时长的定时器。
      */
-    private renderRunningTaskCard(): void {
+    renderRunningTaskCard(): void {
         const wrap = this.runningCardEl;
         if (!wrap) return;
         wrap.empty();
@@ -396,8 +402,11 @@ export class MainView extends ItemView {
             this.renderStatusBarRunningTask();
             return;
         }
-        const item = this.inboxData.items.find(i => i.id === running.inboxId && !i.removed);
-        if (!item) {
+        // 界面视图写入的是原型任务，日执行视图写入的是收集盒任务
+        const name = running.source === 'prototype'
+            ? this.prototypeTaskRepo().tasks.find(task => task.id === running.inboxId)?.name
+            : this.inboxData.items.find(i => i.id === running.inboxId && !i.removed)?.title;
+        if (!name) {
             wrap.addClass('is-hidden');
             this.renderStatusBarRunningTask();
             return;
@@ -406,13 +415,13 @@ export class MainView extends ItemView {
 
         const card = wrap.createDiv({ cls: 'parrot-plan-running-card' });
         card.createSpan({ cls: 'parrot-plan-running-card-label', text: t('nav.runningLabel') });
-        card.createSpan({ cls: 'parrot-plan-running-card-name', text: item.title });
+        card.createSpan({ cls: 'parrot-plan-running-card-name', text: name });
         const timeEl = card.createSpan({ cls: 'parrot-plan-running-card-time' });
 
         const updateTime = () => {
-            const now = new Date();
-            const nowMinutes = now.getHours() * 60 + now.getMinutes();
-            const elapsed = Math.max(0, nowMinutes - running.start);
+            const elapsed = typeof running.startedAt === 'number'
+                ? Math.max(0, Math.floor((Date.now() - running.startedAt) / 60000))
+                : Math.max(0, new Date().getHours() * 60 + new Date().getMinutes() - running.start);
             timeEl.setText(t('nav.runningElapsed', { minutes: String(elapsed) }));
             // 状态栏与卡片同步刷新已用时长
             this.renderStatusBarRunningTask();

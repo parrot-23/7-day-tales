@@ -248,7 +248,13 @@ export default class ParrotPlanPlugin extends Plugin {
         this.statusBar = new RunningTaskStatusBar(
             this,
             () => this.pdcaRepo.runningTask,
-            (inboxId) => this.data?.inboxData.items.find(i => i.id === inboxId && !i.removed),
+            (running) => {
+                // 界面视图写入的是原型任务，日执行视图写入的是收集盒任务
+                if (running.source === 'prototype') {
+                    return this.data?.prototypeTasks.find(task => task.id === running.inboxId)?.name;
+                }
+                return this.data?.inboxData.items.find(item => item.id === running.inboxId && !item.removed)?.title;
+            },
         );
         this.statusBar.init();
     }
@@ -256,6 +262,14 @@ export default class ParrotPlanPlugin extends Plugin {
     /** 刷新状态栏中的「进行中任务」显示（进行中任务变化时由主视图调用） */
     renderStatusBarRunningTask(): void {
         this.statusBar?.render();
+    }
+
+    /** 刷新进行中任务的全局显示（状态栏 + 主视图顶部卡片），任意视图开始/结束计时后调用 */
+    refreshRunningTaskCard(): void {
+        this.statusBar?.render();
+        for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MAIN)) {
+            if (leaf.view instanceof MainView) leaf.view.renderRunningTaskCard();
+        }
     }
 
     /**

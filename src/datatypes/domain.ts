@@ -26,14 +26,16 @@ export interface EventBlock {
     weekKey?: WeekKey;
 }
 
-/** 进行中任务（日执行视图点击「开始任务」后写入，随主数据一起持久化） */
+/** 进行中任务（日执行视图 / 界面视图「今天任务」开始计时后写入，随主数据一起持久化） */
 export interface RunningTask {
-    /** 来源收集盒任务 id */
+    /** 来源任务 id（source 为 inbox 时是收集盒任务 id，prototype 时是原型任务 id） */
     inboxId: string;
     /** 起始时间（当天分钟数） */
     start: number;
     /** 所属日期键（如 2026-10-16） */
     dayKey: string;
+    /** 计时来源（prototype = 界面视图的原型任务；省略 / inbox = 收集盒任务） */
+    source?: 'prototype' | 'inbox';
     /** 用户填写的结束时间（当天分钟数，可选，旧数据无此字段） */
     end?: number;
     /** 结束时间是否跨到次日（0 或省略=当天，1=次日） */

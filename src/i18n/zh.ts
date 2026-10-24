@@ -49,6 +49,7 @@ export const zh = {
 
     // 面板
     'panel.weekCalendarTitle': '周历',
+    'panel.weekCalendarGoal': '这周目标',
     'panel.timeBoxTitle': '时间盒',
     'panel.planPanelTitle': '计划',
     'panel.checkPanelTitle': '检查',

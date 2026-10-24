@@ -7180,7 +7180,7 @@ button.swimlane-section-card-settings {
     padding: 10px;
 }
 
-/* 七列网格：第一行为顶部窄条，其后三行为日期格子 */
+/* 七列网格：第一行为顶部窄条，第二行为日期格子，其下为整块「这周目标」卡片 */
 .week-calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -7225,6 +7225,31 @@ button.swimlane-section-card-settings {
     border: 2px solid var(--interactive-accent);
     color: var(--text-normal);
     font-weight: 600;
+}
+
+/* 这周目标：占满日期行下方的整块区域，首行为标题行 */
+.week-calendar-goal-card {
+    grid-column: 1 / -1;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-secondary);
+    overflow: hidden;
+}
+
+.week-calendar-goal-title {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.week-calendar-goal-body {
+    flex: 1;
 }
 
 /* ======================== 时间盒面板（panel/time-box-panel） ======================== */
@@ -8279,21 +8304,24 @@ button.swimlane-section-card-settings {
     overflow-y: auto;
 }
 
+/* 与周历面板的日期格子保持一致的方块样式 */
 .plan-year-cell {
+    aspect-ratio: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    /* 三行文字高：11px 字号 × 1.4 行高 × 3 行 */
-    height: 46px;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 4px 6px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
-    font-size: 11px;
+    background: var(--background-secondary);
+    font-size: 12px;
     color: var(--text-muted);
 }
 
+/* 当前周：边框高亮（与周历面板「今天」一致） */
 .plan-year-cell.is-current {
-    border-color: var(--interactive-accent);
-    color: var(--text-accent);
+    border: 2px solid var(--interactive-accent);
+    color: var(--text-normal);
     font-weight: 600;
 }
 

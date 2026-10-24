@@ -53,7 +53,7 @@ export interface PluginData {
     recordEntries: OkrRecordEntry[];
     /** 当前正在执行的事件 id（日执行视图顶部执行卡片，随主数据一起持久化） */
     executingEventId?: string;
-    /** 当前进行中的任务（日执行视图点击「开始任务」后写入，随主数据一起持久化） */
+    /** 当前进行中的任务（日执行视图 / 界面视图「今天任务」计时，随主数据一起持久化） */
     runningTask?: RunningTask;
     /** 周计划视图是否折叠习惯任务（随主数据一起持久化） */
     habitsCollapsed?: boolean;

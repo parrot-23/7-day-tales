@@ -1,6 +1,8 @@
 // 计划面板：基于 FloatingPanel，用于配置计划。
 // 结构：左侧（顶部根任务下拉 + 选中根任务的后代任务树）+ 右侧（年 / 周选项卡，对应 52 周日历与一周七列日历）。
 // 排布：选中左侧任务条目后，点击周视图的某一天列，即可把该任务排布到该列（写入 PlanAssignmentRepo）。
+import { setIcon } from 'obsidian';
+
 import type { PrototypeTask } from '../datatypes/prototype-task';
 import { t } from '../i18n';
 import type { PlanAssignmentRepo } from '../repos/plan-assignment-repo';
@@ -141,6 +143,8 @@ export class PlanPanel extends FloatingPanel {
             row.style.marginLeft = `${depth * 14}px`;
             row.dataset.taskId = child.id;
             row.toggleClass('is-selected', child.id === this.selectedTaskId);
+            const iconEl = row.createSpan({ cls: 'task-detail-tree-icon' });
+            setIcon(iconEl, 'git-branch');
             row.createSpan({ cls: 'task-detail-tree-label', text: child.name });
             this.renderTreeNodes(parentEl, child.id, depth + 1);
         }

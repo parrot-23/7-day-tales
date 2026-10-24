@@ -51,6 +51,7 @@ export const en: I18nMessages = {
 
     // Panels
     'panel.weekCalendarTitle': 'Week Calendar',
+    'panel.weekCalendarGoal': 'This Week\'s Goal',
     'panel.timeBoxTitle': 'Time Box',
     'panel.planPanelTitle': 'Plan',
     'panel.checkPanelTitle': 'Check',

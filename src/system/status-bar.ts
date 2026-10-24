@@ -2,7 +2,7 @@ import { setIcon, type Plugin } from 'obsidian';
 
 import { t } from '../i18n';
 import { VIEW_TYPE_MAIN, MainView } from '../main-view';
-import type { InboxItem, RunningTask } from '../datatypes/domain';
+import type { RunningTask } from '../datatypes/domain';
 
 /**
  * 状态栏「进行中任务」：显示「任务名称：已用时长」，每分钟刷新一次。
@@ -19,8 +19,8 @@ export class RunningTaskStatusBar {
         private plugin: Plugin,
         /** 读取当前进行中任务 */
         private getRunningTask: () => RunningTask | undefined,
-        /** 按 id 查找未移除的收集盒任务 */
-        private findItem: (inboxId: string) => InboxItem | undefined,
+        /** 按进行中任务解析任务名称（支持收集盒任务与原型任务） */
+        private findTaskName: (running: RunningTask) => string | undefined,
     ) {}
 
     /** 创建状态栏元素，并开始每分钟刷新已用时长 */
@@ -45,9 +45,9 @@ export class RunningTaskStatusBar {
         setIcon(icon, 'calendar-clock');
 
         const running = this.getRunningTask();
-        const item = running ? this.findItem(running.inboxId) : undefined;
+        const name = running ? this.findTaskName(running) : undefined;
 
-        if (!running || !item) {
+        if (!running || !name) {
             // 无进行中任务（或任务已被移除）
             el.createSpan({ text: t('nav.statusBarIdle') });
             el.setAttribute('aria-label', t('nav.statusBarIdle'));
@@ -57,12 +57,12 @@ export class RunningTaskStatusBar {
             return;
         }
 
-        const now = new Date();
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-        const elapsed = Math.max(0, nowMinutes - running.start);
+        const elapsed = typeof running.startedAt === 'number'
+            ? Math.max(0, Math.floor((Date.now() - running.startedAt) / 60000))
+            : Math.max(0, new Date().getHours() * 60 + new Date().getMinutes() - running.start);
         el.createSpan({
             text: t('nav.runningStatusBar', {
-                name: item.title,
+                name,
                 duration: this.formatDuration(elapsed),
             }),
         });

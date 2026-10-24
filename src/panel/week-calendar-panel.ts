@@ -1,7 +1,8 @@
 // 周历面板：基于 FloatingPanel 的日历式展示。
-// 结构：顶部窄条一行（第一列为 PLAN/CHECK，其余六列为 ACT），下方三行 × 七列日期格子（周一至周日）。
+// 结构：顶部窄条一行（第一列为 PLAN/CHECK，其余六列为 ACT），下方一行 × 七列日期格子（周一至周日），
+// 日期行下方为一块填满剩余位置的「这周目标」卡片。
 import { t } from '../i18n';
-import { getCurrentDayKey, getCurrentWeekKey, makeDayKeyFromWeek, shiftWeekKey } from '../shared/plan-data';
+import { getCurrentDayKey, getCurrentWeekKey, makeDayKeyFromWeek } from '../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 周历面板配置 */
@@ -26,7 +27,7 @@ export class WeekCalendarPanel extends FloatingPanel {
         this.renderCalendar(options.startWeekKey ?? getCurrentWeekKey());
     }
 
-    /** 渲染顶部窄条 + 三行七列日期格子 */
+    /** 渲染顶部窄条 + 一行七列日期格子 + 「这周目标」卡片 */
     private renderCalendar(startWeekKey: string): void {
         const body = this.body;
         body.addClass('week-calendar-panel');
@@ -39,17 +40,18 @@ export class WeekCalendarPanel extends FloatingPanel {
             if (col === 0) strip.addClass('is-plan-check');
         }
 
-        // 三行日期格子：从起始周开始，每行一周（周一至周日）
+        // 日期格子：只保留一行（周一至周日）
         const todayKey = getCurrentDayKey();
-        let weekKey = startWeekKey;
-        for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 7; col++) {
-                const dayKey = makeDayKeyFromWeek(weekKey, col + 1);
-                const cell = grid.createDiv({ cls: 'week-calendar-cell' });
-                if (dayKey === todayKey) cell.addClass('is-today');
-                cell.setText(String(Number(dayKey.slice(8, 10))));
-            }
-            weekKey = shiftWeekKey(weekKey, 1);
+        for (let col = 0; col < 7; col++) {
+            const dayKey = makeDayKeyFromWeek(startWeekKey, col + 1);
+            const cell = grid.createDiv({ cls: 'week-calendar-cell' });
+            if (dayKey === todayKey) cell.addClass('is-today');
+            cell.setText(String(Number(dayKey.slice(8, 10))));
         }
+
+        // 原第二、三行的位置：一整块方片，填满剩余空间；首行为标题行
+        const goalCard = grid.createDiv({ cls: 'week-calendar-goal-card' });
+        goalCard.createDiv({ cls: 'week-calendar-goal-title', text: t('panel.weekCalendarGoal') });
+        goalCard.createDiv({ cls: 'week-calendar-goal-body' });
     }
 }

@@ -17,11 +17,12 @@ import { TaskRecordPanel } from '../../panel/task-record-panel';
 import { TimeBoxPanel } from '../../panel/time-box-panel';
 import { WeekCalendarPanel } from '../../panel/week-calendar-panel';
 import type { CategoryRepo } from '../../repos/category-repo';
+import type { PdcaRepo } from '../../repos/pdca-repo';
 import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { getISOWeek, makeWeekKey } from '../../shared/plan-data';
+import { getCurrentDayKey, getISOWeek, makeWeekKey } from '../../shared/plan-data';
 
 /** 右侧入口卡片：文案 key */
 const ENTRY_CARDS: Parameters<typeof t>[0][] = [
@@ -120,6 +121,16 @@ export class InterfaceView {
     /** 任务执行记录仓库 */
     private get taskExecutionRepo(): TaskExecutionRepo {
         return (this.plugin as Plugin & { taskExecutionRepo: TaskExecutionRepo }).taskExecutionRepo;
+    }
+
+    /** PDCA 领域仓库（持久化进行中任务） */
+    private get pdcaRepo(): PdcaRepo {
+        return (this.plugin as Plugin & { pdcaRepo: PdcaRepo }).pdcaRepo;
+    }
+
+    /** 唯一持久化出口 */
+    private saveAll(): Promise<void> {
+        return (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
     }
 
     /** 点击日期卡片：打开周历面板 */
@@ -396,9 +407,10 @@ export class InterfaceView {
         this.stopRunningTodayTask();
     }
 
-    /** 结束 / 放弃当前计时：停止计时、隐藏开始时间与计时器，恢复初始按钮组 */
+    /** 结束 / 放弃当前计时：停止计时、清除持久化状态、隐藏开始时间与计时器，恢复初始按钮组 */
     private stopRunningTodayTask(): void {
         this.stopTodayTimer();
+        this.clearPersistedRunningTask();
         this.todayTimerEl?.addClass('is-hidden');
         if (this.todayTimerElapsedEl) this.todayTimerElapsedEl.textContent = '00:00';
         this.renderTodayActions(false);
@@ -422,6 +434,7 @@ export class InterfaceView {
         this.stopTodayTimer();
         this.runningStartedAt = new Date();
         this.runningTodayTaskId = this.selectedTodayTaskId;
+        this.persistRunningTask(this.runningTodayTaskId, this.runningStartedAt);
         this.todayTimerEl.removeClass('is-hidden');
         if (this.todayTimerStartEl) {
             this.todayTimerStartEl.textContent = t('interface.todayStartAt', {
@@ -460,6 +473,55 @@ export class InterfaceView {
         }
         this.runningStartedAt = null;
         this.runningTodayTaskId = undefined;
+    }
+
+    /** 把进行中的计时写入持久化字段（切换视图 / 重开 Obsidian 后可恢复） */
+    private persistRunningTask(taskId: string, startedAt: Date): void {
+        this.pdcaRepo.setRunningTask({
+            inboxId: taskId,
+            start: startedAt.getHours() * 60 + startedAt.getMinutes(),
+            dayKey: getCurrentDayKey(),
+            source: 'prototype',
+            startedAt: startedAt.getTime(),
+        });
+        void this.saveAll();
+        this.refreshRunningIndicators();
+    }
+
+    /** 清除持久化的进行中任务（只清除界面视图自己写入的原型任务） */
+    private clearPersistedRunningTask(): void {
+        if (this.pdcaRepo.runningTask?.source !== 'prototype') return;
+        this.pdcaRepo.setRunningTask(undefined);
+        void this.saveAll();
+        this.refreshRunningIndicators();
+    }
+
+    /** 刷新状态栏与主视图顶部的「进行中任务」显示 */
+    private refreshRunningIndicators(): void {
+        (this.plugin as Plugin & { refreshRunningTaskCard?: () => void }).refreshRunningTaskCard?.();
+    }
+
+    /** 从持久化字段恢复进行中的计时（只恢复界面视图自己写入的原型任务） */
+    private restoreRunningTodayTask(): void {
+        const running = this.pdcaRepo.runningTask;
+        if (!running || running.source !== 'prototype' || typeof running.startedAt !== 'number') return;
+        if (!this.prototypeTaskRepo.tasks.some((task) => task.id === running.inboxId)) return;
+        if (!this.todayTimerEl) return;
+
+        this.runningTodayTaskId = running.inboxId;
+        this.runningStartedAt = new Date(running.startedAt);
+        this.todayTimerEl.removeClass('is-hidden');
+        if (this.todayTimerStartEl) {
+            this.todayTimerStartEl.textContent = t('interface.todayStartAt', {
+                time: this.formatClockTime(this.runningStartedAt),
+            });
+        }
+        this.updateTodayTimerText();
+        if (this.timerHandle === null) {
+            this.timerHandle = window.setInterval(() => this.updateTodayTimerText(), 1000);
+        }
+        this.renderTodayActions(true);
+        this.refreshRunningIndicators();
     }
 
     /** 时:分（各两位） */
@@ -667,6 +729,9 @@ export class InterfaceView {
         // 任务列表下方的操作按钮组：未计时为「开始任务 / 记录任务」，计时中为「结束任务 / 放弃任务」
         this.todayActionsEl = todayRight.createDiv({ cls: 'interface-today-actions' });
         this.renderTodayActions(false);
+
+        // 恢复持久化的进行中计时（切换视图 / 重开 Obsidian 后继续）
+        this.restoreRunningTodayTask();
 
         // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单 / 数据
         const right = main.createDiv({ cls: 'interface-col is-right' });
