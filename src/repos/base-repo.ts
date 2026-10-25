@@ -15,6 +15,7 @@ import { defaultWorkbenchData } from '../datatypes/card';
 import type { GtdData } from '../datatypes/gtd';
 import { defaultGtdData } from '../datatypes/gtd';
 import type { PlanAssignmentData } from '../datatypes/plan-assignment';
+import type { BottomItem } from '../datatypes/bottom-item';
 import type { PrototypeTask } from '../datatypes/prototype-task';
 import type { TaskExecutionData } from '../datatypes/task-execution';
 import type { TimeBoxData } from '../datatypes/timebox-data';
@@ -51,6 +52,8 @@ export interface PluginData {
     recordEntries: OkrRecordEntry[];
     /** 当前进行中的任务（界面视图「今天任务」计时，随主数据一起持久化） */
     runningTask?: RunningTask;
+    /** 界面视图底部方框的条目（文件夹等） */
+    bottomItems: BottomItem[];
 }
 
 /**
@@ -105,6 +108,7 @@ export class BaseRepo {
             prototypeTaskMetaMigrationDone: d.prototypeTaskMetaMigrationDone,
             recordEntries: d.recordEntries,
             runningTask: d.runningTask,
+            bottomItems: d.bottomItems,
             cacheDirName: this.cacheDirName,
             cacheEnabled: this.cacheEnabled,
             helpDismissed: this.helpDismissed,
@@ -270,6 +274,8 @@ export class BaseRepo {
         const initialOkrEntries = migrateOkrEntries(savedData.recordEntries ?? savedData.okrEntries);
         // 当前进行中的任务（兼容旧数据：默认无）
         const initialRunningTask = parseRunningTask(savedData.runningTask);
+        // 底部方框条目（兼容旧数据：默认空）
+        const initialBottomItems = parseBottomItems(savedData.bottomItems);
 
         // 存入仓库实例，作为唯一数据源（视图重建时从这里读取最新数据）
         this.data = {
@@ -289,6 +295,7 @@ export class BaseRepo {
             prototypeTaskMetaMigrationDone: prototypeTaskMetaMigrated ? 1 : initialPrototypeTaskMetaVersion,
             recordEntries: initialOkrEntries,
             runningTask: initialRunningTask,
+            bottomItems: initialBottomItems,
         };
 
         // 转换后立即落盘，避免下次启动重复执行
@@ -394,6 +401,23 @@ function parseTaskExecutionData(raw: unknown): TaskExecutionData {
         }
     }
     return { records, extraTasksByDay };
+}
+
+/** 解析底部方框条目（兼容旧数据 / 非法数据：返回空数组） */
+function parseBottomItems(raw: unknown): BottomItem[] {
+    if (!Array.isArray(raw)) return [];
+    const items: BottomItem[] = [];
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') continue;
+        const r = item as Record<string, unknown>;
+        if (r.type !== 'folder') continue;
+        const id = typeof r.id === 'string' ? r.id : '';
+        const path = typeof r.path === 'string' ? r.path : '';
+        const name = typeof r.name === 'string' ? r.name : '';
+        if (!id || !path) continue;
+        items.push({ id, type: 'folder', path, name: name || path });
+    }
+    return items;
 }
 
 /** 解析持久化的进行中任务（兼容旧数据 / 非法数据：返回 undefined） */

@@ -28,6 +28,8 @@ export interface CheckPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
     taskExecutionRepo: TaskExecutionRepo;
     /** 原型任务数据源（用于按任务取分类颜色） */
     getTasks: () => PrototypeTask[];
+    /** 点击右上角「数据」按钮的回调 */
+    onOpenData?: () => void;
 }
 
 /** 顶部选项卡 */
@@ -67,6 +69,14 @@ export class CheckPanel extends FloatingPanel {
         this.statsTabEl = tabs.createDiv({ cls: 'plan-tab', text: t('panel.checkStats') });
         this.planVsActualTabEl.addEventListener('click', () => this.switchTab('planVsActual'));
         this.statsTabEl.addEventListener('click', () => this.switchTab('stats'));
+
+        // 选项卡行最右侧的「数据」按钮：打开数据面板
+        const dataButton = tabs.createEl('button', {
+            cls: 'check-data-button',
+            text: t('panel.checkData'),
+            attr: { type: 'button' },
+        });
+        dataButton.addEventListener('click', () => this.panelOptions.onOpenData?.());
 
         this.paneEl = this.body.createDiv({ cls: 'plan-pane' });
         this.switchTab(this.tab);

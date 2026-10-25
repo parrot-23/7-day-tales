@@ -6812,26 +6812,29 @@ button.swimlane-section-card-settings {
 
 /* 中间的今日任务方框：宽高各取原尺寸的一半，并在左右列之间居中 */
 .interface-today {
+    /* 字体基准：跟随 Obsidian 正文字号，框内所有尺寸按此比例等比缩放 */
+    --today-fs: var(--font-text-size, 16px);
     flex: 1 1 auto;
     /* 原宽度 = 容器宽度 - 两侧卡片(150×2) - 间距(12×2)；取其一半 */
     max-width: calc(50% - 162px);
     align-self: flex-start;
-    height: 50%;
-    /* 左侧三张卡片(120×3 + 12×2)高度的一半 */
-    min-height: 192px;
+    /* 随字体等比增高，最多占内容区的 70% */
+    height: max(50%, calc(var(--today-fs) * 26));
+    max-height: 70%;
+    min-height: calc(var(--today-fs) * 12);
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: calc(var(--today-fs) * 0.5);
+    padding: calc(var(--today-fs) * 0.75);
     box-sizing: border-box;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
+    border-radius: calc(var(--today-fs) * 0.5);
     background: var(--background-secondary);
 }
 
 .interface-today-title {
-    font-size: 13px;
+    font-size: calc(var(--today-fs) * 0.8125);
     font-weight: 600;
     color: var(--text-muted);
 }
@@ -6842,7 +6845,7 @@ button.swimlane-section-card-settings {
     min-height: 0;
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: calc(var(--today-fs) * 0.625);
 }
 
 /* 左侧：时钟 + 日期切换行 + 相对日期标签 */
@@ -6853,7 +6856,7 @@ button.swimlane-section-card-settings {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: calc(var(--today-fs) * 0.25);
 }
 
 /* 24 小时时钟：18:00–06:00 为灰色夜间扇区 */
@@ -6876,18 +6879,18 @@ button.swimlane-section-card-settings {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: calc(var(--today-fs) * 0.375);
 }
 
 .interface-today-date-btn {
-    width: 20px;
-    height: 20px;
+    width: calc(var(--today-fs) * 1.25);
+    height: calc(var(--today-fs) * 1.25);
     padding: 0;
     border: none;
-    border-radius: 4px;
+    border-radius: calc(var(--today-fs) * 0.25);
     background: transparent;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: calc(var(--today-fs) * 0.875);
     line-height: 1;
     cursor: pointer;
 }
@@ -6903,20 +6906,20 @@ button.swimlane-section-card-settings {
 }
 
 .interface-today-date-label {
-    min-width: 52px;
+    min-width: calc(var(--today-fs) * 3.25);
     text-align: center;
-    font-size: 12px;
+    font-size: calc(var(--today-fs) * 0.75);
     color: var(--text-normal);
 }
 
 /* 相对日期标签（今天 / 昨天 / N天前） */
 .interface-today-date-tag {
     flex-shrink: 0;
-    padding: 1px 8px;
-    border-radius: 10px;
+    padding: calc(var(--today-fs) * 0.0625) calc(var(--today-fs) * 0.5);
+    border-radius: calc(var(--today-fs) * 0.625);
     background: var(--background-modifier-hover);
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: calc(var(--today-fs) * 0.6875);
     line-height: 1.5;
 }
 
@@ -6959,7 +6962,7 @@ button.swimlane-section-card-settings {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: calc(var(--today-fs) * 0.25);
     overflow-y: auto;
 }
 
@@ -6967,11 +6970,11 @@ button.swimlane-section-card-settings {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 6px;
+    gap: calc(var(--today-fs) * 0.375);
+    padding: calc(var(--today-fs) * 0.25) calc(var(--today-fs) * 0.375);
     border: 1px solid transparent;
-    border-radius: 4px;
-    font-size: 12px;
+    border-radius: calc(var(--today-fs) * 0.25);
+    font-size: calc(var(--today-fs) * 0.75);
     cursor: pointer;
 }
 
@@ -7008,10 +7011,10 @@ button.swimlane-section-card-settings {
 /* 操作按钮组：图标 + 文字 */
 .interface-today-actions {
     flex-shrink: 0;
-    margin-top: 6px;
+    margin-top: calc(var(--today-fs) * 0.375);
     display: flex;
     flex-direction: row;
-    gap: 8px;
+    gap: calc(var(--today-fs) * 0.5);
 }
 
 .interface-today-action {
@@ -7020,13 +7023,13 @@ button.swimlane-section-card-settings {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 4px;
+    gap: calc(var(--today-fs) * 0.25);
+    padding: calc(var(--today-fs) * 0.25) calc(var(--today-fs) * 0.5);
+    border-radius: calc(var(--today-fs) * 0.25);
     border: 1px solid var(--background-modifier-border);
     background: var(--interactive-normal);
     color: var(--text-normal);
-    font-size: 12px;
+    font-size: calc(var(--today-fs) * 0.75);
     cursor: pointer;
 }
 
@@ -7040,8 +7043,8 @@ button.swimlane-section-card-settings {
 }
 
 .interface-today-action-icon svg {
-    width: 14px;
-    height: 14px;
+    width: calc(var(--today-fs) * 0.875);
+    height: calc(var(--today-fs) * 0.875);
 }
 
 .interface-today-action:disabled {
@@ -7059,22 +7062,42 @@ button.swimlane-section-card-settings {
     white-space: nowrap;
 }
 
-/* 今天已排布任务列表：按实际内容高度排布，空间不足时才压缩滚动 */
-.interface-today-tasks {
-    flex: 0 1 auto;
+/* 当日任务 + 额外任务的统一滚动区：两者共用一个滚动条，标题随内容滚动 */
+.interface-today-scroll {
+    flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
+    overflow-y: auto;
+    padding-right: calc(var(--today-fs) * 0.25);
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.interface-today-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.interface-today-scroll::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+}
+
+.interface-today-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.interface-today-tasks {
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    overflow-y: auto;
+    gap: calc(var(--today-fs) * 0.25);
 }
 
 /* 分区标题：当天任务 / 额外任务（额外任务标题紧贴上方任务列表） */
 .interface-today-section-title {
     flex-shrink: 0;
-    margin-bottom: 4px;
-    font-size: 12px;
+    margin-bottom: calc(var(--today-fs) * 0.25);
+    font-size: calc(var(--today-fs) * 0.75);
     font-weight: 600;
     color: var(--text-muted);
 }
@@ -7085,9 +7108,9 @@ button.swimlane-section-card-settings {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-top: 16px;
-    margin-bottom: 4px;
+    gap: calc(var(--today-fs) * 0.5);
+    margin-top: calc(var(--today-fs) * 1);
+    margin-bottom: calc(var(--today-fs) * 0.25);
 }
 
 .interface-today-section-header .interface-today-section-title {
@@ -7100,17 +7123,17 @@ button.swimlane-section-card-settings {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 5px 10px;
+    padding: calc(var(--today-fs) * 0.3125) calc(var(--today-fs) * 0.625);
     border: none;
-    border-radius: 4px;
+    border-radius: calc(var(--today-fs) * 0.25);
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
 }
 
 .interface-today-add svg {
-    width: 16px;
-    height: 16px;
+    width: calc(var(--today-fs) * 1);
+    height: calc(var(--today-fs) * 1);
 }
 
 .interface-today-add:hover {
@@ -7118,22 +7141,16 @@ button.swimlane-section-card-settings {
     background: var(--background-modifier-hover);
 }
 
-/* 弹性占位：将计时器与按钮组压到底部 */
-.interface-today-spacer {
-    flex: 1 1 auto;
-    min-height: 0;
-}
-
 /* 开始时间 + 计时器（未开始计时时隐藏） */
 .interface-today-timer {
     flex-shrink: 0;
-    margin-top: 6px;
+    margin-top: calc(var(--today-fs) * 0.375);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 4px 6px;
-    border-radius: 4px;
+    gap: calc(var(--today-fs) * 0.5);
+    padding: calc(var(--today-fs) * 0.25) calc(var(--today-fs) * 0.375);
+    border-radius: calc(var(--today-fs) * 0.25);
     background: var(--background-primary-alt);
 }
 
@@ -7142,13 +7159,13 @@ button.swimlane-section-card-settings {
 }
 
 .interface-today-timer-start {
-    font-size: 12px;
+    font-size: calc(var(--today-fs) * 0.75);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
 
 .interface-today-timer-elapsed {
-    font-size: 16px;
+    font-size: calc(var(--today-fs) * 1);
     font-weight: 600;
     letter-spacing: 1px;
     color: var(--text-accent);
@@ -7159,11 +7176,11 @@ button.swimlane-section-card-settings {
     display: flex;
     align-items: center;
     min-width: 0;
-    padding: 4px 6px;
-    border-radius: 4px;
-    border-left: 3px solid var(--interactive-accent);
+    padding: calc(var(--today-fs) * 0.25) calc(var(--today-fs) * 0.375);
+    border-radius: calc(var(--today-fs) * 0.25);
+    border-left: calc(var(--today-fs) * 0.1875) solid var(--interactive-accent);
     background: var(--background-primary-alt);
-    font-size: 12px;
+    font-size: calc(var(--today-fs) * 0.75);
     cursor: pointer;
 }
 
@@ -7180,9 +7197,9 @@ button.swimlane-section-card-settings {
 }
 
 .interface-today-empty {
-    padding: 8px 0;
+    padding: calc(var(--today-fs) * 0.5) 0;
     text-align: center;
-    font-size: 12px;
+    font-size: calc(var(--today-fs) * 0.75);
     color: var(--text-faint);
 }
 
@@ -7254,7 +7271,7 @@ button.swimlane-section-card-settings {
 .interface-bottom {
     flex: 0 0 auto;
     width: 66.6667%;
-    min-height: 120px;
+    min-height: 240px;
     margin: 0 auto;
     box-sizing: border-box;
     border: 1px solid var(--background-modifier-border);
@@ -7267,6 +7284,140 @@ button.swimlane-section-card-settings {
     font-size: 13px;
     font-weight: 600;
     color: var(--text-muted);
+}
+
+/* 底部方框：标题行（标题 + 右上角 + 号）与条目卡片列表 */
+.interface-bottom-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.interface-bottom-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.interface-bottom-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.interface-bottom-card:hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
+
+.interface-bottom-card-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+
+.interface-bottom-card-icon .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* ======================== 文件夹选择面板（panel/folder-picker-panel） ======================== */
+.floating-panel-body.folder-picker-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.folder-picker-search,
+.folder-picker-name {
+    width: 100%;
+}
+
+.folder-picker-list {
+    min-height: 120px;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 4px;
+}
+
+.folder-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.folder-picker-row:hover {
+    background: var(--background-modifier-hover);
+}
+
+.folder-picker-row.is-selected {
+    background: var(--background-modifier-hover);
+    box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+.folder-picker-row-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.folder-picker-row-icon .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.folder-picker-row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.folder-picker-row-name {
+    font-size: 13px;
+}
+
+.folder-picker-row-path {
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+.folder-picker-empty {
+    padding: 12px 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.folder-picker-name-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.folder-picker-name-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.folder-picker-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.folder-picker-button {
+    padding: 4px 14px;
 }
 
 /* ======================== 周历面板（panel/week-calendar-panel） ======================== */
@@ -8360,6 +8511,15 @@ button.swimlane-section-card-settings {
     flex-direction: row;
     gap: 4px;
     border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* 检查面板选项卡行最右侧的「数据」按钮 */
+.check-data-button {
+    margin-left: auto;
+    align-self: center;
+    margin-bottom: 4px;
+    padding: 3px 12px;
+    font-size: 12px;
 }
 
 .plan-tab {

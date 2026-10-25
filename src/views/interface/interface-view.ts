@@ -1,6 +1,6 @@
 // 界面视图：新一级视图「界面」下的二级落地页。
 // 布局：左侧日期 / 任务 / OKR 三张小卡片，右侧计划 / 检查 / 收集 / 画廊 / 成就榜单 / 数据六张卡片，底部一个方框。
-import { setIcon } from 'obsidian';
+import { Menu, TFolder, setIcon } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
@@ -9,6 +9,7 @@ import { AchievementPanel } from '../../panel/achievement-panel';
 import { CheckPanel } from '../../panel/check-panel';
 import { CollectPanel } from '../../panel/collect-panel';
 import { DataPanel } from '../../panel/data-panel';
+import { FolderPickerPanel } from '../../panel/folder-picker-panel';
 import { GalleryPanel } from '../../panel/gallery-panel';
 import { PlanPanel } from '../../panel/plan-panel';
 import { TaskDetailPanel } from '../../panel/task-detail-panel';
@@ -18,6 +19,7 @@ import { TaskRecordPanel } from '../../panel/task-record-panel';
 import { TimeBoxPanel } from '../../panel/time-box-panel';
 import { WeekCalendarPanel } from '../../panel/week-calendar-panel';
 import type { CategoryRepo } from '../../repos/category-repo';
+import type { BottomItemRepo } from '../../repos/bottom-item-repo';
 import type { PdcaRepo } from '../../repos/pdca-repo';
 import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
@@ -25,6 +27,7 @@ import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
 import { ConfirmModal } from '../../system/confirm-modal';
+import type { TimeBoxRepo } from '../../repos/timebox-repo';
 
 /** 右侧入口卡片：文案 key */
 const ENTRY_CARDS: Parameters<typeof t>[0][] = [
@@ -33,7 +36,6 @@ const ENTRY_CARDS: Parameters<typeof t>[0][] = [
     'interface.collect',
     'interface.gallery',
     'achievement.title',
-    'nav.data',
 ];
 
 /** 当天 0 点 */
@@ -59,6 +61,10 @@ export class InterfaceView {
     private timeBoxPanel: TimeBoxPanel | null = null;
     /** 任务选择面板（复用同一实例） */
     private taskPickerPanel: TaskPickerPanel | null = null;
+    /** 文件夹选择面板（复用同一实例） */
+    private folderPickerPanel: FolderPickerPanel | null = null;
+    /** 底部方框条目列表容器 */
+    private bottomListEl: HTMLElement | null = null;
     /** 计划卡片对应的面板 */
     private planPanel: PlanPanel | null = null;
     /** 检查卡片对应的面板 */
@@ -103,6 +109,9 @@ export class InterfaceView {
     private runningTodayTaskId: string | undefined;
     /** 计时器定时器句柄 */
     private timerHandle: number | null = null;
+
+    /** 分钟级时钟刷新句柄 */
+    private clockTickHandle: number | null = null;
     /** 任务记录面板 */
     private recordPanel: TaskRecordPanel | null = null;
     /** 24 小时时钟容器（计时中每秒重绘外环） */
@@ -148,6 +157,11 @@ export class InterfaceView {
     /** PDCA 领域仓库（持久化进行中任务） */
     private get pdcaRepo(): PdcaRepo {
         return (this.plugin as Plugin & { pdcaRepo: PdcaRepo }).pdcaRepo;
+    }
+
+    /** 底部方框条目仓库 */
+    private get bottomItemRepo(): BottomItemRepo {
+        return (this.plugin as Plugin & { bottomItemRepo: BottomItemRepo }).bottomItemRepo;
     }
 
     /** 唯一持久化出口 */
@@ -236,6 +250,7 @@ export class InterfaceView {
                 timeBoxRepo: holder.timeBoxRepo,
                 taskExecutionRepo: this.taskExecutionRepo,
                 getTasks: () => this.prototypeTaskRepo.tasks,
+                onOpenData: () => this.openDataPanel(),
             });
         }
         this.checkPanel.open();
@@ -268,7 +283,7 @@ export class InterfaceView {
         this.achievementPanel.open();
     }
 
-    /** 点击数据卡片：打开数据面板 */
+    /** 打开数据面板（由检查面板顶部的「数据」按钮触发） */
     private openDataPanel(): void {
         this.dataPanel ??= new DataPanel();
         this.dataPanel.open();
@@ -654,7 +669,19 @@ export class InterfaceView {
         this.refreshClock();
     }
 
-    /** 重绘时钟外环（容器被销毁时跳过） */
+    /** 每分钟刷新一次时钟，让时针随时间走动；时钟被移除后自动停止 */
+    private startClockTicker(): void {
+        if (this.clockTickHandle !== null) return;
+        this.clockTickHandle = window.setInterval(() => {
+            if (!this.clockEl?.isConnected) {
+                if (this.clockTickHandle !== null) window.clearInterval(this.clockTickHandle);
+                this.clockTickHandle = null;
+                return;
+            }
+            this.refreshClock();
+        }, 60000);
+    }
+
     private refreshClock(): void {
         if (this.clockEl?.isConnected) this.renderClock(this.clockEl);
     }
@@ -766,6 +793,48 @@ export class InterfaceView {
         add('circle', { cx: String(cx), cy: String(cy), r: String(radius), fill: 'none' })
             .style.stroke = 'var(--background-modifier-border)';
 
+        // 中心饼图：时间盒在该星期几的涂色分布，每个已涂色小时占 15°，未涂色的小时不绘制
+        const pieRadius = 25;
+        const weekday = this.selectedDate.getDay() === 0 ? 7 : this.selectedDate.getDay();
+        const timeBoxRepo = (this.plugin as Plugin & { timeBoxRepo?: TimeBoxRepo }).timeBoxRepo;
+        const pieHours = new Map<number, string>();
+        for (const cell of timeBoxRepo?.weekCells(this.selectedWeekKey()) ?? []) {
+            if (cell.weekday === weekday) pieHours.set(cell.hour, cell.categoryId);
+        }
+        const categoryColor = (categoryId: string): string =>
+            this.categoryData.categories.find((category) => category.id === categoryId)?.color
+            ?? 'var(--text-muted)';
+        if (pieHours.size > 0) {
+            const drawWedge = (startHour: number, endHour: number, color: string): void => {
+                if (startHour <= 0 && endHour >= 24) {
+                    add('circle', { cx: String(cx), cy: String(cy), r: String(pieRadius) })
+                        .style.fill = color;
+                    return;
+                }
+                const [sx, sy] = point(startHour, pieRadius);
+                const [ex, ey] = point(endHour, pieRadius);
+                const largeArc = endHour - startHour > 12 ? 1 : 0;
+                add('path', {
+                    d: `M ${cx} ${cy} L ${sx} ${sy} A ${pieRadius} ${pieRadius} 0 ${largeArc} 1 ${ex} ${ey} Z`,
+                }).style.fill = color;
+            };
+            // 相邻且分类相同的小时合并成一个扇区，避免同色出现接缝
+            const paintedHours = Array.from(pieHours.keys()).sort((a, b) => a - b);
+            let startHour = paintedHours[0];
+            let prevHour = paintedHours[0];
+            for (let i = 1; i <= paintedHours.length; i++) {
+                const hour = paintedHours[i];
+                if (hour === prevHour + 1 && pieHours.get(hour) === pieHours.get(prevHour)) {
+                    prevHour = hour;
+                    continue;
+                }
+                drawWedge(startHour, prevHour + 1, categoryColor(pieHours.get(prevHour)!));
+                if (hour === undefined) break;
+                startHour = hour;
+                prevHour = hour;
+            }
+        }
+
         // 24 条刻度与小时数字
         for (let hour = 0; hour < 24; hour++) {
             const [x1, y1] = point(hour, radius);
@@ -774,15 +843,43 @@ export class InterfaceView {
                 .style.stroke = 'var(--background-modifier-border)';
 
             const [labelX, labelY] = point(hour, radius - 20);
+            const isMajorHour = hour % 6 === 0;
             const label = add('text', {
                 x: String(labelX),
                 y: String(labelY),
                 'text-anchor': 'middle',
                 'dominant-baseline': 'middle',
-                'font-size': '9',
+                'font-size': isMajorHour ? '14' : '9',
+                'font-weight': isMajorHour ? '700' : '400',
             });
             label.style.fill = 'var(--text-muted)';
             label.textContent = String(hour);
+        }
+
+        // 时针：仅在查看今天时绘制，指向当前时:分（1 小时 = 15°）
+        if (makeDayKey(new Date()) === makeDayKey(this.selectedDate)) {
+            const now = new Date();
+            const handHour = now.getHours() + now.getMinutes() / 60;
+            const [tipX, tipY] = point(handHour, radius - 12);
+            const [tailX, tailY] = point(handHour, -8);
+            // 指针颜色跟随饼图上当前时刻所属小时的分类色，未涂色时回退为强调色
+            const currentHour = Math.floor(handHour);
+            const handColor = pieHours.has(currentHour)
+                ? categoryColor(pieHours.get(currentHour)!)
+                : 'var(--interactive-accent)';
+            const hand = add('line', {
+                x1: String(tailX),
+                y1: String(tailY),
+                x2: String(tipX),
+                y2: String(tipY),
+            });
+            hand.style.stroke = handColor;
+            hand.style.strokeWidth = '3.5';
+            hand.style.strokeLinecap = 'round';
+            hand.style.opacity = '0.8';
+            const hub = add('circle', { cx: String(cx), cy: String(cy), r: '4' });
+            hub.style.fill = handColor;
+            hub.style.opacity = '0.8';
         }
 
         // 外环：所选日期已保存的执行记录（按时长占比绘制弧段，重叠按开始时间覆盖）
@@ -933,6 +1030,7 @@ export class InterfaceView {
         const todayLeft = todayBody.createDiv({ cls: 'interface-today-left' });
         this.clockEl = todayLeft.createDiv({ cls: 'interface-today-clock' });
         this.renderClock(this.clockEl);
+        this.startClockTicker();
 
         // 日期切换：< 月/日 >，下方标签显示今天 / 昨天 / N天前
         const dateNav = todayLeft.createDiv({ cls: 'interface-today-date-nav' });
@@ -946,7 +1044,7 @@ export class InterfaceView {
 
         const todayRight = todayBody.createDiv({ cls: 'interface-today-right' });
 
-        // 常规视图：当日任务列表 + 额外任务 + 计时器 + 按钮组（进入记录视图时整体隐藏）
+        // 常规视图：当日任务 + 额外任务（同一个滚动区）+ 计时器 + 按钮组（进入记录视图时整体隐藏）
         this.todayNormalEl = todayRight.createDiv({ cls: 'interface-today-normal' });
         this.todayNormalEl.addEventListener('click', (evt) => {
             const row = (evt.target as HTMLElement).closest('.interface-today-task') as HTMLElement | null;
@@ -956,11 +1054,14 @@ export class InterfaceView {
                 this.updateTodaySelection();
             }
         });
-        this.todayNormalEl.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayPlannedTitle') });
-        this.todayTaskListEl = this.todayNormalEl.createDiv({ cls: 'interface-today-tasks' });
+
+        // 当日任务与额外任务共用一个滚动区，任务再多也不会互相挤压，只出现一条滚动条
+        const scrollEl = this.todayNormalEl.createDiv({ cls: 'interface-today-scroll' });
+        scrollEl.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayPlannedTitle') });
+        this.todayTaskListEl = scrollEl.createDiv({ cls: 'interface-today-tasks' });
 
         // 额外任务：标题行（标题 + 新增按钮）+ 任务列表
-        const extraHeader = this.todayNormalEl.createDiv({ cls: 'interface-today-section-header' });
+        const extraHeader = scrollEl.createDiv({ cls: 'interface-today-section-header' });
         extraHeader.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayExtraTitle') });
         const addExtraBtn = extraHeader.createEl('button', {
             cls: 'interface-today-add',
@@ -968,12 +1069,9 @@ export class InterfaceView {
         });
         setIcon(addExtraBtn, 'plus');
         addExtraBtn.addEventListener('click', () => this.openTaskPicker());
-        this.todayExtraListEl = this.todayNormalEl.createDiv({ cls: 'interface-today-tasks' });
+        this.todayExtraListEl = scrollEl.createDiv({ cls: 'interface-today-tasks' });
 
         this.renderTodayTasks();
-
-        // 底部占位：把计时器与按钮组压到方框底部
-        this.todayNormalEl.createDiv({ cls: 'interface-today-spacer' });
 
         // 开始时间 + 计时器（未开始计时时隐藏）
         this.todayTimerEl = this.todayNormalEl.createDiv({ cls: 'interface-today-timer is-hidden' });
@@ -993,7 +1091,7 @@ export class InterfaceView {
         // 恢复持久化的进行中计时（切换视图 / 重开 Obsidian 后继续）
         this.restoreRunningTodayTask();
 
-        // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单 / 数据
+        // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单
         const right = main.createDiv({ cls: 'interface-col is-right' });
         for (const key of ENTRY_CARDS) {
             const card = right.createDiv({ cls: 'interface-card interface-entry-card', text: t(key) });
@@ -1002,11 +1100,73 @@ export class InterfaceView {
             if (key === 'interface.collect') card.addEventListener('click', () => this.openCollectPanel());
             if (key === 'interface.gallery') card.addEventListener('click', () => this.openGalleryPanel());
             if (key === 'achievement.title') card.addEventListener('click', () => this.openAchievementPanel());
-            if (key === 'nav.data') card.addEventListener('click', () => this.openDataPanel());
         }
 
-        // 底部方框
+        // 底部方框：右上角 + 号（下拉菜单）+ 条目卡片列表
         const bottom = container.createDiv({ cls: 'interface-bottom' });
-        bottom.createDiv({ cls: 'interface-bottom-title', text: t('interface.bottomTitle') });
+        const bottomHeader = bottom.createDiv({ cls: 'interface-bottom-header' });
+        bottomHeader.createDiv({ cls: 'interface-bottom-title', text: t('interface.bottomTitle') });
+        const bottomAddBtn = bottomHeader.createEl('button', {
+            cls: 'interface-today-add',
+            attr: { 'aria-label': t('interface.bottomAdd') },
+        });
+        setIcon(bottomAddBtn, 'plus');
+        bottomAddBtn.addEventListener('click', (evt) => this.openBottomAddMenu(evt));
+        this.bottomListEl = bottom.createDiv({ cls: 'interface-bottom-list' });
+        this.renderBottomItems();
+    }
+
+    /** 底部方框「+」：下拉菜单（当前仅「文件夹」） */
+    private openBottomAddMenu(evt: MouseEvent): void {
+        const menu = new Menu();
+        menu.addItem((item) => item
+            .setTitle(t('interface.bottomFolder'))
+            .setIcon('folder')
+            .onClick(() => this.openFolderPicker()));
+        menu.showAtMouseEvent(evt);
+    }
+
+    /** 打开文件夹选择面板，确认后加入底部方框并持久化 */
+    private openFolderPicker(): void {
+        if (!this.folderPickerPanel) {
+            this.folderPickerPanel = new FolderPickerPanel(this.app, {
+                onConfirm: (result) => {
+                    this.bottomItemRepo.addFolder(result.path, result.name);
+                    void this.saveAll();
+                    this.renderBottomItems();
+                },
+            });
+        }
+        this.folderPickerPanel.open();
+    }
+
+    /** 渲染底部方框条目 */
+    private renderBottomItems(): void {
+        const listEl = this.bottomListEl;
+        if (!listEl) return;
+        listEl.empty();
+        const items = this.bottomItemRepo.items;
+        if (items.length === 0) {
+            listEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
+            return;
+        }
+        for (const item of items) {
+            const card = listEl.createDiv({ cls: 'interface-bottom-card' });
+            const iconEl = card.createSpan({ cls: 'interface-bottom-card-icon' });
+            setIcon(iconEl, 'folder');
+            card.createSpan({ cls: 'interface-bottom-card-label', text: item.name });
+            card.addEventListener('click', () => this.revealFolder(item.path));
+        }
+    }
+
+    /** 在 Obsidian 文件列表中定位并展开指定文件夹 */
+    private revealFolder(path: string): void {
+        const folder = this.app.vault.getAbstractFileByPath(path);
+        if (!(folder instanceof TFolder)) return;
+        type FileExplorer = { instance?: { revealInFolder?: (target: TFolder) => void } };
+        const explorer = (this.app as unknown as {
+            internalPlugins: { getPluginById(id: string): FileExplorer | null };
+        }).internalPlugins.getPluginById('file-explorer');
+        explorer?.instance?.revealInFolder?.(folder);
     }
 }

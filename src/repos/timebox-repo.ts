@@ -29,6 +29,27 @@ export class TimeBoxRepo {
         return this.data.cells.filter((cell) => cell.weekKey === weekKey);
     }
 
+    /**
+     * 确保指定周有初始排布：若该周还没有任何格子，则把最近一个有数据的更早周复制过来。
+     * 返回是否发生了复制（调用方据此决定是否保存）。
+     */
+    ensureWeekInitialized(weekKey: string): boolean {
+        if (this.weekCells(weekKey).length > 0) return false;
+        const previousKey = this.latestWeekBefore(weekKey);
+        if (!previousKey) return false;
+        const copied = this.weekCells(previousKey).map((cell) => ({ ...cell, weekKey }));
+        this.data.cells.push(...copied);
+        return true;
+    }
+
+    /** 早于指定周键的最近一个有数据的周键 */
+    private latestWeekBefore(weekKey: string): string | undefined {
+        const keys = Array.from(new Set(this.data.cells.map((cell) => cell.weekKey)))
+            .filter((key) => key < weekKey)
+            .sort();
+        return keys.length > 0 ? keys[keys.length - 1] : undefined;
+    }
+
     /** 给格子涂上分类颜色；同一格子重复涂色则覆盖分类 */
     paint(weekKey: string, weekday: number, hour: number, categoryId: string): TimeBoxCell {
         const existing = this.getCell(weekKey, weekday, hour);

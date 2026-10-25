@@ -47,8 +47,10 @@ export class TimeBoxPanel extends FloatingPanel {
     private legendEl!: HTMLElement;
     /** 图例当前选中的分类 id */
     private selectedCategoryId: string | undefined;
-    /** 当前面板展示的周键 */
-    private readonly weekKey = getCurrentWeekKey();
+    /** 当前面板展示的周键（随打开/跨周同步为当前周） */
+    private weekKey = getCurrentWeekKey();
+    /** 跨周检查定时器句柄 */
+    private weekWatchHandle: number | null = null;
     /** 是否处于拖动涂色中 */
     private painting = false;
     /** 本次涂色是否有改动（决定是否保存） */
@@ -69,6 +71,49 @@ export class TimeBoxPanel extends FloatingPanel {
         this.renderLegend();
 
         // 下方：7 列 × 24 小时日历
+        this.renderCalendar();
+    }
+
+    /** 打开面板：同步到当前周（必要时继承最近一周的排布）并刷新日历 */
+    override open(): void {
+        this.syncCurrentWeek();
+        super.open();
+        this.startWeekWatcher();
+    }
+
+    /** 关闭面板：停止跨周检查 */
+    override close(): void {
+        this.stopWeekWatcher();
+        super.close();
+    }
+
+    /** 同步当前周：跨周后继承最近一周排布，并重新渲染日历与表头日期 */
+    private syncCurrentWeek(): void {
+        this.weekKey = getCurrentWeekKey();
+        if (this.panelOptions.timeBoxRepo.ensureWeekInitialized(this.weekKey)) {
+            void this.panelOptions.save();
+        }
+        this.refreshCalendar();
+    }
+
+    /** 面板打开期间每分钟检查是否跨周，跨周后自动切到新周，避免写错周键 */
+    private startWeekWatcher(): void {
+        this.stopWeekWatcher();
+        this.weekWatchHandle = window.setInterval(() => {
+            if (getCurrentWeekKey() !== this.weekKey) this.syncCurrentWeek();
+        }, 60000);
+    }
+
+    private stopWeekWatcher(): void {
+        if (this.weekWatchHandle !== null) {
+            window.clearInterval(this.weekWatchHandle);
+            this.weekWatchHandle = null;
+        }
+    }
+
+    /** 重绘日历（表头日期与格子颜色都按当前数据） */
+    private refreshCalendar(): void {
+        this.body.querySelector('.timebox-calendar')?.remove();
         this.renderCalendar();
     }
 
@@ -112,8 +157,7 @@ export class TimeBoxPanel extends FloatingPanel {
             this.selectedCategoryId = undefined;
         }
         this.renderLegend();
-        this.body.querySelector('.timebox-calendar')?.remove();
-        this.renderCalendar();
+        this.refreshCalendar();
     }
 
     /** 渲染 7 列 × 24 小时日历（左侧为小时刻度列），并按已有数据上色 */
