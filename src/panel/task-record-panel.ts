@@ -11,7 +11,9 @@ export interface TaskRecordPanelOptions extends Omit<FloatingPanelOptions, 'titl
     startTime?: string;
     /** 初始结束时间（HH:MM） */
     endTime?: string;
-    /** 确认回调：起止时间均为当天的时间戳（毫秒） */
+    /** 记录归属日期（默认今天；查看过去日期时传入该日期） */
+    date?: Date;
+    /** 确认回调：起止时间均为 date 指定那天的时间戳（毫秒） */
     onConfirm: (startAt: number, endAt: number) => void;
 }
 
@@ -82,12 +84,12 @@ export class TaskRecordPanel extends FloatingPanel {
         this.confirmBtn.disabled = !range;
     }
 
-    /** 解析表单为当天起止时间戳（结束不晚于开始时返回 null） */
+    /** 解析表单为归属日期的起止时间戳（结束不晚于开始时返回 null） */
     private computeRange(): { startAt: number; endAt: number } | null {
         const startMinutes = this.parseTime(this.startInput.value);
         const endMinutes = this.parseTime(this.endInput.value);
         if (startMinutes === null || endMinutes === null) return null;
-        const base = new Date();
+        const base = new Date(this.panelOptions.date ?? new Date());
         base.setHours(0, 0, 0, 0);
         const baseMs = base.getTime();
         const startAt = baseMs + startMinutes * 60000;

@@ -11,6 +11,8 @@ export interface FloatingPanelOptions {
     width?: number;
     /** 是否可拖动，默认 true */
     draggable?: boolean;
+    /** 是否在失去焦点时自动关闭（点击面板外任意位置），默认 false */
+    closeOnBlur?: boolean;
     /** 关闭回调 */
     onClose?: () => void;
 }
@@ -46,6 +48,14 @@ export class FloatingPanel {
 
     private onKeyDown = (evt: KeyboardEvent) => {
         if (evt.key === 'Escape') this.close();
+    };
+
+    /** 点击面板外时关闭（仅在关闭面板失去焦点行为时绑定） */
+    private onOutsidePointerDown = (evt: MouseEvent) => {
+        if (!this.opened) return;
+        const target = evt.target as Node | null;
+        if (target && this.root.contains(target)) return;
+        this.close();
     };
 
     constructor(options: FloatingPanelOptions = {}) {
@@ -115,6 +125,10 @@ export class FloatingPanel {
             this.center();
         }
         document.addEventListener('keydown', this.onKeyDown);
+        if (this.options.closeOnBlur) {
+            // 用捕获阶段监听，避免被面板内元素的 stopPropagation 影响
+            document.addEventListener('mousedown', this.onOutsidePointerDown, true);
+        }
     }
 
     /** 关闭面板 */
@@ -125,12 +139,14 @@ export class FloatingPanel {
         this.dragging = false;
         this.root.removeClass('is-dragging');
         document.removeEventListener('keydown', this.onKeyDown);
+        document.removeEventListener('mousedown', this.onOutsidePointerDown, true);
         this.options.onClose?.();
     }
 
     /** 销毁面板（从 DOM 移除，不再触发关闭回调） */
     destroy(): void {
         document.removeEventListener('keydown', this.onKeyDown);
+        document.removeEventListener('mousedown', this.onOutsidePointerDown, true);
         this.opened = false;
         this.root.remove();
     }

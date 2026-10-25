@@ -366,9 +366,10 @@ function parsePlanAssignmentData(raw: unknown): PlanAssignmentData {
 /** 解析持久化的任务执行记录（兼容旧数据 / 非法数据：返回空） */
 function parseTaskExecutionData(raw: unknown): TaskExecutionData {
     const records: TaskExecutionData['records'] = [];
-    if (!raw || typeof raw !== 'object') return { records };
+    const extraTasksByDay: TaskExecutionData['extraTasksByDay'] = {};
+    if (!raw || typeof raw !== 'object') return { records, extraTasksByDay };
     const rawRecords = (raw as { records?: unknown }).records;
-    if (!Array.isArray(rawRecords)) return { records };
+    if (!Array.isArray(rawRecords)) return { records, extraTasksByDay };
     for (const item of rawRecords) {
         if (!item || typeof item !== 'object') continue;
         const r = item as Record<string, unknown>;
@@ -383,7 +384,16 @@ function parseTaskExecutionData(raw: unknown): TaskExecutionData {
             durationSeconds: r.durationSeconds,
         });
     }
-    return { records };
+    // 当日额外任务（兼容旧数据：默认空）
+    const rawExtra = (raw as { extraTasksByDay?: unknown }).extraTasksByDay;
+    if (rawExtra && typeof rawExtra === 'object') {
+        for (const [dayKey, ids] of Object.entries(rawExtra as Record<string, unknown>)) {
+            if (!Array.isArray(ids)) continue;
+            const validIds = ids.filter((id): id is string => typeof id === 'string');
+            if (validIds.length > 0) extraTasksByDay[dayKey] = validIds;
+        }
+    }
+    return { records, extraTasksByDay };
 }
 
 /** 解析持久化的进行中任务（兼容旧数据 / 非法数据：返回 undefined） */

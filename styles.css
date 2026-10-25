@@ -6930,6 +6930,81 @@ button.swimlane-section-card-settings {
     gap: 0;
 }
 
+/* 常规视图容器：当日任务列表 + 额外任务 + 计时器 + 按钮组 */
+.interface-today-normal {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 记录视图容器：当日已完成任务列表 + 按钮组 */
+.interface-today-records {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.interface-today-normal.is-hidden,
+.interface-today-records.is-hidden {
+    display: none;
+}
+
+/* 记录条目：开始-结束时间 / 任务名称 / 时长 */
+.interface-today-record-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+}
+
+.interface-today-record {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.interface-today-record:hover {
+    background: var(--background-modifier-hover);
+}
+
+.interface-today-record.is-selected {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.interface-today-record-time {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.interface-today-record-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-normal);
+}
+
+.interface-today-record-duration {
+    flex-shrink: 0;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
 /* 操作按钮组：图标 + 文字 */
 .interface-today-actions {
     flex-shrink: 0;
@@ -7004,24 +7079,43 @@ button.swimlane-section-card-settings {
     color: var(--text-muted);
 }
 
-/* 额外任务的新增按钮 */
+/* 额外任务标题行：标题居左，新增按钮居右，并与上方计划任务列表拉开间距 */
+.interface-today-section-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 16px;
+    margin-bottom: 4px;
+}
+
+.interface-today-section-header .interface-today-section-title {
+    margin-bottom: 0;
+}
+
+/* 额外任务的新增按钮：仅图标 + 内边距 */
 .interface-today-add {
     flex-shrink: 0;
-    width: 150px;
-    max-width: 100%;
-    padding: 2px 0;
-    border: 1px dashed var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border: none;
     border-radius: 4px;
     background: transparent;
     color: var(--text-muted);
-    font-size: 14px;
-    line-height: 1.4;
     cursor: pointer;
+}
+
+.interface-today-add svg {
+    width: 16px;
+    height: 16px;
 }
 
 .interface-today-add:hover {
     color: var(--text-normal);
-    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
 }
 
 /* 弹性占位：将计时器与按钮组压到底部 */
@@ -7841,6 +7935,38 @@ button.swimlane-section-card-settings {
     flex-direction: row;
     gap: 14px;
     min-height: 300px;
+}
+
+/* 任务选择面板：搜索框 + 根任务下拉 + 任务树 + 底部按钮 */
+.floating-panel-body.task-picker-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 260px;
+}
+
+.task-picker-search,
+.task-picker-root {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.task-picker-tree {
+    flex: 1;
+    min-height: 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.task-picker-footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.task-picker-button {
+    padding: 4px 14px;
 }
 
 /* 检查面板：顶部选项卡 + 内容区 */

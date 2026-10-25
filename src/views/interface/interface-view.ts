@@ -13,6 +13,7 @@ import { GalleryPanel } from '../../panel/gallery-panel';
 import { PlanPanel } from '../../panel/plan-panel';
 import { TaskDetailPanel } from '../../panel/task-detail-panel';
 import { TaskPanel } from '../../panel/task-panel';
+import { TaskPickerPanel } from '../../panel/task-picker-panel';
 import { TaskRecordPanel } from '../../panel/task-record-panel';
 import { TimeBoxPanel } from '../../panel/time-box-panel';
 import { WeekCalendarPanel } from '../../panel/week-calendar-panel';
@@ -22,7 +23,8 @@ import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { getCurrentDayKey, getISOWeek, makeWeekKey } from '../../shared/plan-data';
+import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
+import { ConfirmModal } from '../../system/confirm-modal';
 
 /** 右侧入口卡片：文案 key */
 const ENTRY_CARDS: Parameters<typeof t>[0][] = [
@@ -55,6 +57,8 @@ export class InterfaceView {
     private detailPanels = new Map<string, TaskDetailPanel>();
     /** 时间盒卡片对应的面板 */
     private timeBoxPanel: TimeBoxPanel | null = null;
+    /** 任务选择面板（复用同一实例） */
+    private taskPickerPanel: TaskPickerPanel | null = null;
     /** 计划卡片对应的面板 */
     private planPanel: PlanPanel | null = null;
     /** 检查卡片对应的面板 */
@@ -71,6 +75,8 @@ export class InterfaceView {
     private categoryData: PlanCategoryData;
     /** 「今天任务」方框右侧任务列表容器 */
     private todayTaskListEl: HTMLElement | null = null;
+    /** 「额外任务」列表容器 */
+    private todayExtraListEl: HTMLElement | null = null;
     /** 当前查看的日期（默认今天，仅可回看过去） */
     private selectedDate: Date = startOfToday();
     /** 日期文本 */
@@ -101,6 +107,22 @@ export class InterfaceView {
     private recordPanel: TaskRecordPanel | null = null;
     /** 24 小时时钟容器（计时中每秒重绘外环） */
     private clockEl: HTMLElement | null = null;
+    /** 常规视图容器（当日任务列表 + 额外任务 + 计时器 + 按钮组） */
+    private todayNormalEl: HTMLElement | null = null;
+    /** 记录视图容器（当日已完成任务列表 + 按钮组） */
+    private todayRecordViewEl: HTMLElement | null = null;
+    /** 记录视图标题 */
+    private todayRecordTitleEl: HTMLElement | null = null;
+    /** 记录视图列表容器 */
+    private todayRecordListEl: HTMLElement | null = null;
+    /** 记录视图按钮组容器 */
+    private todayRecordActionsEl: HTMLElement | null = null;
+    /** 记录视图中的删除按钮 */
+    private recordDeleteButton: HTMLButtonElement | null = null;
+    /** 是否处于记录视图（点击时钟弧段后进入） */
+    private recordViewActive = false;
+    /** 记录视图中选中的执行记录 id */
+    private selectedRecordId: string | undefined;
 
     constructor(app: App, plugin: Plugin, categoryData: PlanCategoryData) {
         this.app = app;
@@ -137,6 +159,21 @@ export class InterfaceView {
     private openDatePanel(): void {
         this.datePanel ??= new WeekCalendarPanel();
         this.datePanel.open();
+    }
+
+    /** 点击额外任务的「+」：打开任务选择面板，选中后加入当日额外任务 */
+    private openTaskPicker(): void {
+        if (!this.taskPickerPanel) {
+            this.taskPickerPanel = new TaskPickerPanel({
+                getTasks: () => this.prototypeTaskRepo.tasks,
+                onSelect: (taskId) => {
+                    this.taskExecutionRepo.addExtraTask(makeDayKey(this.selectedDate), taskId);
+                    void this.saveAll();
+                    this.renderTodayTasks();
+                },
+            });
+        }
+        this.taskPickerPanel.open();
     }
 
     /** 点击任务卡片：打开任务面板 */
@@ -275,33 +312,46 @@ export class InterfaceView {
         void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
     }
 
-    /** 渲染「今天任务」方框右侧列表：计划面板中排布到所选日期的任务 */
+    /** 渲染「今天任务」方框右侧列表：计划排布任务 + 当日额外任务 */
     private renderTodayTasks(): void {
         const listEl = this.todayTaskListEl;
         if (!listEl?.isConnected) return;
         listEl.empty();
+        this.todayExtraListEl?.empty();
         const weekday = this.selectedDate.getDay() === 0 ? 7 : this.selectedDate.getDay();
         const tasks = new Map(this.prototypeTaskRepo.tasks.map((task) => [task.id, task]));
         const planned = this.planAssignmentRepo.dayAssignments(this.selectedWeekKey(), weekday)
             .map((assignment) => tasks.get(assignment.taskId))
             .filter((task): task is PrototypeTask => task !== undefined);
+        // 额外任务：任务选择面板加入当日的任务（与计划任务去重）
+        const plannedIds = new Set(planned.map((task) => task.id));
+        const extraTasks = this.taskExecutionRepo.extraTaskIds(makeDayKey(this.selectedDate))
+            .map((taskId) => tasks.get(taskId))
+            .filter((task): task is PrototypeTask => task !== undefined && !plannedIds.has(task.id));
+
         if (planned.length === 0) {
-            this.selectedTodayTaskId = undefined;
             listEl.createDiv({ cls: 'interface-today-empty', text: t('interface.todayNoTask') });
-            this.updateTodaySelection();
-            return;
+        } else {
+            for (const task of planned) this.createTodayTaskRow(listEl, task);
         }
-        if (!planned.some((task) => task.id === this.selectedTodayTaskId)) {
+        if (this.todayExtraListEl) {
+            for (const task of extraTasks) this.createTodayTaskRow(this.todayExtraListEl, task);
+        }
+
+        const dayTasks = [...planned, ...extraTasks];
+        if (!dayTasks.some((task) => task.id === this.selectedTodayTaskId)) {
             this.selectedTodayTaskId = undefined;
-        }
-        for (const task of planned) {
-            const row = listEl.createDiv({ cls: 'interface-today-task' });
-            row.dataset.taskId = task.id;
-            row.toggleClass('is-selected', task.id === this.selectedTodayTaskId);
-            row.title = task.name;
-            row.createSpan({ cls: 'interface-today-task-name', text: task.name });
         }
         this.updateTodaySelection();
+    }
+
+    /** 创建一条当日任务行（计划任务与额外任务共用） */
+    private createTodayTaskRow(parentEl: HTMLElement, task: PrototypeTask): void {
+        const row = parentEl.createDiv({ cls: 'interface-today-task' });
+        row.dataset.taskId = task.id;
+        row.toggleClass('is-selected', task.id === this.selectedTodayTaskId);
+        row.title = task.name;
+        row.createSpan({ cls: 'interface-today-task-name', text: task.name });
     }
 
     /** 所选日期所在的周键 */
@@ -342,6 +392,7 @@ export class InterfaceView {
         const next = new Date(this.selectedDate);
         next.setDate(next.getDate() + delta);
         if (next.getTime() > startOfToday().getTime()) return;
+        this.exitRecordView();
         this.selectedDate = next;
         this.selectedTodayTaskId = undefined;
         this.updateDateNav();
@@ -370,27 +421,170 @@ export class InterfaceView {
         this.updateTodaySelection();
     }
 
-    /** 打开记录面板：默认开始时间为 30 分钟前、结束时间为当前时间 */
+    /** 打开记录面板：对今天任务列表中选中的任务记录 */
     private openRecordPanel(): void {
-        const taskId = this.selectedTodayTaskId;
-        if (!taskId) return;
+        if (!this.selectedTodayTaskId) return;
+        this.openRecordPanelForTask(this.selectedTodayTaskId);
+    }
+
+    /** 打开记录面板：默认时间为所选日期上「30 分钟前 → 当前时刻」，记录归属所选日期 */
+    private openRecordPanelForTask(taskId: string): void {
         const task = this.prototypeTaskRepo.tasks.find((item) => item.id === taskId);
         if (!task) return;
 
-        const end = new Date();
+        // 以所选日期为基准，时间默认取当前时刻（因此查看昨天时默认记录到昨天同一时段）
+        const now = new Date();
+        const end = new Date(this.selectedDate);
+        end.setHours(now.getHours(), now.getMinutes(), 0, 0);
         const start = new Date(end.getTime() - 30 * 60000);
         this.recordPanel?.destroy();
         this.recordPanel = new TaskRecordPanel({
             title: `${t('panel.taskRecordTitle')} · ${task.name}`,
             startTime: this.formatClockTime(start),
             endTime: this.formatClockTime(end),
+            date: this.selectedDate,
             onConfirm: (startAt, endAt) => {
                 this.taskExecutionRepo.add(taskId, startAt, endAt);
-                void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+                void this.saveAll();
                 this.refreshClock();
+                if (this.recordViewActive) this.renderDayRecords();
             },
         });
         this.recordPanel.open();
+    }
+
+    /** 点击弧段：进入记录视图并选中对应条目（弧段保持选中样式） */
+    private selectRecordFromArc(recordId: string): void {
+        this.recordViewActive = true;
+        this.selectedRecordId = recordId;
+        this.todayNormalEl?.addClass('is-hidden');
+        this.todayRecordViewEl?.removeClass('is-hidden');
+        this.renderDayRecords();
+        this.refreshClock();
+    }
+
+    /** 返回常规视图 */
+    private exitRecordView(): void {
+        this.recordViewActive = false;
+        this.selectedRecordId = undefined;
+        this.recordDeleteButton = null;
+        this.todayRecordViewEl?.addClass('is-hidden');
+        this.todayNormalEl?.removeClass('is-hidden');
+        this.refreshClock();
+    }
+
+    /** 渲染记录视图：所选日期的已完成任务（开始-结束时间、任务名称、时长） */
+    private renderDayRecords(): void {
+        const listEl = this.todayRecordListEl;
+        if (!listEl?.isConnected) return;
+        listEl.empty();
+
+        const dayStartMs = new Date(this.selectedDate).getTime();
+        const dayEndMs = dayStartMs + 24 * 3600000;
+        const records = this.taskExecutionRepo.records
+            .filter((record) => record.endAt > dayStartMs && record.startAt < dayEndMs)
+            .sort((a, b) => a.startAt - b.startAt);
+        if (this.todayRecordTitleEl) {
+            this.todayRecordTitleEl.textContent = records.length > 0
+                ? `${t('interface.todayRecordedTitle')} (${records.length})`
+                : t('interface.todayRecordedTitle');
+        }
+        if (!this.selectedRecordId || !records.some((record) => record.id === this.selectedRecordId)) {
+            this.selectedRecordId = undefined;
+        }
+
+        if (records.length === 0) {
+            listEl.createDiv({ cls: 'interface-today-empty', text: t('interface.todayRecordEmpty') });
+            this.renderRecordViewActions();
+            return;
+        }
+
+        const tasks = new Map(this.prototypeTaskRepo.tasks.map((task) => [task.id, task]));
+        for (const record of records) {
+            const row = listEl.createDiv({ cls: 'interface-today-record' });
+            row.dataset.recordId = record.id;
+            row.toggleClass('is-selected', record.id === this.selectedRecordId);
+            row.createSpan({
+                cls: 'interface-today-record-time',
+                text: `${this.formatClockTime(new Date(record.startAt))} - ${this.formatClockTime(new Date(record.endAt))}`,
+            });
+            row.createSpan({
+                cls: 'interface-today-record-name',
+                text: tasks.get(record.taskId)?.name ?? t('interface.todayRecordUnknownTask'),
+            });
+            row.createSpan({
+                cls: 'interface-today-record-duration',
+                text: this.formatDuration(record.endAt - record.startAt),
+            });
+            row.addEventListener('click', () => {
+                this.selectedRecordId = record.id;
+                this.updateRecordSelection();
+                // 同步时钟弧段的选中态
+                this.refreshClock();
+            });
+        }
+        this.renderRecordViewActions();
+    }
+
+    /** 刷新记录条目选中态与删除按钮可用状态 */
+    private updateRecordSelection(): void {
+        this.todayRecordListEl?.querySelectorAll('.interface-today-record').forEach((el) => {
+            const row = el as HTMLElement;
+            row.toggleClass('is-selected', row.dataset.recordId === this.selectedRecordId);
+        });
+        if (this.recordDeleteButton) this.recordDeleteButton.disabled = !this.selectedRecordId;
+    }
+
+    /** 记录视图按钮组：删除 / 返回 */
+    private renderRecordViewActions(): void {
+        const actions = this.todayRecordActionsEl;
+        if (!actions) return;
+        actions.empty();
+        this.recordDeleteButton = null;
+
+        this.recordDeleteButton = this.createTodayAction(actions, 'trash-2', t('interface.todayDeleteRecord'));
+        this.recordDeleteButton.disabled = !this.selectedRecordId;
+        this.recordDeleteButton.addEventListener('click', () => this.deleteSelectedRecord());
+
+        this.createTodayAction(actions, 'arrow-left', t('interface.todayBack'))
+            .addEventListener('click', () => this.exitRecordView());
+        this.updateRecordSelection();
+    }
+
+    /** 删除选中的执行记录（带二次确认） */
+    private deleteSelectedRecord(): void {
+        const recordId = this.selectedRecordId;
+        if (!recordId) return;
+        const record = this.taskExecutionRepo.records.find((item) => item.id === recordId);
+        if (!record) return;
+        const taskName = this.prototypeTaskRepo.tasks.find((task) => task.id === record.taskId)?.name
+            ?? t('interface.todayRecordUnknownTask');
+        const timeRange = `${this.formatClockTime(new Date(record.startAt))} - ${this.formatClockTime(new Date(record.endAt))}`;
+        new ConfirmModal(
+            this.app,
+            t('interface.todayDeleteRecordTitle'),
+            t('interface.todayDeleteRecordDetail', { name: taskName, time: timeRange }),
+            () => {
+                this.taskExecutionRepo.remove(recordId);
+                void this.saveAll();
+                this.selectedRecordId = undefined;
+                this.renderDayRecords();
+                this.refreshClock();
+            },
+        ).open();
+    }
+
+    /** 时长文本：不足 1 小时显示分钟，否则显示小时（分钟） */
+    private formatDuration(ms: number): string {
+        const totalMinutes = Math.max(0, Math.round(ms / 60000));
+        if (totalMinutes < 60) {
+            return t('interface.durationMinutes', { minutes: String(totalMinutes) });
+        }
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return minutes === 0
+            ? t('interface.durationHours', { hours: String(hours) })
+            : t('interface.durationHoursMinutes', { hours: String(hours), minutes: String(minutes) });
     }
 
     /** 结束当前计时：时长达 1 分钟时保存执行记录，然后恢复初始按钮组 */
@@ -419,7 +613,7 @@ export class InterfaceView {
 
     /** 刷新任务列表选中态与开始按钮可用状态 */
     private updateTodaySelection(): void {
-        this.todayTaskListEl?.querySelectorAll('.interface-today-task').forEach((el) => {
+        this.todayNormalEl?.querySelectorAll('.interface-today-task').forEach((el) => {
             const row = el as HTMLElement;
             row.toggleClass('is-selected', row.dataset.taskId === this.selectedTodayTaskId);
         });
@@ -596,31 +790,63 @@ export class InterfaceView {
         const dayStartMs = dayStart.getTime();
         const dayEndMs = dayStartMs + 24 * 3600000;
 
-        const drawArc = (startHour: number, endHour: number, color: string, opacity = 1): void => {
+        /** 生成 [startHour, endHour] 的弧线路径（指定半径） */
+        const arcPath = (start: number, end: number, r: number): string => {
+            const [sx, sy] = point(start, r);
+            const [ex, ey] = point(end, r);
+            const largeArc = end - start > 12 ? 1 : 0;
+            return `M ${sx} ${sy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey}`;
+        };
+
+        const drawArc = (startHour: number, endHour: number, color: string, opacity = 1): SVGElement | null => {
             const start = Math.max(0, Math.min(24, startHour));
             const end = Math.max(0, Math.min(24, endHour));
-            if (end - start <= 0.0001) return;
-            let node: SVGElement;
-            if (start === 0 && end === 24) {
-                node = add('circle', {
-                    cx: String(cx),
-                    cy: String(cy),
-                    r: String(ringRadius),
-                    fill: 'none',
-                });
-            } else {
-                const [sx, sy] = point(start, ringRadius);
-                const [ex, ey] = point(end, ringRadius);
-                const largeArc = end - start > 12 ? 1 : 0;
-                node = add('path', {
-                    d: `M ${sx} ${sy} A ${ringRadius} ${ringRadius} 0 ${largeArc} 1 ${ex} ${ey}`,
-                    fill: 'none',
-                });
-            }
+            if (end - start <= 0.0001) return null;
+            const node: SVGElement = start === 0 && end === 24
+                ? add('circle', { cx: String(cx), cy: String(cy), r: String(ringRadius), fill: 'none' })
+                : add('path', { d: arcPath(start, end, ringRadius), fill: 'none' });
             node.style.stroke = color;
             node.style.strokeWidth = '10';
             node.style.strokeLinecap = 'butt';
-            if (opacity !== 1) node.style.opacity = String(opacity);
+            if (opacity !== 1) {
+                node.style.opacity = String(opacity);
+                // 半透明的进行中弧段不参与鼠标命中，避免遮挡下方记录的悬浮效果
+                node.style.pointerEvents = 'none';
+            }
+            return node;
+        };
+
+        /**
+         * 已保存记录的弧段悬浮效果：弧段外扩（半径增大 + 描边加粗），
+         * 并在下方叠加一圈更宽的描边作为边框高亮。
+         * active 为 true 时保持选中态（与悬浮样式一致）。
+         */
+        const attachArcHover = (node: SVGElement, startHour: number, endHour: number, active: boolean): void => {
+            const halo = add('path', { d: arcPath(startHour, endHour, ringRadius + 3), fill: 'none' });
+            halo.style.stroke = 'var(--interactive-accent)';
+            halo.style.strokeWidth = '18';
+            halo.style.strokeLinecap = 'butt';
+            halo.style.opacity = '0';
+            halo.style.pointerEvents = 'none';
+            // 光晕置于弧段下方，悬浮时表现为边框高亮
+            node.parentNode?.insertBefore(halo, node);
+
+            const applyActive = (): void => {
+                node.setAttribute('d', arcPath(startHour, endHour, ringRadius + 3));
+                node.style.strokeWidth = '14';
+                halo.style.opacity = '1';
+            };
+            const applyNormal = (): void => {
+                node.setAttribute('d', arcPath(startHour, endHour, ringRadius));
+                node.style.strokeWidth = '10';
+                halo.style.opacity = '0';
+            };
+
+            if (active) applyActive();
+            node.addEventListener('mouseenter', applyActive);
+            node.addEventListener('mouseleave', () => {
+                if (!active) applyNormal();
+            });
         };
 
         const todayRecords = this.taskExecutionRepo.records
@@ -629,7 +855,25 @@ export class InterfaceView {
         for (const record of todayRecords) {
             const start = Math.max(dayStartMs, record.startAt);
             const end = Math.min(dayEndMs, record.endAt);
-            drawArc((start - dayStartMs) / 3600000, (end - dayStartMs) / 3600000, this.categoryColorOf(record.taskId));
+            const startHour = (start - dayStartMs) / 3600000;
+            const endHour = (end - dayStartMs) / 3600000;
+            const arc = drawArc(startHour, endHour, this.categoryColorOf(record.taskId));
+            if (arc) {
+                const isSelected = record.id === this.selectedRecordId;
+                // 整圈记录用 circle 绘制，不参与弧段悬浮
+                if (startHour !== 0 || endHour !== 24) {
+                    attachArcHover(arc, startHour, endHour, isSelected);
+                } else if (isSelected) {
+                    arc.setAttribute('r', String(ringRadius + 3));
+                    arc.style.strokeWidth = '14';
+                }
+                // 点击弧段：在记录视图中选中对应条目，并保持弧段选中态
+                arc.style.cursor = 'pointer';
+                arc.addEventListener('click', (event: MouseEvent) => {
+                    event.stopPropagation();
+                    this.selectRecordFromArc(record.id);
+                });
+            }
         }
 
         // 进行中的计时：仅在查看今天时实时追加半透明弧段
@@ -654,6 +898,9 @@ export class InterfaceView {
 
     async renderInto(container: HTMLElement): Promise<void> {
         this.stopTodayTimer();
+        // 视图重建后回到常规视图
+        this.recordViewActive = false;
+        this.selectedRecordId = undefined;
         container.empty();
         container.addClass('interface-view');
 
@@ -698,9 +945,10 @@ export class InterfaceView {
         this.updateDateNav();
 
         const todayRight = todayBody.createDiv({ cls: 'interface-today-right' });
-        todayRight.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayPlannedTitle') });
-        this.todayTaskListEl = todayRight.createDiv({ cls: 'interface-today-tasks' });
-        this.todayTaskListEl.addEventListener('click', (evt) => {
+
+        // 常规视图：当日任务列表 + 额外任务 + 计时器 + 按钮组（进入记录视图时整体隐藏）
+        this.todayNormalEl = todayRight.createDiv({ cls: 'interface-today-normal' });
+        this.todayNormalEl.addEventListener('click', (evt) => {
             const row = (evt.target as HTMLElement).closest('.interface-today-task') as HTMLElement | null;
             const taskId = row?.dataset.taskId;
             if (taskId) {
@@ -708,27 +956,39 @@ export class InterfaceView {
                 this.updateTodaySelection();
             }
         });
-        this.renderTodayTasks();
+        this.todayNormalEl.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayPlannedTitle') });
+        this.todayTaskListEl = this.todayNormalEl.createDiv({ cls: 'interface-today-tasks' });
 
-        // 额外任务：标题行 + 新增按钮
-        todayRight.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayExtraTitle') });
-        todayRight.createEl('button', {
+        // 额外任务：标题行（标题 + 新增按钮）+ 任务列表
+        const extraHeader = this.todayNormalEl.createDiv({ cls: 'interface-today-section-header' });
+        extraHeader.createDiv({ cls: 'interface-today-section-title', text: t('interface.todayExtraTitle') });
+        const addExtraBtn = extraHeader.createEl('button', {
             cls: 'interface-today-add',
-            text: '+',
             attr: { 'aria-label': t('interface.todayAddExtra') },
         });
+        setIcon(addExtraBtn, 'plus');
+        addExtraBtn.addEventListener('click', () => this.openTaskPicker());
+        this.todayExtraListEl = this.todayNormalEl.createDiv({ cls: 'interface-today-tasks' });
+
+        this.renderTodayTasks();
 
         // 底部占位：把计时器与按钮组压到方框底部
-        todayRight.createDiv({ cls: 'interface-today-spacer' });
+        this.todayNormalEl.createDiv({ cls: 'interface-today-spacer' });
 
         // 开始时间 + 计时器（未开始计时时隐藏）
-        this.todayTimerEl = todayRight.createDiv({ cls: 'interface-today-timer is-hidden' });
+        this.todayTimerEl = this.todayNormalEl.createDiv({ cls: 'interface-today-timer is-hidden' });
         this.todayTimerStartEl = this.todayTimerEl.createSpan({ cls: 'interface-today-timer-start' });
         this.todayTimerElapsedEl = this.todayTimerEl.createSpan({ cls: 'interface-today-timer-elapsed', text: '00:00' });
 
         // 任务列表下方的操作按钮组：未计时为「开始任务 / 记录任务」，计时中为「结束任务 / 放弃任务」
-        this.todayActionsEl = todayRight.createDiv({ cls: 'interface-today-actions' });
+        this.todayActionsEl = this.todayNormalEl.createDiv({ cls: 'interface-today-actions' });
         this.renderTodayActions(false);
+
+        // 记录视图：点击时钟弧段后展示当日已完成任务（默认隐藏）
+        this.todayRecordViewEl = todayRight.createDiv({ cls: 'interface-today-records is-hidden' });
+        this.todayRecordTitleEl = this.todayRecordViewEl.createDiv({ cls: 'interface-today-section-title' });
+        this.todayRecordListEl = this.todayRecordViewEl.createDiv({ cls: 'interface-today-record-list' });
+        this.todayRecordActionsEl = this.todayRecordViewEl.createDiv({ cls: 'interface-today-actions' });
 
         // 恢复持久化的进行中计时（切换视图 / 重开 Obsidian 后继续）
         this.restoreRunningTodayTask();
