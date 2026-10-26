@@ -231,6 +231,7 @@ export class InterfaceView {
             };
             this.planPanel = new PlanPanel({
                 getTasks: () => this.prototypeTaskRepo.tasks,
+                getCategories: () => this.categoryData.categories,
                 planAssignmentRepo: holder.planAssignmentRepo,
                 save: () => holder.saveAll(),
                 onChanged: () => this.renderTodayTasks(),
@@ -773,7 +774,8 @@ export class InterfaceView {
         /** 外环弧线半径 */
         const ringRadius = 99;
         const point = (hour: number, r: number): [number, number] => {
-            const angle = (hour * 15 * Math.PI) / 180;
+            // 整体旋转 180°：12 点朝上、0 点朝下（数字仍正向显示）
+            const angle = ((hour * 15 + 180) * Math.PI) / 180;
             return [cx + r * Math.sin(angle), cy - r * Math.cos(angle)];
         };
         const add = (tag: string, attrs: Record<string, string>): SVGElement => {
@@ -856,6 +858,28 @@ export class InterfaceView {
             label.textContent = String(hour);
         }
 
+        // 背景半区图标：灰色夜间扇区放月亮，白昼一侧放太阳（位于时间数字内侧）
+        const [moonX, moonY] = point(0, 50);
+        const moon = add('text', {
+            x: String(moonX),
+            y: String(moonY),
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle',
+            'font-size': '18',
+        });
+        moon.textContent = '🌛';
+        moon.style.opacity = '0.85';
+        const [sunX, sunY] = point(12, 50);
+        const sun = add('text', {
+            x: String(sunX),
+            y: String(sunY),
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle',
+            'font-size': '18',
+        });
+        sun.textContent = '🌞';
+        sun.style.opacity = '0.85';
+
         // 时针：仅在查看今天时绘制，指向当前时:分（1 小时 = 15°）
         if (makeDayKey(new Date()) === makeDayKey(this.selectedDate)) {
             const now = new Date();
@@ -914,36 +938,50 @@ export class InterfaceView {
         };
 
         /**
-         * 已保存记录的弧段悬浮效果：弧段外扩（半径增大 + 描边加粗），
+         * 外环弧段的悬浮效果：整块时钟被悬浮时所有弧段一起外扩（半径增大 + 描边加粗），
          * 并在下方叠加一圈更宽的描边作为边框高亮。
-         * active 为 true 时保持选中态（与悬浮样式一致）。
+         * selected 为 true 时保持选中态（与悬浮样式一致）。
          */
-        const attachArcHover = (node: SVGElement, startHour: number, endHour: number, active: boolean): void => {
-            const halo = add('path', { d: arcPath(startHour, endHour, ringRadius + 3), fill: 'none' });
-            halo.style.stroke = 'var(--interactive-accent)';
-            halo.style.strokeWidth = '18';
-            halo.style.strokeLinecap = 'butt';
-            halo.style.opacity = '0';
-            halo.style.pointerEvents = 'none';
-            // 光晕置于弧段下方，悬浮时表现为边框高亮
-            node.parentNode?.insertBefore(halo, node);
+        const ringEntries: {
+            applyActive: () => void;
+            applyNormal: () => void;
+            selected: boolean;
+        }[] = [];
+        const attachArcHover = (
+            node: SVGElement,
+            startHour: number,
+            endHour: number,
+            selected: boolean,
+            isCircle: boolean,
+            withHalo = true,
+        ): void => {
+            let halo: SVGElement | null = null;
+            if (withHalo && !isCircle) {
+                halo = add('path', { d: arcPath(startHour, endHour, ringRadius + 3), fill: 'none' });
+                halo.style.stroke = 'var(--interactive-accent)';
+                halo.style.strokeWidth = '18';
+                halo.style.strokeLinecap = 'butt';
+                halo.style.opacity = '0';
+                halo.style.pointerEvents = 'none';
+                // 光晕置于弧段下方，悬浮时表现为边框高亮
+                node.parentNode?.insertBefore(halo, node);
+            }
 
             const applyActive = (): void => {
-                node.setAttribute('d', arcPath(startHour, endHour, ringRadius + 3));
+                if (isCircle) node.setAttribute('r', String(ringRadius + 3));
+                else node.setAttribute('d', arcPath(startHour, endHour, ringRadius + 3));
                 node.style.strokeWidth = '14';
-                halo.style.opacity = '1';
+                if (halo) halo.style.opacity = '1';
             };
             const applyNormal = (): void => {
-                node.setAttribute('d', arcPath(startHour, endHour, ringRadius));
+                if (isCircle) node.setAttribute('r', String(ringRadius));
+                else node.setAttribute('d', arcPath(startHour, endHour, ringRadius));
                 node.style.strokeWidth = '10';
-                halo.style.opacity = '0';
+                if (halo) halo.style.opacity = '0';
             };
 
-            if (active) applyActive();
-            node.addEventListener('mouseenter', applyActive);
-            node.addEventListener('mouseleave', () => {
-                if (!active) applyNormal();
-            });
+            if (selected) applyActive();
+            ringEntries.push({ applyActive, applyNormal, selected });
         };
 
         const todayRecords = this.taskExecutionRepo.records
@@ -957,13 +995,8 @@ export class InterfaceView {
             const arc = drawArc(startHour, endHour, this.categoryColorOf(record.taskId));
             if (arc) {
                 const isSelected = record.id === this.selectedRecordId;
-                // 整圈记录用 circle 绘制，不参与弧段悬浮
-                if (startHour !== 0 || endHour !== 24) {
-                    attachArcHover(arc, startHour, endHour, isSelected);
-                } else if (isSelected) {
-                    arc.setAttribute('r', String(ringRadius + 3));
-                    arc.style.strokeWidth = '14';
-                }
+                // 整圈记录用 circle 绘制，同样参与整钟悬浮放大
+                attachArcHover(arc, startHour, endHour, isSelected, startHour === 0 && endHour === 24);
                 // 点击弧段：在记录视图中选中对应条目，并保持弧段选中态
                 arc.style.cursor = 'pointer';
                 arc.addEventListener('click', (event: MouseEvent) => {
@@ -979,9 +1012,37 @@ export class InterfaceView {
             const start = Math.max(dayStartMs, this.runningStartedAt.getTime());
             const end = Math.min(dayEndMs, now);
             if (end > start) {
-                drawArc((start - dayStartMs) / 3600000, (end - dayStartMs) / 3600000, this.categoryColorOf(this.runningTodayTaskId), 0.5);
+                const runningArc = drawArc(
+                    (start - dayStartMs) / 3600000,
+                    (end - dayStartMs) / 3600000,
+                    this.categoryColorOf(this.runningTodayTaskId),
+                    0.5,
+                );
+                // 进行中弧段同样随整钟悬浮加宽，但不叠加光晕
+                if (runningArc) {
+                    attachArcHover(
+                        runningArc,
+                        (start - dayStartMs) / 3600000,
+                        (end - dayStartMs) / 3600000,
+                        false,
+                        false,
+                        false,
+                    );
+                }
             }
         }
+
+        // 整块时钟悬浮：所有环形一起加宽；移出后恢复（选中弧段保持加宽）
+        svg.addEventListener('mouseenter', () => {
+            for (const entry of ringEntries) {
+                if (!entry.selected) entry.applyActive();
+            }
+        });
+        svg.addEventListener('mouseleave', () => {
+            for (const entry of ringEntries) {
+                if (!entry.selected) entry.applyNormal();
+            }
+        });
     }
 
     /** 任务分类颜色（无分类 / 分类已删除时使用未分类灰色） */

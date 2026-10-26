@@ -16,7 +16,7 @@ import type { GtdData } from '../datatypes/gtd';
 import { defaultGtdData } from '../datatypes/gtd';
 import type { PlanAssignmentData } from '../datatypes/plan-assignment';
 import type { BottomItem } from '../datatypes/bottom-item';
-import type { PrototypeTask } from '../datatypes/prototype-task';
+import type { PrototypeTask, TaskHabit } from '../datatypes/prototype-task';
 import type { TaskExecutionData } from '../datatypes/task-execution';
 import type { TimeBoxData } from '../datatypes/timebox-data';
 import { t } from '../i18n';
@@ -324,10 +324,26 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
             ...(typeof r.parentId === 'string' ? { parentId: r.parentId } : {}),
             ...(typeof r.description === 'string' ? { description: r.description } : {}),
             ...(typeof r.categoryId === 'string' ? { categoryId: r.categoryId } : {}),
+            ...(r.status === 'notStarted' || r.status === 'inProgress' || r.status === 'done' || r.status === 'paused'
+                ? { status: r.status }
+                : {}),
+            ...(parseTaskHabit(r.habit) ? { habit: parseTaskHabit(r.habit)! } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }
     return tasks;
+}
+
+/** 解析任务习惯设置（非法数据返回 null） */
+function parseTaskHabit(raw: unknown): TaskHabit | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = raw as Record<string, unknown>;
+    if (typeof r.enabled !== 'boolean') return null;
+    const time = typeof r.time === 'string' && /^\d{2}:\d{2}$/.test(r.time) ? r.time : '09:00';
+    const weekdays = Array.isArray(r.weekdays)
+        ? r.weekdays.filter((day): day is number => typeof day === 'number' && day >= 1 && day <= 7)
+        : [];
+    return { enabled: r.enabled, time, weekdays };
 }
 
 /** 解析持久化的时间盒数据（兼容旧数据 / 非法数据：返回空） */

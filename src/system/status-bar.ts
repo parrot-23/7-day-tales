@@ -1,3 +1,4 @@
+// 状态栏「进行中任务」：显示「任务名称：已用时长」，每分钟刷新一次
 import { setIcon, type Plugin } from 'obsidian';
 
 import { t } from '../i18n';

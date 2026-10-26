@@ -1,3 +1,4 @@
+// 插件设置页
 import { Notice, PluginSettingTab, type App, type SettingDefinitionItem } from 'obsidian';
 
 import { t } from '../i18n';

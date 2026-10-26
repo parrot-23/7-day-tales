@@ -4,7 +4,6 @@ import type { Plugin } from 'obsidian';
 import type { PlanCategoryData } from './shared/plan-category-manager';
 import type { InboxData } from './datatypes/domain';
 import type { EventBlock, ExecutionRecord } from './datatypes/domain';
-import { YearView } from './views/pdca/year-view';
 import { WorkbenchView } from './views/workbench/workbench-view';
 import { OkrTaskPlanView } from './views/task/okr-task-plan-view';
 import { ScriptManageView } from './views/task/script-manage-view';
@@ -29,7 +28,7 @@ export const VIEW_TYPE_MAIN = 'parrot-plan-main-view';
 type PrimaryView = 'interface' | 'task' | 'workbench';
 
 /** 二级视图（tab）标识 */
-type NavTab = 'interfaceHome' | 'year' | 'taskPlan' | 'swimlane' | 'workbench' | 'okrHome' | 'okrTaskPlan' | 'scene' | 'scriptManage';
+type NavTab = 'interfaceHome' | 'taskPlan' | 'swimlane' | 'workbench' | 'okrHome' | 'okrTaskPlan' | 'scene' | 'scriptManage';
 
 /** 一级视图定义（顶部第一行） */
 const PRIMARY_VIEWS: { id: PrimaryView; labelKey: 'nav.interface' | 'nav.task' | 'nav.workbench' }[] = [
@@ -75,7 +74,6 @@ export class MainView extends ItemView {
     private planCategoryData: PlanCategoryData;
     /** 已制定周计划的周键列表 */
     private plannedWeeks: string[];
-    private yearView: YearView;
     private workbenchView: WorkbenchView;
     private okrTaskPlanView: OkrTaskPlanView;
     private scriptManageView: ScriptManageView;
@@ -128,15 +126,6 @@ export class MainView extends ItemView {
         this.inboxData = inboxData;
         this.planCategoryData = categoryData;
         this.plannedWeeks = plannedWeeks;
-        this.yearView = new YearView(
-            this.app,
-            this.inboxData,
-            this.planCategoryData,
-            () => this.save(),
-            undefined,
-            () => this.plannedWeeks,
-            this.inboxRepo(),
-        );
         this.workbenchView = new WorkbenchView(
             this.app,
             workbenchData,
@@ -526,15 +515,10 @@ export class MainView extends ItemView {
 
         this.contentRoot.empty();
         // 清除上一次视图残留在共享容器上的视图类，避免多个视图样式叠加导致布局错乱
-        this.contentRoot.removeClass('interface-view', 'year-view', 'task-plan-view', 'swimlane-view', 'workbench-view', 'script-manage-view', 'scene-view');
+        this.contentRoot.removeClass('interface-view', 'task-plan-view', 'swimlane-view', 'workbench-view', 'script-manage-view', 'scene-view');
 
         if (this.activeTab === 'interfaceHome') {
             await this.interfaceView.renderInto(this.contentRoot);
-            return;
-        }
-
-        if (this.activeTab === 'year') {
-            await this.yearView.renderInto(this.contentRoot);
             return;
         }
 
