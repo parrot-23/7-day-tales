@@ -7197,26 +7197,40 @@ button.swimlane-section-card-settings {
     color: var(--text-normal);
 }
 
-/* 任务卡片：任务 + 数量 */
-.interface-metric-card {
+/* 右侧卡片：图标在上、文字在下（尺寸比通用卡片各缩小 30px） */
+.interface-col.is-right .interface-card {
+    width: 120px;
+    height: 90px;
     flex-direction: column;
     gap: 6px;
+    padding: 8px;
+}
+
+.interface-entry-card-icon {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.interface-entry-card-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* 任务卡片：图标 + 任务 */
+.interface-metric-card {
+    gap: 4px;
 }
 
 .interface-metric-label {
     font-size: 13px;
-    color: var(--text-muted);
-}
-
-.interface-metric-value {
-    font-size: 22px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-normal);
 }
 
-/* 右侧入口卡片：计划 / 检查 / 收集 / 画廊 */
+/* 右侧入口卡片：计划 / 检查 / 收集 / 画廊 / 时间盒 / 成就榜单 */
 .interface-entry-card {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
 }
 

@@ -29,13 +29,13 @@ import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../sha
 import { ConfirmModal } from '../../system/confirm-modal';
 import type { TimeBoxRepo } from '../../repos/timebox-repo';
 
-/** 右侧入口卡片：文案 key */
-const ENTRY_CARDS: Parameters<typeof t>[0][] = [
-    'interface.plan',
-    'interface.check',
-    'interface.collect',
-    'interface.gallery',
-    'achievement.title',
+/** 右侧入口卡片：文案 key 与图标 */
+const ENTRY_CARDS: { label: Parameters<typeof t>[0]; icon: string }[] = [
+    { label: 'interface.plan', icon: 'calendar-days' },
+    { label: 'interface.check', icon: 'clipboard-check' },
+    { label: 'interface.collect', icon: 'inbox' },
+    { label: 'interface.gallery', icon: 'image' },
+    { label: 'achievement.title', icon: 'trophy' },
 ];
 
 /** 当天 0 点 */
@@ -1071,7 +1071,7 @@ export class InterfaceView {
 
         const main = container.createDiv({ cls: 'interface-main' });
 
-        // 左侧：日期 / 任务
+        // 左侧：日期
         const left = main.createDiv({ cls: 'interface-col is-left' });
 
         const dateCard = left.createDiv({ cls: 'interface-card interface-date-card' });
@@ -1082,14 +1082,6 @@ export class InterfaceView {
         });
         dateCard.createDiv({ cls: 'interface-date-day', text: String(now.getDate()) });
         dateCard.addEventListener('click', () => this.openDatePanel());
-
-        const taskCard = left.createDiv({ cls: 'interface-card interface-metric-card' });
-        taskCard.createSpan({ cls: 'interface-metric-label', text: t('interface.task') });
-        taskCard.createSpan({ cls: 'interface-metric-value', text: '0' });
-        taskCard.addEventListener('click', () => this.openTaskPanel());
-
-        const timeBoxCard = left.createDiv({ cls: 'interface-card interface-entry-card', text: t('interface.timeBox') });
-        timeBoxCard.addEventListener('click', () => this.openTimeBoxPanel());
 
         // 中间：今日任务方框（左侧 24 小时时钟 + 右侧今日排布任务）
         const today = main.createDiv({ cls: 'interface-today' });
@@ -1159,15 +1151,29 @@ export class InterfaceView {
         // 恢复持久化的进行中计时（切换视图 / 重开 Obsidian 后继续）
         this.restoreRunningTodayTask();
 
-        // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单
+        // 右侧：任务 / 时间盒（置顶）
         const right = main.createDiv({ cls: 'interface-col is-right' });
-        for (const key of ENTRY_CARDS) {
-            const card = right.createDiv({ cls: 'interface-card interface-entry-card', text: t(key) });
-            if (key === 'interface.plan') card.addEventListener('click', () => this.openPlanPanel());
-            if (key === 'interface.check') card.addEventListener('click', () => this.openCheckPanel());
-            if (key === 'interface.collect') card.addEventListener('click', () => this.openCollectPanel());
-            if (key === 'interface.gallery') card.addEventListener('click', () => this.openGalleryPanel());
-            if (key === 'achievement.title') card.addEventListener('click', () => this.openAchievementPanel());
+        const taskCard = right.createDiv({ cls: 'interface-card interface-metric-card' });
+        setIcon(taskCard.createSpan({ cls: 'interface-entry-card-icon' }), 'list-todo');
+        taskCard.createSpan({ cls: 'interface-metric-label', text: t('interface.task') });
+        taskCard.addEventListener('click', () => this.openTaskPanel());
+
+        const timeBoxCard = right.createDiv({ cls: 'interface-card interface-entry-card' });
+        setIcon(timeBoxCard.createSpan({ cls: 'interface-entry-card-icon' }), 'calendar-clock');
+        timeBoxCard.createSpan({ cls: 'interface-entry-card-text', text: t('interface.timeBox') });
+        timeBoxCard.addEventListener('click', () => this.openTimeBoxPanel());
+
+        // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单（图标 + 文字）
+        for (const { label, icon } of ENTRY_CARDS) {
+            const card = right.createDiv({ cls: 'interface-card interface-entry-card' });
+            const iconEl = card.createSpan({ cls: 'interface-entry-card-icon' });
+            setIcon(iconEl, icon);
+            card.createSpan({ cls: 'interface-entry-card-text', text: t(label) });
+            if (label === 'interface.plan') card.addEventListener('click', () => this.openPlanPanel());
+            if (label === 'interface.check') card.addEventListener('click', () => this.openCheckPanel());
+            if (label === 'interface.collect') card.addEventListener('click', () => this.openCollectPanel());
+            if (label === 'interface.gallery') card.addEventListener('click', () => this.openGalleryPanel());
+            if (label === 'achievement.title') card.addEventListener('click', () => this.openAchievementPanel());
         }
 
         // 底部方框：右上角 + 号（下拉菜单）+ 条目卡片列表
