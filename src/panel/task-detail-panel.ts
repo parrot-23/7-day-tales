@@ -5,7 +5,7 @@ import { FuzzySuggestModal, Notice, setIcon, type App, type TFile } from 'obsidi
 
 import type { BasketItem, ImprovementEntry } from '../datatypes/domain';
 import type { PrototypeTask } from '../datatypes/prototype-task';
-import { t } from '../i18n';
+import { getLang, t } from '../i18n';
 import type { PlanCategoryData } from '../shared/plan-category-manager';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
@@ -32,8 +32,8 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
 
 /** 右侧归属分区：showCount 为 true 时在标签后显示条目数量占位 */
 const SECTIONS: { labelKey: Parameters<typeof t>[0]; showCount?: boolean }[] = [
-    { labelKey: 'panel.targetInbox', showCount: true },
     { labelKey: 'panel.targetTodo', showCount: true },
+    { labelKey: 'panel.targetInbox', showCount: true },
     { labelKey: 'panel.targetFile', showCount: true },
 ];
 
@@ -70,6 +70,10 @@ export class TaskDetailPanel extends FloatingPanel {
     private todoBodyEl: HTMLElement | null = null;
     /** 待办 / 改进清单选项卡的未完成数量标签 */
     private todoCountEl: HTMLElement | null = null;
+    /** 待办清单排序方式：创建顺序 / 截止时间 */
+    private todoSort: 'created' | 'due' = 'created';
+    /** 待办清单中当前选中的条目 id（用于设置截止时间） */
+    private selectedTodoId: string | null = null;
     /** 任务文件内容容器 */
     private filesBodyEl: HTMLElement | null = null;
     /** 任务文件选项卡的文件数量标签 */
@@ -584,11 +588,28 @@ export class TaskDetailPanel extends FloatingPanel {
         new Notice(t('basket.organizeDone'));
     }
 
-    /** 待办 / 改进清单：输入行（输入框 / 添加）+ 可勾选的条目列表（已完成沉底） */
+    /** 待办 / 改进清单：顶部按钮组 + 输入行 + 可选中条目的卡片列表（已完成沉底） */
     private renderTodo(container: HTMLElement): void {
         this.todoBodyEl = container;
         container.empty();
         const wrap = container.createDiv({ cls: 'task-detail-basket task-detail-todo' });
+
+        // 顶部按钮组：排序方式 / 设置截止时间（需先选中条目）
+        const toolbar = wrap.createDiv({ cls: 'task-detail-todo-toolbar' });
+        const sortBtn = toolbar.createEl('button', {
+            cls: 'task-detail-todo-tool-btn',
+            text: this.todoSort === 'due' ? t('panel.todoSortDue') : t('panel.todoSortCreated'),
+        });
+        sortBtn.onclick = () => {
+            this.todoSort = this.todoSort === 'due' ? 'created' : 'due';
+            this.renderTodo(container);
+        };
+        const dueBtn = toolbar.createEl('button', {
+            cls: 'task-detail-todo-tool-btn',
+            text: t('panel.todoSetDue'),
+        });
+        dueBtn.disabled = !this.selectedTodoId;
+        dueBtn.onclick = () => this.openTodoDueEditor(wrap, container);
 
         const row = wrap.createDiv({ cls: 'gtd-collect-input-row' });
         const input = row.createEl('input', { cls: 'gtd-collect-input' });
@@ -624,26 +645,41 @@ export class TaskDetailPanel extends FloatingPanel {
             return;
         }
 
-        // 未完成在前、已完成沉底，组内保持添加顺序
-        const ordered = [
-            ...entries.filter((entry) => !entry.done),
-            ...entries.filter((entry) => entry.done),
-        ];
+        // 未完成在前、已完成沉底；未完成可按截止时间排序（无截止时间排最后）
+        const pending = entries.filter((entry) => !entry.done);
+        if (this.todoSort === 'due') {
+            pending.sort((a, b) => {
+                const aDue = a.dueDate ? new Date(`${a.dueDate}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
+                const bDue = b.dueDate ? new Date(`${b.dueDate}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
+                if (aDue !== bDue) return aDue - bDue;
+                return a.createdAt - b.createdAt;
+            });
+        }
+        const ordered = [...pending, ...entries.filter((entry) => entry.done)];
+
         for (const entry of ordered) {
             const card = listInner.createDiv({ cls: 'gtd-collect-card task-detail-todo-card' });
             card.toggleClass('is-done', entry.done === true);
+            card.toggleClass('is-selected', this.selectedTodoId === entry.id);
+            // 点击条目切换选中态（供「设置截止时间」使用）
+            card.addEventListener('click', () => {
+                this.selectedTodoId = this.selectedTodoId === entry.id ? null : entry.id;
+                this.renderTodo(container);
+            });
 
+            // 第一行：状态标签 + 截止日期相关标签（不再显示创建时间）
             const meta = card.createDiv({ cls: 'gtd-collect-card-meta' });
-            meta.createSpan({ cls: 'gtd-collect-card-time', text: formatDateTime(entry.createdAt) });
             meta.createSpan({
                 cls: 'gtd-collect-card-status',
                 text: t(entry.done ? 'panel.todoDone' : 'panel.todoPending'),
             });
+            if (entry.dueDate) this.appendTodoDueTags(meta, entry.dueDate);
 
             const main = card.createDiv({ cls: 'task-detail-todo-main' });
             const checkbox = main.createEl('input', { cls: 'task-detail-todo-checkbox' });
             checkbox.type = 'checkbox';
             checkbox.checked = entry.done === true;
+            checkbox.addEventListener('click', (evt) => evt.stopPropagation());
             checkbox.addEventListener('change', () => {
                 entry.done = checkbox.checked;
                 this.syncTodoToTasks();
@@ -655,10 +691,61 @@ export class TaskDetailPanel extends FloatingPanel {
             delBtn.onclick = (evt) => {
                 evt.stopPropagation();
                 this.task.improvements = (this.task.improvements ?? []).filter((item) => item.id !== entry.id);
+                if (this.selectedTodoId === entry.id) this.selectedTodoId = null;
                 this.syncTodoToTasks();
                 void this.panelOptions.save().then(() => this.renderTodo(container));
             };
         }
+    }
+
+    /** 在状态标签后追加截止日期 / 剩余天数 / 已过期标签 */
+    private appendTodoDueTags(meta: HTMLElement, dueDate: string): void {
+        const due = new Date(`${dueDate}T00:00:00`);
+        if (Number.isNaN(due.getTime())) return;
+        const label = getLang() === 'zh'
+            ? `${due.getMonth() + 1}月${due.getDate()}日`
+            : `${due.getMonth() + 1}/${due.getDate()}`;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+        // 「几天后 / 已过期」标签在截止日期标签之前
+        if (days < 0) {
+            meta.createSpan({ cls: 'task-detail-todo-due-tag is-overdue', text: t('panel.todoOverdue') });
+        } else {
+            meta.createSpan({
+                cls: 'task-detail-todo-due-tag',
+                text: days === 0 ? t('panel.todoDueToday') : t('panel.todoDueInDays', { days }),
+            });
+        }
+        meta.createSpan({ cls: 'task-detail-todo-due-tag', text: t('panel.todoDueDateTag', { date: label }) });
+    }
+
+    /** 选中条目的截止日期编辑行：日期输入框 + 确定 / 清除 / 取消 */
+    private openTodoDueEditor(wrap: HTMLElement, container: HTMLElement): void {
+        const entry = (this.task.improvements ?? []).find((item) => item.id === this.selectedTodoId);
+        if (!entry) return;
+        wrap.querySelector('.task-detail-todo-due-editor')?.remove();
+        const editor = wrap.createDiv({ cls: 'task-detail-todo-due-editor' });
+        const input = editor.createEl('input', { cls: 'task-detail-todo-due-input' });
+        input.type = 'date';
+        input.value = entry.dueDate ?? '';
+        const saveEntry = (): void => {
+            if (input.value) entry.dueDate = input.value;
+            else delete entry.dueDate;
+            this.syncTodoToTasks();
+            void this.panelOptions.save().then(() => this.renderTodo(container));
+        };
+        const save = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueSave') });
+        save.onclick = saveEntry;
+        const clear = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueClear') });
+        clear.onclick = () => {
+            input.value = '';
+            saveEntry();
+        };
+        const cancel = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueCancel') });
+        cancel.onclick = () => editor.remove();
+        wrap.insertBefore(editor, wrap.querySelector('.gtd-collect-input-row'));
+        input.focus();
     }
 
     /** 同步待办清单到全量任务列表中的同一任务 */
@@ -1055,6 +1142,7 @@ export class TaskDetailPanel extends FloatingPanel {
             this.setTitle(next.name);
             this.basketSelectMode = false;
             this.selectedBasketIds.clear();
+            this.selectedTodoId = null;
             this.fileCreateMode = false;
             this.renderRightPane();
             return;

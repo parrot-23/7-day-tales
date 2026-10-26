@@ -10,6 +10,7 @@ import type { PlanAssignmentRepo } from '../repos/plan-assignment-repo';
 import type { PlanCategory } from '../shared/plan-category-manager';
 import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import { GoalAssignmentPanel } from './goal-assignment-panel';
 
 /** 计划面板配置 */
 export interface PlanPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
@@ -83,8 +84,8 @@ export class PlanPanel extends FloatingPanel {
     private habitActive = false;
     /** 「目标」是否处于激活状态 */
     private goalActive = false;
-    /** 周目标面板是否处于新增条目输入状态 */
-    private goalAddMode = false;
+    /** 周目标分配面板（由「目标」面板的「分配」按钮打开） */
+    private goalPicker: GoalAssignmentPanel | null = null;
     /** 年视图中当前高亮的周（1-52，未选择时为 null） */
     private selectedYearWeek: number | null = null;
 
@@ -120,6 +121,13 @@ export class PlanPanel extends FloatingPanel {
         super.open();
     }
 
+    /** 关闭计划面板时一并销毁周目标分配面板 */
+    override close(): void {
+        this.goalPicker?.destroy();
+        this.goalPicker = null;
+        super.close();
+    }
+
     private renderLayout(): void {
         // 左侧：根任务下拉 + 任务树
         const left = this.body.createDiv({ cls: 'plan-left' });
@@ -134,7 +142,13 @@ export class PlanPanel extends FloatingPanel {
         this.treeEl.addEventListener('click', (evt) => {
             const row = (evt.target as HTMLElement).closest('.task-detail-tree-row') as HTMLElement | null;
             const taskId = row?.dataset.taskId;
-            if (taskId) this.selectTask(taskId);
+            if (!taskId) return;
+            // 再次点击已选中的条目则取消选中
+            if (taskId === this.selectedTaskId) {
+                this.clearTaskSelection();
+            } else {
+                this.selectTask(taskId);
+            }
         });
 
         // 左侧底部工具栏：「任务信息」开关
@@ -288,6 +302,22 @@ export class PlanPanel extends FloatingPanel {
         this.renderInfoPanel();
         this.renderHabitPanel();
         this.renderGoalPanel();
+        this.refreshYearChipHighlight();
+    }
+
+    /** 取消选中任务条目（清除高亮与周格子可排布状态） */
+    private clearTaskSelection(): void {
+        this.selectedTaskId = undefined;
+        this.treeEl.querySelectorAll('.task-detail-tree-row').forEach((el) => {
+            (el as HTMLElement).removeClass('is-selected');
+        });
+        this.paneEl.querySelectorAll('.plan-week-column, .plan-year-cell').forEach((el) => {
+            (el as HTMLElement).removeClass('is-assignable');
+        });
+        this.renderInfoPanel();
+        this.renderHabitPanel();
+        this.renderGoalPanel();
+        this.refreshYearChipHighlight();
     }
 
     /** 切换「任务信息」激活状态 */
@@ -299,6 +329,8 @@ export class PlanPanel extends FloatingPanel {
             this.setGoalActive(false);
         }
         this.infoButtonEl.toggleClass('is-active', this.infoActive);
+        // 信息面板决定年视图事件卡片是否高亮
+        this.refreshYearChipHighlight();
         // 激活时若尚未选中任务，默认选中当前根任务，保证信息面板一定可见
         if (this.infoActive && !this.selectedTaskId && this.rootTaskId) {
             this.selectTask(this.rootTaskId);
@@ -330,6 +362,7 @@ export class PlanPanel extends FloatingPanel {
     private setInfoActive(active: boolean): void {
         this.infoActive = active;
         this.infoButtonEl.toggleClass('is-active', active);
+        this.refreshYearChipHighlight();
         this.renderInfoPanel();
     }
 
@@ -351,7 +384,8 @@ export class PlanPanel extends FloatingPanel {
             this.setHabitActive(false);
         }
         this.goalButtonEl.toggleClass('is-active', this.goalActive);
-        if (!this.goalActive) this.goalAddMode = false;
+        // 目标面板决定年视图事件卡片是否高亮
+        this.refreshYearChipHighlight();
         // 激活时若尚未选中任务，默认选中当前根任务，保证目标面板一定可见
         if (this.goalActive && !this.selectedTaskId && this.rootTaskId) {
             this.selectTask(this.rootTaskId);
@@ -364,12 +398,16 @@ export class PlanPanel extends FloatingPanel {
     private setGoalActive(active: boolean): void {
         this.goalActive = active;
         this.goalButtonEl.toggleClass('is-active', active);
-        if (!active) this.goalAddMode = false;
+        this.refreshYearChipHighlight();
         this.renderGoalPanel();
     }
 
-    /** 渲染任务信息面板第一行（颜色圆点 + 任务名称 + 分类） */
-    private renderTaskHead(parentEl: HTMLElement, task: PrototypeTask): void {
+    /** 渲染任务信息面板第一行（颜色圆点 + 任务名称 + 分类；目标面板额外追加周标签与分配按钮） */
+    private renderTaskHead(
+        parentEl: HTMLElement,
+        task: PrototypeTask,
+        goal?: { weekLabel: string; onAssign: () => void },
+    ): void {
         const head = parentEl.createDiv({ cls: 'plan-info-head' });
         const category = this.panelOptions.getCategories()
             .find((item) => item.id === task.categoryId);
@@ -380,6 +418,15 @@ export class PlanPanel extends FloatingPanel {
             cls: 'plan-info-category',
             text: category?.label ?? t('defaultCategory.uncategorized'),
         });
+        if (goal) {
+            head.createSpan({ cls: 'plan-goal-week-badge', text: goal.weekLabel });
+            const assignBtn = head.createEl('button', {
+                cls: 'plan-goal-assign-btn',
+                attr: { type: 'button' },
+                text: t('panel.planGoalAssign'),
+            });
+            assignBtn.addEventListener('click', goal.onAssign);
+        }
     }
 
     /** 渲染右侧底部的任务信息面板（未激活或未选中任务时隐藏） */
@@ -482,7 +529,15 @@ export class PlanPanel extends FloatingPanel {
         }
     }
 
-    /** 渲染右侧底部的周目标面板（未激活或未选中任务时隐藏） */
+    /** 目标面板当前作用的周：年视图优先使用选中的周格子 */
+    private getActiveWeekKey(): string {
+        if (this.tab === 'year' && this.selectedYearWeek !== null) {
+            return makeWeekKey(this.year, this.selectedYearWeek);
+        }
+        return this.weekKey;
+    }
+
+    /** 渲染右侧底部的周目标面板（未激活或未选中任务时隐藏，仅显示已分配到当前周的待办） */
     private renderGoalPanel(): void {
         const task = this.selectedTaskId
             ? this.panelOptions.getTasks().find((item) => item.id === this.selectedTaskId)
@@ -492,110 +547,75 @@ export class PlanPanel extends FloatingPanel {
         this.goalPanelEl.toggleClass('is-hidden', !visible);
         if (!visible || !task) return;
 
-        this.renderTaskHead(this.goalPanelEl, task);
-
-        // 第二行：当前周数 + 新增按钮
-        const weekRow = this.goalPanelEl.createDiv({ cls: 'plan-goal-week-row' });
-        const { week } = parseWeekKey(this.weekKey);
-        weekRow.createSpan({
-            cls: 'plan-goal-week-label',
-            text: t('panel.planWeekLabel', { week: String(week) }),
-        });
-        const addBtn = weekRow.createEl('button', {
-            cls: 'plan-goal-add-btn',
-            attr: { type: 'button', 'aria-label': t('panel.planGoalAdd') },
-        });
-        setIcon(addBtn, 'plus');
-        addBtn.addEventListener('click', () => {
-            this.goalAddMode = true;
-            this.renderGoalPanel();
+        const weekKey = this.getActiveWeekKey();
+        const { week } = parseWeekKey(weekKey);
+        this.renderTaskHead(this.goalPanelEl, task, {
+            weekLabel: t('panel.planWeekLabel', { week: String(week) }),
+            onAssign: () => this.openGoalPicker(task, weekKey),
         });
 
-        // 新增条目输入行（仅点击 + 后出现）
-        if (this.goalAddMode) {
-            const inputRow = this.goalPanelEl.createDiv({ cls: 'plan-goal-add-row' });
-            const input = inputRow.createEl('input', { cls: 'plan-goal-add-input', type: 'text' });
-            input.placeholder = t('panel.planGoalAddPlaceholder');
-            input.focus();
-            const submit = (): void => {
-                const text = input.value.trim();
-                if (!text) {
-                    input.focus();
-                    return;
-                }
-                // 仅新增到该任务的待办清单，不自动勾选为周目标
-                task.improvements = [
-                    ...(task.improvements ?? []),
-                    { id: `imp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text, createdAt: Date.now() },
-                ];
-                this.goalAddMode = false;
-                void this.panelOptions.save();
-                this.panelOptions.onChanged?.();
-                this.renderGoalPanel();
-            };
-            input.addEventListener('keydown', (evt) => {
-                if (evt.key === 'Enter') submit();
-                if (evt.key === 'Escape') {
-                    this.goalAddMode = false;
-                    this.renderGoalPanel();
-                }
-            });
-            const confirmBtn = inputRow.createEl('button', {
-                cls: 'mod-cta',
-                text: t('common.confirm'),
-            });
-            confirmBtn.addEventListener('click', submit);
-        }
-
-        // 第三行起：已选目标在上、其余未完成待办在下
-        const goalIds = this.getWeekGoalIds(task);
-        const improvements = task.improvements ?? [];
-        const selected = improvements.filter((item) => goalIds.includes(item.id));
-        const rest = improvements.filter((item) => !item.done && !goalIds.includes(item.id));
-
+        // 仅显示已分配到当前周的待办条目
+        const goalIds = this.getWeekGoalIds(task, weekKey);
+        const selected = (task.improvements ?? []).filter((item) => goalIds.includes(item.id));
         const list = this.goalPanelEl.createDiv({ cls: 'plan-goal-list' });
-        if (selected.length === 0 && rest.length === 0) {
+        if (selected.length === 0) {
             list.createDiv({ cls: 'plan-goal-empty', text: t('panel.planGoalEmpty') });
             return;
         }
         for (const item of selected) {
-            this.renderGoalRow(list, item.text, true, item.done === true, () => {
-                this.setWeekGoalSelected(task, item.id, false);
-            });
-        }
-        for (const item of rest) {
-            this.renderGoalRow(list, item.text, false, false, () => {
-                this.setWeekGoalSelected(task, item.id, true);
+            this.renderGoalRow(list, item.text, item.done === true, () => {
+                this.setWeekGoalSelected(task, item.id, false, weekKey);
             });
         }
     }
 
-    /** 周目标条目行：勾选图标 + 文本（已选在上，其余在下） */
+    /** 打开周目标分配面板，勾选当前任务待办条目作为指定周的目标 */
+    private openGoalPicker(task: PrototypeTask, weekKey: string): void {
+        this.goalPicker?.destroy();
+        const { week } = parseWeekKey(weekKey);
+        this.goalPicker = new GoalAssignmentPanel({
+            taskName: task.name,
+            weekLabel: t('panel.planWeekLabel', { week: String(week) }),
+            items: [...(task.improvements ?? [])],
+            selectedIds: this.getWeekGoalIds(task, weekKey),
+            onToggle: (improvementId, selected) => {
+                this.setWeekGoalSelected(task, improvementId, selected, weekKey);
+            },
+            onClose: () => {
+                this.goalPicker = null;
+            },
+        });
+        this.goalPicker.open();
+    }
+
+    /** 周目标条目行：待办文本 + 末尾「已分配」标签（点击取消该周目标） */
     private renderGoalRow(
         parentEl: HTMLElement,
         text: string,
-        selected: boolean,
         done: boolean,
         onClick: () => void,
     ): void {
-        const row = parentEl.createDiv({ cls: 'plan-goal-item' });
-        row.toggleClass('is-selected', selected);
+        const row = parentEl.createDiv({ cls: 'plan-goal-item is-selected' });
         row.toggleClass('is-done', done);
-        const iconEl = row.createSpan({ cls: 'plan-goal-item-icon' });
-        setIcon(iconEl, selected ? 'check-square' : 'square');
         row.createSpan({ cls: 'plan-goal-item-text', text });
+        row.createSpan({ cls: 'plan-goal-assigned-tag', text: t('panel.planGoalAssigned') });
         row.addEventListener('click', onClick);
     }
 
-    /** 读取某任务在当前周已选为目标的待办条目 id */
-    private getWeekGoalIds(task: PrototypeTask): string[] {
-        return task.weekGoals?.find((goal) => goal.weekKey === this.weekKey)?.improvementIds ?? [];
+    /** 读取某任务在指定周已选为目标的待办条目 id（默认当前作用的周） */
+    private getWeekGoalIds(task: PrototypeTask, weekKey = this.getActiveWeekKey()): string[] {
+        return task.weekGoals?.find((goal) => goal.weekKey === weekKey)?.improvementIds ?? [];
     }
 
-    /** 勾选 / 取消勾选某条待办为当前周目标并持久化 */
-    private setWeekGoalSelected(task: PrototypeTask, improvementId: string, selected: boolean): void {
+    /** 勾选 / 取消勾选某条待办为指定周目标并持久化 */
+    private setWeekGoalSelected(
+        task: PrototypeTask,
+        improvementId: string,
+        selected: boolean,
+        weekKey = this.getActiveWeekKey(),
+    ): void {
         const goals = task.weekGoals ?? [];
-        const current = goals.find((goal) => goal.weekKey === this.weekKey);
+        const current = goals.find((goal) => goal.weekKey === weekKey);
         const ids = current?.improvementIds ?? [];
         const nextIds = selected
             ? (ids.includes(improvementId) ? ids : [...ids, improvementId])
@@ -603,7 +623,7 @@ export class PlanPanel extends FloatingPanel {
         if (current) {
             current.improvementIds = nextIds;
         } else {
-            goals.push({ weekKey: this.weekKey, improvementIds: nextIds });
+            goals.push({ weekKey, improvementIds: nextIds });
         }
         task.weekGoals = goals;
         void this.panelOptions.save();
@@ -631,6 +651,7 @@ export class PlanPanel extends FloatingPanel {
         this.yearTabEl.toggleClass('is-active', tab === 'year');
         this.weekTabEl.toggleClass('is-active', tab === 'week');
         this.renderPane();
+        this.renderGoalPanel();
     }
 
     private renderPane(): void {
@@ -649,12 +670,14 @@ export class PlanPanel extends FloatingPanel {
             this.year -= 1;
             this.selectedYearWeek = null;
             this.renderPane();
+            this.renderGoalPanel();
         });
         nav.createSpan({ cls: 'plan-nav-label', text: t('panel.planYearLabel', { year: String(this.year) }) });
         this.createNavButton(nav, '→', () => {
             this.year += 1;
             this.selectedYearWeek = null;
             this.renderPane();
+            this.renderGoalPanel();
         });
 
         const current = parseWeekKey(getCurrentWeekKey());
@@ -667,6 +690,13 @@ export class PlanPanel extends FloatingPanel {
             cell.toggleClass('is-selected', this.selectedYearWeek === week);
             cell.toggleClass('is-assignable', this.selectedTaskId !== undefined);
             cell.dataset.week = String(week);
+            // 该周进入新的月份时，在左上角标注月份
+            const weekStart = makeDayKeyFromWeek(weekKey, 1);
+            const prevWeekStart = makeDayKeyFromWeek(shiftWeekKey(weekKey, -1), 1);
+            const month = Number(weekStart.slice(5, 7));
+            if (month !== Number(prevWeekStart.slice(5, 7))) {
+                cell.createDiv({ cls: 'plan-year-cell-month', text: `${month}月` });
+            }
             cell.createDiv({ cls: 'plan-year-cell-label', text: `W${String(week).padStart(2, '0')}` });
 
             // 已整周排布的任务卡片（点击卡片选中左侧对应任务，× 移除该周排布）
@@ -678,11 +708,15 @@ export class PlanPanel extends FloatingPanel {
                     if (!task) continue;
                     const chip = list.createDiv({ cls: 'plan-year-cell-task', text: task.name });
                     chip.title = task.name;
+                    chip.dataset.taskId = task.id;
+                    // 信息 / 目标面板激活时，高亮下方正在展示的任务 / 周对应的卡片
+                    chip.toggleClass('is-highlighted', this.isYearChipHighlighted(week, task.id));
                     chip.addEventListener('click', (evt) => {
                         evt.stopPropagation();
                         this.selectTask(task.id);
                         this.selectedYearWeek = week;
                         this.renderPane();
+                        this.renderGoalPanel();
                     });
                     const del = chip.createSpan({ cls: 'plan-year-cell-task-del', text: '×' });
                     del.addEventListener('click', (evt) => {
@@ -699,6 +733,25 @@ export class PlanPanel extends FloatingPanel {
         }
     }
 
+    /** 年历事件卡片是否需要高亮：信息 / 目标面板激活，且该卡片属于左侧选中任务、位于选中的周 */
+    private isYearChipHighlighted(week: number, taskId: string): boolean {
+        return (this.infoActive || this.goalActive)
+            && this.selectedYearWeek === week
+            && taskId === this.selectedTaskId;
+    }
+
+    /** 按当前面板与选中的任务 / 周刷新年历事件卡片的高亮 */
+    private refreshYearChipHighlight(): void {
+        this.paneEl.querySelectorAll('.plan-year-cell').forEach((el) => {
+            const cell = el as HTMLElement;
+            const week = Number(cell.dataset.week);
+            cell.querySelectorAll('.plan-year-cell-task').forEach((chipEl) => {
+                const chip = chipEl as HTMLElement;
+                chip.toggleClass('is-highlighted', this.isYearChipHighlighted(week, chip.dataset.taskId ?? ''));
+            });
+        });
+    }
+
     /** 点击年视图周格子：高亮该周；若左侧已选中任务则整周排布 */
     private assignSelectedTaskToWeek(week: number): void {
         this.selectedYearWeek = week;
@@ -708,6 +761,7 @@ export class PlanPanel extends FloatingPanel {
             this.panelOptions.onChanged?.();
         }
         this.renderPane();
+        this.renderGoalPanel();
     }
 
     /** 周视图：周数选择行 + 一周七列日历 */
@@ -741,10 +795,15 @@ export class PlanPanel extends FloatingPanel {
         for (let col = 0; col < 7; col++) {
             const dayKey = makeDayKeyFromWeek(this.weekKey, col + 1);
             const header = headerRow.createDiv({ cls: 'plan-week-header-cell' });
+            // 当天进入新的月份时，在左上角标注月份
+            const month = Number(dayKey.slice(5, 7));
+            if (month !== this.getPreviousDayMonth(dayKey)) {
+                header.createSpan({ cls: 'plan-week-header-month', text: `${month}月` });
+            }
             header.createSpan({ cls: 'plan-week-header-name', text: t(WEEKDAY_KEYS[col]) });
             header.createSpan({
                 cls: 'plan-week-header-date',
-                text: `${Number(dayKey.slice(5, 7))}/${Number(dayKey.slice(8, 10))}`,
+                text: `${month}/${Number(dayKey.slice(8, 10))}`,
             });
             // 日列作为背景层，跨满所有行：负责点击排布、分隔线与悬停反馈
             const column = columnsRow.createDiv({ cls: 'plan-week-column' });
@@ -757,6 +816,13 @@ export class PlanPanel extends FloatingPanel {
         }
         // 卡片层：与日列共用同一网格，按区段跨列显示
         for (const segment of segments) this.renderWeekSegment(columnsRow, segment);
+    }
+
+    /** 取指定日期前一天的月份（用于判断当天是否跨入新月份） */
+    private getPreviousDayMonth(dayKey: string): number {
+        const date = new Date(`${dayKey}T00:00:00`);
+        date.setDate(date.getDate() - 1);
+        return date.getMonth() + 1;
     }
 
     /** 周视图中跨列合并的一段任务卡片 */

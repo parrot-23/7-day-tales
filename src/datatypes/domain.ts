@@ -136,6 +136,8 @@ export interface ImprovementEntry {
     done?: boolean;
     /** 创建时间（时间戳） */
     createdAt: number;
+    /** 截止日期（YYYY-MM-DD，可选） */
+    dueDate?: string;
 }
 
 /** 收集篮子条目（GTD 梳理阶段放置到某任务的笔记/条目） */
