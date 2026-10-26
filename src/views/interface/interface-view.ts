@@ -265,7 +265,6 @@ export class InterfaceView {
             saveAll: () => Promise<void>;
         };
         this.collectPanel ??= new CollectPanel({
-            app: this.app,
             gtdRepo: holder.gtdRepo,
             save: () => holder.saveAll(),
             getTasks: () => this.prototypeTaskRepo.tasks,

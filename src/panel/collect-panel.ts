@@ -1,18 +1,27 @@
-// 收集面板：基于 FloatingPanel，内容复用 GTD 收集视图（顶部输入框 + 未处理卡片列表）。
+// 收集面板：基于 FloatingPanel，顶部输入框 + 未处理卡片列表。
 // 标题旁提供「梳理」按钮：点击后面板变宽，右侧展开梳理区（顶部「任务」选项卡 + 任务树 + 确认按钮）。
-import { setIcon, type App } from 'obsidian';
+import { setIcon } from 'obsidian';
 
 import type { PrototypeTask } from '../datatypes/prototype-task';
 import { t } from '../i18n';
 import type { GtdRepo } from '../repos/gtd-repo';
-import { GtdCollectView } from '../views/gtd/collect-view';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+
+/** 时间戳格式化为 YYYY-MM-DD HH:MM */
+function formatTime(ts: number): string {
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${mo}-${da} ${h}:${mi}`;
+}
 
 /** 收集面板配置 */
 export interface CollectPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
     /** 面板标题，默认「收集」 */
     title?: string;
-    app: App;
     gtdRepo: GtdRepo;
     /** 数据保存回调 */
     save: () => Promise<void>;
@@ -26,7 +35,6 @@ const EXPANDED_WIDTH = 1080;
 
 /** 收集面板 */
 export class CollectPanel extends FloatingPanel {
-    private readonly view: GtdCollectView;
     private layoutEl!: HTMLElement;
     private mainEl!: HTMLElement;
     private clarifyEl!: HTMLElement;
@@ -45,12 +53,6 @@ export class CollectPanel extends FloatingPanel {
             ...panelOptions,
         });
         this.body.addClass('collect-panel');
-        this.view = new GtdCollectView(
-            panelOptions.app,
-            panelOptions.gtdRepo,
-            panelOptions.save,
-            (row) => this.addClarifyButton(row),
-        );
         this.rebuildLayout();
     }
 
@@ -81,15 +83,63 @@ export class CollectPanel extends FloatingPanel {
         if (root) root.style.width = `${width}px`;
     }
 
-    /** 重建整体布局：左侧收集视图 + 可选的右侧梳理区 */
+    /** 重建整体布局：左侧收集区 + 可选的右侧梳理区 */
     private rebuildLayout(): void {
         this.body.empty();
         this.layoutEl = this.body.createDiv({ cls: 'collect-panel-layout' });
         this.mainEl = this.layoutEl.createDiv({ cls: 'collect-panel-main' });
-        void this.view.renderInto(this.mainEl);
+        this.renderCollect();
         if (this.expanded) {
             this.clarifyEl = this.layoutEl.createDiv({ cls: 'collect-panel-clarify' });
             this.renderClarify();
+        }
+    }
+
+    /** 渲染收集区：顶部输入行（输入框 / 添加 / 梳理）+ 未处理卡片列表 */
+    private renderCollect(): void {
+        this.mainEl.empty();
+        this.mainEl.addClass('gtd-collect-view');
+
+        const inputRow = this.mainEl.createDiv({ cls: 'gtd-collect-input-row' });
+        const input = inputRow.createEl('input', {
+            cls: 'gtd-collect-input',
+            attr: { type: 'text', placeholder: t('gtd.collectPlaceholder') },
+        });
+        const addBtn = inputRow.createEl('button', {
+            cls: 'gtd-collect-add-btn',
+            text: t('common.add'),
+        });
+        const submit = (): void => {
+            const content = input.value.trim();
+            if (!content) return;
+            this.panelOptions.gtdRepo.addItem(content);
+            void this.panelOptions.save().then(() => this.renderCollect());
+        };
+        addBtn.onclick = submit;
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') submit();
+        };
+        this.addClarifyButton(inputRow);
+
+        // 未处理卡片列表（外层固定高度，内层列表超出时出现滚动条）
+        const list = this.mainEl.createDiv({ cls: 'gtd-collect-list' });
+        const listInner = list.createDiv({ cls: 'gtd-collect-list-inner' });
+        const pending = this.panelOptions.gtdRepo.getPendingItems();
+        if (pending.length === 0) {
+            listInner.createDiv({ cls: 'gtd-collect-empty', text: t('gtd.collectEmpty') });
+            return;
+        }
+        for (const item of pending) {
+            const card = listInner.createDiv({ cls: 'gtd-collect-card' });
+            const meta = card.createDiv({ cls: 'gtd-collect-card-meta' });
+            meta.createSpan({ cls: 'gtd-collect-card-time', text: formatTime(item.createdAt) });
+            meta.createSpan({ cls: 'gtd-collect-card-status', text: t('gtd.statusInbox') });
+            card.createDiv({ cls: 'gtd-collect-card-content', text: item.content });
+            const delBtn = card.createEl('button', { cls: 'gtd-collect-card-delete', text: '×' });
+            delBtn.onclick = () => {
+                this.panelOptions.gtdRepo.removeItem(item.id);
+                void this.panelOptions.save().then(() => this.renderCollect());
+            };
         }
     }
 

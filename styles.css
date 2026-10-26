@@ -1,6 +1,5 @@
 
 
-
 /* ======================== 模板面板 ==== */
 /* ===== 模板面板 ===== */
 .template-panel {
@@ -83,7 +82,6 @@
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
-
 /* 7 天模板单元格容器 */
 .day-templates {
     flex: 1;
@@ -105,7 +103,6 @@
 .day-template-cell:last-child {
     border-right: none;
 }
-
 
 .template-title-row {
     display: flex;
@@ -273,7 +270,6 @@
     flex-shrink: 0;
     background-color: var(--swatch-color, #888888);
 }
-
 
 /* 图例 hover */
 .legend-item {
@@ -752,7 +748,6 @@
     background: transparent;
     border: 1px dashed var(--text-muted);
 }
-
 
 /* 事件层 */
 .event-card {
@@ -1822,15 +1817,6 @@
     flex-shrink: 0;
     color: var(--text-muted);
     font-size: 12px;
-}
-
-/* ===== 任务计划视图 ===== */
-.task-plan-view {
-    display: flex;
-    flex-direction: row;
-    height: 100%;
-    flex: 1;
-    min-height: 0;
 }
 
 /* 左侧任务面板 */
@@ -4075,7 +4061,6 @@
     font-size: 13px;
     color: var(--text-faint);
 }
-
 
 /* 统计信息方框（当前任务的执行次数与总时长） */
 .okr-stats-body {
@@ -6370,7 +6355,6 @@ button.swimlane-section-card-settings {
     height: 12px;
 }
 
-/* ===== 剧本管理视图 ===== */
 .script-manage-view {
     height: 100%;
     overflow: hidden;
@@ -6457,7 +6441,6 @@ button.swimlane-section-card-settings {
     font-size: 13px;
 }
 
-/* ===== 剧本场景视图 ===== */
 .scene-view {
     height: 100%;
     padding: 16px;

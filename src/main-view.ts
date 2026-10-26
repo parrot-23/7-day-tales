@@ -5,9 +5,6 @@ import type { PlanCategoryData } from './shared/plan-category-manager';
 import type { InboxData } from './datatypes/domain';
 import type { EventBlock, ExecutionRecord } from './datatypes/domain';
 import { WorkbenchView } from './views/workbench/workbench-view';
-import { OkrTaskPlanView } from './views/task/okr-task-plan-view';
-import { ScriptManageView } from './views/task/script-manage-view';
-import { SceneView } from './views/task/scene-view';
 import { InterfaceView } from './views/interface/interface-view';
 import type { WorkbenchData } from './datatypes/card';
 import type { GtdRepo } from './repos/gtd-repo';
@@ -25,27 +22,21 @@ import { HelpModal } from './helper/help-modal';
 export const VIEW_TYPE_MAIN = 'parrot-plan-main-view';
 
 /** 一级视图标识 */
-type PrimaryView = 'interface' | 'task' | 'workbench';
+type PrimaryView = 'interface' | 'workbench';
 
 /** 二级视图（tab）标识 */
-type NavTab = 'interfaceHome' | 'taskPlan' | 'swimlane' | 'workbench' | 'okrHome' | 'okrTaskPlan' | 'scene' | 'scriptManage';
+type NavTab = 'interfaceHome' | 'workbench' | 'okrHome' | 'okrTaskPlan' | 'scene' | 'scriptManage';
 
 /** 一级视图定义（顶部第一行） */
-const PRIMARY_VIEWS: { id: PrimaryView; labelKey: 'nav.interface' | 'nav.task' | 'nav.workbench' }[] = [
+const PRIMARY_VIEWS: { id: PrimaryView; labelKey: 'nav.interface' | 'nav.workbench' }[] = [
     { id: 'interface', labelKey: 'nav.interface' },
     { id: 'workbench', labelKey: 'nav.workbench' },
-    { id: 'task', labelKey: 'nav.task' },
 ];
 
 /** 二级视图定义（顶部第二行，按一级视图分组；label 存 i18n key，渲染时再求值） */
-const SECONDARY_TABS: Record<PrimaryView, { id: NavTab; labelKey: 'nav.interfaceHome' | 'nav.year' | 'nav.taskPlan' | 'nav.projectPicture' | 'nav.workbench' | 'nav.task' | 'nav.scene' | 'nav.scriptManage' }[]> = {
+const SECONDARY_TABS: Record<PrimaryView, { id: NavTab; labelKey: 'nav.interfaceHome' | 'nav.workbench' }[]> = {
     interface: [
         { id: 'interfaceHome', labelKey: 'nav.interfaceHome' },
-    ],
-    task: [
-        { id: 'okrTaskPlan', labelKey: 'nav.taskPlan' },
-        { id: 'scene', labelKey: 'nav.scene' },
-        { id: 'scriptManage', labelKey: 'nav.scriptManage' },
     ],
     workbench: [
         { id: 'workbench', labelKey: 'nav.workbench' },
@@ -55,7 +46,6 @@ const SECONDARY_TABS: Record<PrimaryView, { id: NavTab; labelKey: 'nav.interface
 /** 各一级视图的默认二级视图（切换一级视图时激活） */
 const DEFAULT_TAB: Record<PrimaryView, NavTab> = {
     interface: 'interfaceHome',
-    task: 'okrTaskPlan',
     workbench: 'workbench',
 };
 
@@ -75,9 +65,6 @@ export class MainView extends ItemView {
     /** 已制定周计划的周键列表 */
     private plannedWeeks: string[];
     private workbenchView: WorkbenchView;
-    private okrTaskPlanView: OkrTaskPlanView;
-    private scriptManageView: ScriptManageView;
-    private sceneView: SceneView;
     private interfaceView: InterfaceView;
     /** 当前一级视图 */
     private activePrimary: PrimaryView = 'interface';
@@ -140,20 +127,6 @@ export class MainView extends ItemView {
             },
             this.gtdRepo(),
         );
-        this.okrTaskPlanView = new OkrTaskPlanView(
-            this.app,
-            this.inboxData,
-            this.planCategoryData,
-            () => this.save(),
-            this.inboxRepo(),
-            () => this.executions,
-        );
-        this.scriptManageView = new ScriptManageView(this.app);
-        this.sceneView = new SceneView(
-            this.app,
-            this.planCategoryData,
-            () => this.events,
-        );
         this.interfaceView = new InterfaceView(this.app, this.plugin, this.planCategoryData);
     }
 
@@ -197,19 +170,9 @@ export class MainView extends ItemView {
         return (this.plugin as Plugin & { planSchemeRepo: PlanSchemeRepo }).planSchemeRepo;
     }
 
-    /** 是否启用剧本模式（关闭时隐藏「剧本场景」「剧本管理」二级视图） */
-    private isScriptModeEnabled(): boolean {
-        return (this.plugin as Plugin & { scriptModeEnabled?: boolean }).scriptModeEnabled === true;
-    }
-
-    /** 剧本模式关闭时需要隐藏的二级视图 */
-    private static readonly SCRIPT_MODE_TABS: NavTab[] = ['scene', 'scriptManage'];
-
-    /** 指定一级视图下应展示的二级视图（按剧本模式开关过滤），默认取当前「预览」的一级视图 */
+    /** 指定一级视图下应展示的二级视图 */
     private visibleSecondaryTabs(primary: PrimaryView = this.previewPrimary): { id: NavTab; labelKey: Parameters<typeof t>[0] }[] {
-        const tabs = SECONDARY_TABS[primary];
-        if (this.isScriptModeEnabled()) return tabs;
-        return tabs.filter(tab => !MainView.SCRIPT_MODE_TABS.includes(tab.id));
+        return SECONDARY_TABS[primary];
     }
 
     getViewType(): string {
@@ -489,12 +452,6 @@ export class MainView extends ItemView {
 
     /** 根据当前 tab 渲染内容区 */
     private async renderContent() {
-        // 剧本模式关闭时，若当前停留在被隐藏的二级视图，回退到默认二级视图
-        if (!this.isScriptModeEnabled() && MainView.SCRIPT_MODE_TABS.includes(this.activeTab)) {
-            this.activeTab = DEFAULT_TAB[this.activePrimary];
-            this.lastTabByPrimary[this.activePrimary] = this.activeTab;
-            this.renderSecondaryTabs();
-        }
         log('MainView.renderContent', {
             tab: this.activeTab,
             events: this.events.length,
@@ -515,30 +472,15 @@ export class MainView extends ItemView {
 
         this.contentRoot.empty();
         // 清除上一次视图残留在共享容器上的视图类，避免多个视图样式叠加导致布局错乱
-        this.contentRoot.removeClass('interface-view', 'task-plan-view', 'swimlane-view', 'workbench-view', 'script-manage-view', 'scene-view');
+        this.contentRoot.removeClass('interface-view', 'workbench-view');
 
         if (this.activeTab === 'interfaceHome') {
             await this.interfaceView.renderInto(this.contentRoot);
             return;
         }
 
-        if (this.activeTab === 'okrTaskPlan') {
-            await this.okrTaskPlanView.renderInto(this.contentRoot);
-            return;
-        }
-
         if (this.activeTab === 'workbench') {
             await this.workbenchView.renderInto(this.contentRoot);
-            return;
-        }
-
-        if (this.activeTab === 'scriptManage') {
-            await this.scriptManageView.renderInto(this.contentRoot);
-            return;
-        }
-
-        if (this.activeTab === 'scene') {
-            await this.sceneView.renderInto(this.contentRoot);
             return;
         }
 
