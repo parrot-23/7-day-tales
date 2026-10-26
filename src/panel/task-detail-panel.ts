@@ -35,7 +35,6 @@ const SECTIONS: { labelKey: Parameters<typeof t>[0]; showCount?: boolean }[] = [
     { labelKey: 'panel.targetInbox', showCount: true },
     { labelKey: 'panel.targetTodo', showCount: true },
     { labelKey: 'panel.targetFile', showCount: true },
-    { labelKey: 'panel.targetOkr' },
 ];
 
 /** 任务树每层缩进像素（与行 marginLeft 一致） */
