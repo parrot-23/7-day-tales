@@ -247,6 +247,7 @@ export class InterfaceView {
                 timeBoxRepo: ConstructorParameters<typeof CheckPanel>[0]['timeBoxRepo'];
             };
             this.checkPanel = new CheckPanel({
+                app: this.app,
                 categoryData: this.categoryData,
                 timeBoxRepo: holder.timeBoxRepo,
                 taskExecutionRepo: this.taskExecutionRepo,
@@ -298,8 +299,15 @@ export class InterfaceView {
                 task,
                 tasks: this.prototypeTaskRepo.tasks,
                 categoryData: this.categoryData,
+                app: this.app,
+                save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
                 onAddChild: (name, parentId) => this.addPrototypeTask(name, task.type, parentId),
                 onUpdateTask: (taskId, patch) => this.updatePrototypeTask(taskId, patch),
+                onTasksChanged: () => {
+                    this.taskPanel?.setTasks(this.rootPrototypeTasks());
+                    this.detailPanels.forEach((item) => item.setTasks(this.prototypeTaskRepo.tasks));
+                    this.renderTodayTasks();
+                },
             });
             this.detailPanels.set(task.id, panel);
         } else {
@@ -322,8 +330,8 @@ export class InterfaceView {
         this.renderTodayTasks();
     }
 
-    /** 更新原型任务的描述 / 分类：写仓库 + 持久化 */
-    private updatePrototypeTask(taskId: string, patch: { description?: string; categoryId?: string }): void {
+    /** 更新原型任务的名称 / 描述 / 分类：写仓库 + 持久化 */
+    private updatePrototypeTask(taskId: string, patch: { name?: string; description?: string; categoryId?: string }): void {
         this.prototypeTaskRepo.update(taskId, patch);
         void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
     }

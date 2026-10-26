@@ -1,7 +1,7 @@
 {
   "id": "seven-day-tales",
   "name": "7-Day Tales",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "minAppVersion": "1.13.0",
   "description": "A weekly schedule planner with time blocks, event planning, and execution tracking.",
   "author": "parrot-23",

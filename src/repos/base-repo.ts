@@ -8,7 +8,7 @@ import { ensureDefaultScheme } from '../shared/plan-data';
 import type { PlanCategoryData } from '../shared/plan-category-manager';
 import { ensureUncategorizedCategory, UNCATEGORIZED_CATEGORY_ID } from '../shared/plan-category-manager';
 import type { DayTemplateData } from '../shared/template-manager';
-import type { EventBlock, ExecutionRecord, InboxData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
+import type { BasketItem, EventBlock, ExecutionRecord, ImprovementEntry, InboxData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
 import { DEFAULT_INBOX_DATA, migrateOkrConditions, migrateOkrEntries, migrateOkrRecordCards } from '../datatypes/domain';
 import type { WorkbenchData } from '../datatypes/card';
 import { defaultWorkbenchData } from '../datatypes/card';
@@ -328,10 +328,49 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
                 ? { status: r.status }
                 : {}),
             ...(parseTaskHabit(r.habit) ? { habit: parseTaskHabit(r.habit)! } : {}),
+            ...(parseTaskBasket(r.basket) ? { basket: parseTaskBasket(r.basket)! } : {}),
+            ...(parseTaskImprovements(r.improvements) ? { improvements: parseTaskImprovements(r.improvements)! } : {}),
+            ...(typeof r.fileDir === 'string' && r.fileDir ? { fileDir: r.fileDir } : {}),
+            ...(r.fileTimestamp === true ? { fileTimestamp: true } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }
     return tasks;
+}
+
+/** 解析任务收集篮子条目（无有效条目时返回 null） */
+function parseTaskBasket(raw: unknown): BasketItem[] | null {
+    if (!Array.isArray(raw)) return null;
+    const items: BasketItem[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== 'object') continue;
+        const r = entry as Record<string, unknown>;
+        if (typeof r.id !== 'string' || typeof r.text !== 'string') continue;
+        items.push({
+            id: r.id,
+            text: r.text,
+            createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+        });
+    }
+    return items.length > 0 ? items : null;
+}
+
+/** 解析任务待办 / 改进条目（无有效条目时返回 null） */
+function parseTaskImprovements(raw: unknown): ImprovementEntry[] | null {
+    if (!Array.isArray(raw)) return null;
+    const items: ImprovementEntry[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== 'object') continue;
+        const r = entry as Record<string, unknown>;
+        if (typeof r.id !== 'string' || typeof r.text !== 'string') continue;
+        items.push({
+            id: r.id,
+            text: r.text,
+            ...(r.done === true ? { done: true } : {}),
+            createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+        });
+    }
+    return items.length > 0 ? items : null;
 }
 
 /** 解析任务习惯设置（非法数据返回 null） */
