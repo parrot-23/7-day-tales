@@ -1,6 +1,6 @@
 // 计划排布领域仓库：管理界面视图「计划面板」周视图上任务到天列的排布数据。
 // 通过 baseRepo 拿到 planAssignmentData 引用，写操作后由调用方触发 baseRepo.saveAll()。
-import type { PlanAssignment, PlanAssignmentData } from '../datatypes/plan-assignment';
+import type { PlanAssignment, PlanAssignmentData, WeekAssignment } from '../datatypes/plan-assignment';
 import type { BaseRepo } from './base-repo';
 
 export class PlanAssignmentRepo {
@@ -33,6 +33,31 @@ export class PlanAssignmentRepo {
         const assignment: PlanAssignment = { weekKey, weekday, taskId, createdAt: Date.now() };
         this.data.assignments.push(assignment);
         return assignment;
+    }
+
+    /** 某一周已整周排布的任务（按排布顺序） */
+    weekAssignments(weekKey: string): WeekAssignment[] {
+        return this.data.weekAssignments.filter((assignment) => assignment.weekKey === weekKey);
+    }
+
+    /** 把任务整周排布到某一周；重复排布同一任务时直接返回已有记录 */
+    addWeek(weekKey: string, taskId: string): WeekAssignment {
+        const existing = this.data.weekAssignments.find(
+            (assignment) => assignment.weekKey === weekKey && assignment.taskId === taskId,
+        );
+        if (existing) return existing;
+        const assignment: WeekAssignment = { weekKey, taskId, createdAt: Date.now() };
+        this.data.weekAssignments.push(assignment);
+        return assignment;
+    }
+
+    /** 移除某一周已整周排布的任务；不存在时忽略 */
+    removeWeek(weekKey: string, taskId: string): void {
+        const assignments = this.data.weekAssignments;
+        const index = assignments.findIndex(
+            (assignment) => assignment.weekKey === weekKey && assignment.taskId === taskId,
+        );
+        if (index >= 0) assignments.splice(index, 1);
     }
 
     /** 移除某一天已排布的任务；不存在时忽略 */

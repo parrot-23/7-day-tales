@@ -15,8 +15,8 @@ import { defaultWorkbenchData } from '../datatypes/card';
 import type { GtdData } from '../datatypes/gtd';
 import { defaultGtdData } from '../datatypes/gtd';
 import type { PlanAssignmentData } from '../datatypes/plan-assignment';
-import type { BottomItem } from '../datatypes/bottom-item';
-import type { PrototypeTask, TaskHabit } from '../datatypes/prototype-task';
+import type { InterfaceLayoutData } from '../datatypes/interface-layout';
+import type { PrototypeTask, TaskHabit, TaskWeekGoal } from '../datatypes/prototype-task';
 import type { TaskExecutionData } from '../datatypes/task-execution';
 import type { TimeBoxData } from '../datatypes/timebox-data';
 import { t } from '../i18n';
@@ -44,6 +44,8 @@ export interface PluginData {
     timeBoxData: TimeBoxData;
     /** 计划排布数据（界面视图计划面板周视图的任务到天列排布） */
     planAssignmentData: PlanAssignmentData;
+    /** 界面视图卡片布局（编辑模式下被移除的卡片） */
+    interfaceLayoutData: InterfaceLayoutData;
     /** 任务执行记录（界面视图「今天任务」计时产生） */
     taskExecutionData: TaskExecutionData;
     /** 原型任务描述 / 分类转换版本（1 = 已从旧任务转换） */
@@ -52,8 +54,6 @@ export interface PluginData {
     recordEntries: OkrRecordEntry[];
     /** 当前进行中的任务（界面视图「今天任务」计时，随主数据一起持久化） */
     runningTask?: RunningTask;
-    /** 界面视图底部方框的条目（文件夹等） */
-    bottomItems: BottomItem[];
 }
 
 /**
@@ -104,11 +104,11 @@ export class BaseRepo {
             prototypeTasks: d.prototypeTasks,
             timeBoxData: d.timeBoxData,
             planAssignmentData: d.planAssignmentData,
+            interfaceLayoutData: d.interfaceLayoutData,
             taskExecutionData: d.taskExecutionData,
             prototypeTaskMetaMigrationDone: d.prototypeTaskMetaMigrationDone,
             recordEntries: d.recordEntries,
             runningTask: d.runningTask,
-            bottomItems: d.bottomItems,
             cacheDirName: this.cacheDirName,
             cacheEnabled: this.cacheEnabled,
             helpDismissed: this.helpDismissed,
@@ -248,6 +248,8 @@ export class BaseRepo {
         const initialTimeBoxData = parseTimeBoxData(savedData.timeBoxData);
         // 计划排布数据（兼容旧数据：默认空）
         const initialPlanAssignmentData = parsePlanAssignmentData(savedData.planAssignmentData);
+        // 界面视图卡片布局（兼容旧数据：默认全部显示）
+        const initialInterfaceLayoutData = parseInterfaceLayoutData(savedData.interfaceLayoutData);
         // 任务执行记录（兼容旧数据：默认空）
         const initialTaskExecutionData = parseTaskExecutionData(savedData.taskExecutionData);
         // 原型任务描述 / 分类转换版本（兼容旧数据：默认 0）
@@ -274,8 +276,6 @@ export class BaseRepo {
         const initialOkrEntries = migrateOkrEntries(savedData.recordEntries ?? savedData.okrEntries);
         // 当前进行中的任务（兼容旧数据：默认无）
         const initialRunningTask = parseRunningTask(savedData.runningTask);
-        // 底部方框条目（兼容旧数据：默认空）
-        const initialBottomItems = parseBottomItems(savedData.bottomItems);
 
         // 存入仓库实例，作为唯一数据源（视图重建时从这里读取最新数据）
         this.data = {
@@ -291,11 +291,11 @@ export class BaseRepo {
             prototypeTasks: initialPrototypeTasks,
             timeBoxData: initialTimeBoxData,
             planAssignmentData: initialPlanAssignmentData,
+            interfaceLayoutData: initialInterfaceLayoutData,
             taskExecutionData: initialTaskExecutionData,
             prototypeTaskMetaMigrationDone: prototypeTaskMetaMigrated ? 1 : initialPrototypeTaskMetaVersion,
             recordEntries: initialOkrEntries,
             runningTask: initialRunningTask,
-            bottomItems: initialBottomItems,
         };
 
         // 转换后立即落盘，避免下次启动重复执行
@@ -332,10 +332,27 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
             ...(parseTaskImprovements(r.improvements) ? { improvements: parseTaskImprovements(r.improvements)! } : {}),
             ...(typeof r.fileDir === 'string' && r.fileDir ? { fileDir: r.fileDir } : {}),
             ...(r.fileTimestamp === true ? { fileTimestamp: true } : {}),
+            ...(parseTaskWeekGoals(r.weekGoals) ? { weekGoals: parseTaskWeekGoals(r.weekGoals)! } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }
     return tasks;
+}
+
+/** 解析任务周目标（无有效条目时返回 null） */
+function parseTaskWeekGoals(raw: unknown): TaskWeekGoal[] | null {
+    if (!Array.isArray(raw)) return null;
+    const goals: TaskWeekGoal[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== 'object') continue;
+        const r = entry as Record<string, unknown>;
+        if (typeof r.weekKey !== 'string' || !r.weekKey) continue;
+        const ids = Array.isArray(r.improvementIds)
+            ? r.improvementIds.filter((id): id is string => typeof id === 'string')
+            : [];
+        goals.push({ weekKey: r.weekKey, improvementIds: ids });
+    }
+    return goals.length > 0 ? goals : null;
 }
 
 /** 解析任务收集篮子条目（无有效条目时返回 null） */
@@ -406,9 +423,10 @@ function parseTimeBoxData(raw: unknown): TimeBoxData {
 /** 解析持久化的计划排布数据（兼容旧数据 / 非法数据：返回空） */
 function parsePlanAssignmentData(raw: unknown): PlanAssignmentData {
     const assignments: PlanAssignmentData['assignments'] = [];
-    if (!raw || typeof raw !== 'object') return { assignments };
+    const weekAssignments: PlanAssignmentData['weekAssignments'] = [];
+    if (!raw || typeof raw !== 'object') return { assignments, weekAssignments };
     const rawAssignments = (raw as { assignments?: unknown }).assignments;
-    if (!Array.isArray(rawAssignments)) return { assignments };
+    if (!Array.isArray(rawAssignments)) return { assignments, weekAssignments };
     for (const item of rawAssignments) {
         if (!item || typeof item !== 'object') continue;
         const r = item as Record<string, unknown>;
@@ -422,7 +440,43 @@ function parsePlanAssignmentData(raw: unknown): PlanAssignmentData {
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }
-    return { assignments };
+    const rawWeekAssignments = (raw as { weekAssignments?: unknown }).weekAssignments;
+    if (Array.isArray(rawWeekAssignments)) {
+        for (const item of rawWeekAssignments) {
+            if (!item || typeof item !== 'object') continue;
+            const r = item as Record<string, unknown>;
+            if (typeof r.weekKey !== 'string' || typeof r.taskId !== 'string') continue;
+            weekAssignments.push({
+                weekKey: r.weekKey,
+                taskId: r.taskId,
+                createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+            });
+        }
+    }
+    return { assignments, weekAssignments };
+}
+
+/** 解析界面视图卡片布局（兼容旧数据 / 非法数据：默认全部显示、无保存位置） */
+function parseInterfaceLayoutData(raw: unknown): InterfaceLayoutData {
+    const hiddenCards: string[] = [];
+    const cardPositions: InterfaceLayoutData['cardPositions'] = {};
+    if (!raw || typeof raw !== 'object') return { hiddenCards, cardPositions };
+    const rawHidden = (raw as { hiddenCards?: unknown }).hiddenCards;
+    if (Array.isArray(rawHidden)) {
+        for (const id of rawHidden) {
+            if (typeof id === 'string' && !hiddenCards.includes(id)) hiddenCards.push(id);
+        }
+    }
+    const rawPositions = (raw as { cardPositions?: unknown }).cardPositions;
+    if (rawPositions && typeof rawPositions === 'object') {
+        for (const [id, value] of Object.entries(rawPositions)) {
+            if (!value || typeof value !== 'object') continue;
+            const position = value as Record<string, unknown>;
+            if (typeof position.left !== 'number' || typeof position.top !== 'number') continue;
+            cardPositions[id] = { left: position.left, top: position.top };
+        }
+    }
+    return { hiddenCards, cardPositions };
 }
 
 /** 解析持久化的任务执行记录（兼容旧数据 / 非法数据：返回空） */
@@ -456,23 +510,6 @@ function parseTaskExecutionData(raw: unknown): TaskExecutionData {
         }
     }
     return { records, extraTasksByDay };
-}
-
-/** 解析底部方框条目（兼容旧数据 / 非法数据：返回空数组） */
-function parseBottomItems(raw: unknown): BottomItem[] {
-    if (!Array.isArray(raw)) return [];
-    const items: BottomItem[] = [];
-    for (const item of raw) {
-        if (!item || typeof item !== 'object') continue;
-        const r = item as Record<string, unknown>;
-        if (r.type !== 'folder') continue;
-        const id = typeof r.id === 'string' ? r.id : '';
-        const path = typeof r.path === 'string' ? r.path : '';
-        const name = typeof r.name === 'string' ? r.name : '';
-        if (!id || !path) continue;
-        items.push({ id, type: 'folder', path, name: name || path });
-    }
-    return items;
 }
 
 /** 解析持久化的进行中任务（兼容旧数据 / 非法数据：返回 undefined） */

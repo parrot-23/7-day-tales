@@ -13,7 +13,20 @@ export interface PlanAssignment {
     createdAt: number;
 }
 
+/** 整周排布：某年某周整体排布的任务（年视图周格子） */
+export interface WeekAssignment {
+    /** 周键，如 2026-W43 */
+    weekKey: string;
+    /** 原型任务 id */
+    taskId: string;
+    /** 排布时间戳 */
+    createdAt: number;
+}
+
 /** 计划排布数据 */
 export interface PlanAssignmentData {
+    /** 按天排布（周视图） */
     assignments: PlanAssignment[];
+    /** 按周排布（年视图），旧数据缺失时视为空 */
+    weekAssignments: WeekAssignment[];
 }

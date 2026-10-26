@@ -84,6 +84,14 @@ export class TaskDetailPanel extends FloatingPanel {
     private settingPanelEl!: HTMLElement;
     /** 当前激活的设置面板类型 */
     private settingActive: 'form' | 'okr' | null = null;
+    /** 右侧容器（切换左侧选中任务时整体重建） */
+    private rightEl!: HTMLElement;
+    /** 当前选中的归属分区索引（切换任务后保持不变） */
+    private currentSection = 0;
+    /** 面板打开时的根任务 id（左侧任务树始终以它为根，不随右侧切换变化） */
+    private rootTaskId: string;
+    /** 当前进行中的内联编辑取消函数（切换任务时先调用以放弃编辑） */
+    private activeInlineEditAbort: (() => void) | null = null;
     /** 拖动结束后抑制一次点击，避免误选中 */
     private suppressTreeClick = false;
 
@@ -99,6 +107,7 @@ export class TaskDetailPanel extends FloatingPanel {
         this.task = options.task;
         this.tasks = options.tasks ?? [];
         this.selectedTaskId = options.task.id;
+        this.rootTaskId = options.task.id;
         this.renderContent();
     }
 
@@ -182,8 +191,17 @@ export class TaskDetailPanel extends FloatingPanel {
             () => this.toggleSetting('okr'),
         );
 
-        // 右侧：任务信息（名称 / 分类 / 描述）+ 归属分区选项卡
-        const right = body.createDiv({ cls: 'task-detail-right' });
+        // 右侧：任务信息（名称 / 分类 / 描述）+ 归属分区选项卡（切换左侧选中任务时整体重建）
+        this.rightEl = body.createDiv({ cls: 'task-detail-right' });
+        this.renderRightPane();
+    }
+
+    /** 重建右侧内容：任务信息行 + 归属分区选项卡 + 底部设置面板 */
+    private renderRightPane(): void {
+        const right = this.rightEl;
+        right.empty();
+        this.tabs = [];
+        this.currentSection = Math.min(this.currentSection, SECTIONS.length - 1);
 
         // 第一行：任务名称 + 编辑图标，右侧颜色圆点 + 分类名称
         const head = right.createDiv({ cls: 'task-detail-head' });
@@ -273,7 +291,7 @@ export class TaskDetailPanel extends FloatingPanel {
             if (section.labelKey === 'panel.targetFile') this.renderFiles(sectionBody);
         }
 
-        this.switchSection(0);
+        this.switchSection(this.currentSection);
         // 滚轮切换：在右侧内容区滚动时左右切换选项卡
         this.sectionsEl.addEventListener('wheel', (evt) => this.handleWheel(evt), { passive: false });
         this.renderSettingPanel();
@@ -355,6 +373,7 @@ export class TaskDetailPanel extends FloatingPanel {
         const finish = (commit: boolean): void => {
             if (finished) return;
             finished = true;
+            this.activeInlineEditAbort = null;
             hostEl.removeClass('is-editing');
             const next = input.value.trim();
             const accepted = commit && (next.length > 0 || options.allowEmpty);
@@ -374,6 +393,7 @@ export class TaskDetailPanel extends FloatingPanel {
             if (evt.key === 'Escape') finish(false);
         });
         input.addEventListener('blur', () => finish(true));
+        this.activeInlineEditAbort = () => finish(false);
     }
 
     /** 就地编辑分类：分类名称位置换成下拉框，选择后保存；Esc 取消 */
@@ -399,6 +419,7 @@ export class TaskDetailPanel extends FloatingPanel {
         const finish = (commit: boolean): void => {
             if (finished) return;
             finished = true;
+            this.activeInlineEditAbort = null;
             const value = select.value;
             const category = categories.find((item) => item.id === value);
             nameEl.empty();
@@ -419,6 +440,7 @@ export class TaskDetailPanel extends FloatingPanel {
         select.addEventListener('keydown', (evt) => {
             if (evt.key === 'Escape') finish(false);
         });
+        this.activeInlineEditAbort = () => finish(false);
     }
 
     /** 各分区条目数量（收集篮子为总数，待办清单为未完成数） */
@@ -810,6 +832,7 @@ export class TaskDetailPanel extends FloatingPanel {
 
     /** 切换选项卡：只显示对应分区 */
     private switchSection(index: number): void {
+        this.currentSection = index;
         const sections = Array.from(this.sectionsEl.children) as HTMLElement[];
         this.tabs.forEach((tab, i) => tab.toggleClass('is-active', i === index));
         sections.forEach((section, i) => section.toggleClass('is-active', i === index));
@@ -818,12 +841,12 @@ export class TaskDetailPanel extends FloatingPanel {
     /** 渲染后代任务树 */
     private renderTree(): void {
         this.treeEl.empty();
-        const hasChild = this.tasks.some((task) => task.parentId === this.task.id);
+        const hasChild = this.tasks.some((task) => task.parentId === this.rootTaskId);
         if (!hasChild) {
             this.treeEl.createDiv({ cls: 'task-detail-tree-empty', text: t('panel.noSubTask') });
             return;
         }
-        this.renderTreeNodes(this.treeEl, this.task.id, 0);
+        this.renderTreeNodes(this.treeEl, this.rootTaskId, 0);
     }
 
     /** 递归渲染某一层的子任务 */
@@ -890,7 +913,7 @@ export class TaskDetailPanel extends FloatingPanel {
             // 落点计算：{ beforeId, placeAfter, parentId, depth }
             const computeDrop = (clientX: number, clientY: number) => {
                 if (targets.length === 0) {
-                    return { beforeId: undefined as string | undefined, parentId: this.task.id, depth: 0 };
+                    return { beforeId: undefined as string | undefined, parentId: this.rootTaskId, depth: 0 };
                 }
                 let refEl: HTMLElement | undefined;
                 let placeAfter = false;
@@ -919,7 +942,7 @@ export class TaskDetailPanel extends FloatingPanel {
                 let depth = Math.max(0, Math.min(Math.round(offset / TREE_DEPTH_INDENT), refDepth + 1));
 
                 // 父级：目标行之前最近的 depth-1 层任务；找不到则挂回当前根任务
-                let parentId = this.task.id;
+                let parentId = this.rootTaskId;
                 if (depth > 0) {
                     const refIndex = targets.indexOf(refEl);
                     let found = false;
@@ -1024,6 +1047,18 @@ export class TaskDetailPanel extends FloatingPanel {
             const row = el as HTMLElement;
             row.toggleClass('is-selected', row.dataset.taskId === taskId);
         });
+        const next = this.tasks.find((item) => item.id === taskId);
+        if (next && next.id !== this.task.id) {
+            // 右侧整体切换为选中任务：名称 / 分类 / 描述 / 归属分区，未提交的内联编辑先行放弃
+            this.activeInlineEditAbort?.();
+            this.task = next;
+            this.setTitle(next.name);
+            this.basketSelectMode = false;
+            this.selectedBasketIds.clear();
+            this.fileCreateMode = false;
+            this.renderRightPane();
+            return;
+        }
         this.renderSettingPanel();
     }
 

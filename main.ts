@@ -14,7 +14,6 @@ import { PrototypeTaskRepo } from './src/repos/prototype-task-repo';
 import { TaskExecutionRepo } from './src/repos/task-execution-repo';
 import { TimeBoxRepo } from './src/repos/timebox-repo';
 import { PlanAssignmentRepo } from './src/repos/plan-assignment-repo';
-import { BottomItemRepo } from './src/repos/bottom-item-repo';
 import { initI18n, t, getLangDebugInfo } from './src/i18n';
 import { getCurrentWeekKey } from './src/shared/plan-data';
 import { initLogger, log } from './src/shared/logger';
@@ -59,9 +58,6 @@ export default class ParrotPlanPlugin extends Plugin {
 
     /** 计划排布领域仓库（界面视图计划面板周视图的任务排布） */
     planAssignmentRepo: PlanAssignmentRepo;
-
-    /** 底部方框条目领域仓库（界面视图底部方框的文件夹） */
-    bottomItemRepo: BottomItemRepo;
 
     /** 状态栏「进行中任务」显示（插件加载即创建，不依赖主视图是否打开） */
     private statusBar?: RunningTaskStatusBar;
@@ -148,7 +144,6 @@ export default class ParrotPlanPlugin extends Plugin {
         this.timeBoxRepo = new TimeBoxRepo(this.repo);
         this.taskExecutionRepo = new TaskExecutionRepo(this.repo);
         this.planAssignmentRepo = new PlanAssignmentRepo(this.repo);
-        this.bottomItemRepo = new BottomItemRepo(this.repo);
 
         // 跨周继承：新的一周还没有排布时，自动复制最近一周的时间盒数据
         if (this.timeBoxRepo.ensureWeekInitialized(getCurrentWeekKey())) {

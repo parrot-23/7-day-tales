@@ -16,6 +16,14 @@ export interface TaskHabit {
     weekdays: number[];
 }
 
+/** 周目标：某一周从该任务待办清单中选中的条目 */
+export interface TaskWeekGoal {
+    /** 周键，如 2026-W43 */
+    weekKey: string;
+    /** 选为周目标的待办条目 id（文本始终读 improvements，保持联动） */
+    improvementIds: string[];
+}
+
 /** 原型任务 */
 export interface PrototypeTask {
     id: string;
@@ -41,6 +49,8 @@ export interface PrototypeTask {
     fileTimestamp?: boolean;
     /** 习惯设置（可选，未设置时视为未启用） */
     habit?: TaskHabit;
+    /** 周目标（按周键记录选中的待办条目 id，可选） */
+    weekGoals?: TaskWeekGoal[];
     /** 创建时间戳 */
     createdAt: number;
 }
