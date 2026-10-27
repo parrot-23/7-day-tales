@@ -21,6 +21,26 @@ export interface ThemeMountContext {
     pluginDir: string;
 }
 
+/** 主题颜色令牌：控制卡片与文字的配色。未设置时回退 Obsidian 默认变量。 */
+export interface ThemeColors {
+    /** 卡片背景色 */
+    cardBackground?: string;
+    /** 卡片边框色 */
+    cardBorder?: string;
+    /** 主要文字色 */
+    textPrimary?: string;
+    /** 次要文字色 */
+    textSecondary?: string;
+    /** 悬停高亮背景色（卡片内条目 / 按钮 hover） */
+    hoverBackground?: string;
+    /** 按钮背景色 */
+    interactiveBackground?: string;
+    /** 按钮悬停背景色 */
+    interactiveHover?: string;
+    /** 控件背景色（编辑 / 添加卡片 / 主题等浮动按钮，映射 --background-primary） */
+    controlBackground?: string;
+}
+
 /** 主题定义 */
 export interface ThemeDefinition {
     /** 主题唯一标识 */
@@ -31,6 +51,8 @@ export interface ThemeDefinition {
     assets: ThemeAsset[];
     /** 缩略图占位文案 key（无图片素材时显示，如空白主题） */
     noteKey?: keyof I18nMessages;
+    /** 卡片与文字的配色令牌（未设置时回退 Obsidian 默认） */
+    colors?: ThemeColors;
     /** 在容器内绘制代码层（星空 / 光晕 / 星云），可返回清理函数用于停止动画 */
     mount: (container: HTMLElement, ctx: ThemeMountContext) => (() => void) | void;
 }

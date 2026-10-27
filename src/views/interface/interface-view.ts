@@ -30,6 +30,7 @@ import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { ThemeRepo } from '../../repos/theme-repo';
 import { THEME_DEFINITIONS, getThemeDefinition } from '../../themes/registry';
+import { applyThemeColors, setCurrentThemeColors } from '../../themes/theme-colors';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 
 /**
@@ -437,13 +438,19 @@ export class InterfaceView {
         this.updateEditButton();
     }
 
-    /** 应用当前主题：仅作用于界面视图背景（图片素材 + 代码绘制层） */
+    /** 应用当前主题：注入颜色令牌并同步到卡片与所有浮动面板 */
     private applyTheme(container: HTMLElement): void {
         // 清理上一次可能残留的主题类
         for (const definition of THEME_DEFINITIONS) container.removeClass(`is-theme-${definition.id}`);
+
         const theme = getThemeDefinition(this.themeRepo.currentThemeId);
+        // 注入主题颜色令牌（--sdt-* 与 Obsidian 原生变量），并同步到所有浮动面板
+        applyThemeColors(container, theme?.colors);
+        setCurrentThemeColors(theme?.colors);
+
         if (!theme) return;
         container.addClass(`is-theme-${theme.id}`);
+
         const dispose = theme.mount(container, { app: this.app, pluginDir: this.pluginDir });
         this.themeDispose = typeof dispose === 'function' ? dispose : null;
     }

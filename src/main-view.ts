@@ -273,6 +273,16 @@ export class MainView extends ItemView {
         // 内容区
         this.contentRoot = root.createDiv({ cls: 'parrot-plan-content' });
         await this.renderContent();
+
+        // 插件视图为活动标签时隐藏底部状态栏，切换标签时同步
+        this.registerEvent(this.app.workspace.on('active-leaf-change', () => this.syncStatusBar()));
+        this.syncStatusBar();
+    }
+
+    /** 当前活动标签是本视图时隐藏 Obsidian 底部状态栏，否则恢复 */
+    private syncStatusBar(): void {
+        const isActive = this.app.workspace.activeLeaf?.view === this;
+        document.body.toggleClass('is-parrot-plan-active', isActive === true);
     }
 
     /** 高亮「预览中」的一级按钮：仅加蓝色边框（不改文字/背景） */
@@ -497,6 +507,7 @@ export class MainView extends ItemView {
             this.runningCardTimer = undefined;
         }
         // 状态栏元素由插件持有（关闭视图不销毁），无需在此处理
+        document.body.removeClass('is-parrot-plan-active');
         this.containerEl.empty();
     }
 }

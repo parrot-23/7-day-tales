@@ -1,5 +1,7 @@
 // 公共悬浮面板：页面中一张可拖动的大卡片（非弹窗），右上角 X 按钮关闭。
 // 与视图解耦，可挂在任意容器（默认 document.body）上复用。
+import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../themes/theme-colors';
+import type { ThemeColors } from '../themes/theme-definition';
 
 /** 悬浮面板配置 */
 export interface FloatingPanelOptions {
@@ -89,6 +91,10 @@ export class FloatingPanel {
         this.headerEl.addEventListener('pointermove', this.handlePointerMove);
         this.headerEl.addEventListener('pointerup', this.handlePointerUp);
         this.headerEl.addEventListener('pointercancel', this.handlePointerUp);
+
+        // 注册主题颜色消费者：构造时应用当前主题，主题切换时自动刷新
+        registerThemeColorsConsumer(this);
+        applyThemeColors(this.root, getCurrentThemeColors());
     }
 
     /** 面板内容容器（可直接追加内容） */
@@ -145,10 +151,16 @@ export class FloatingPanel {
 
     /** 销毁面板（从 DOM 移除，不再触发关闭回调） */
     destroy(): void {
+        unregisterThemeColorsConsumer(this);
         document.removeEventListener('keydown', this.onKeyDown);
         document.removeEventListener('mousedown', this.onOutsidePointerDown, true);
         this.opened = false;
         this.root.remove();
+    }
+
+    /** 应用主题颜色变量到面板根节点（供主题系统调用） */
+    applyThemeColors(colors?: ThemeColors): void {
+        applyThemeColors(this.root, colors);
     }
 
     /** 初始居中 */
