@@ -39,6 +39,8 @@ export const zh = {
     'interface.todayStartTask': '开始任务',
     'interface.todayStartAt': '开始时间 {time}',
     'interface.todayRecordTask': '记录任务',
+    'interface.todayCompleteTask': '完成今日计划任务',
+    'interface.todayDeleteExtra': '删除额外任务',
     'interface.todayAddTaskButton': '新增任务',
     'interface.todayEndTask': '结束任务',
     'interface.todayAbandonTask': '放弃任务',
@@ -64,6 +66,7 @@ export const zh = {
     'interface.editMode': '编辑',
     'interface.editModeDone': '完成',
     'interface.addCard': '添加',
+    'interface.theme': '主题',
     'interface.cardPickerTitle': '添加卡片',
     'interface.cardDate': '今日日期',
     'interface.cardNav': '垂直功能栏',
@@ -181,6 +184,15 @@ export const zh = {
     'panel.recordDurationUnit': '分钟',
     'panel.recordMinutes': '{minutes} 分钟',
     'panel.recordInvalidRange': '开始时间与结束时间不能相同',
+
+    // 主题管理面板
+    'theme.panelTitle': '主题管理',
+    'theme.menuOfficial': '官方',
+    'theme.menuLocal': '本地',
+    'theme.contentPlaceholder': '内容待实现',
+    'theme.nameDeepsky': '深空',
+    'theme.apply': '应用',
+    'theme.inUse': '使用中',
 
     // 主导航（tab 按钮组）
     'nav.interface': '界面',

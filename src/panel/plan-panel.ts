@@ -68,10 +68,10 @@ export class PlanPanel extends FloatingPanel {
     private weekTabEl!: HTMLElement;
     /** 左侧底部工具栏的「任务信息」按钮 */
     private infoButtonEl!: HTMLButtonElement;
-    /** 左侧底部工具栏的「设置习惯」按钮 */
-    private habitButtonEl!: HTMLButtonElement;
-    /** 左侧底部工具栏的「目标」按钮 */
-    private goalButtonEl!: HTMLButtonElement;
+    /** 左侧底部工具栏的「设置习惯」按钮（仅在周视图渲染） */
+    private habitButtonEl: HTMLButtonElement | null = null;
+    /** 年视图日期切换行右侧的「目标」按钮 */
+    private goalButtonEl: HTMLButtonElement | null = null;
     /** 右侧底部的任务信息面板 */
     private infoPanelEl!: HTMLElement;
     /** 右侧底部的习惯设置面板 */
@@ -158,20 +158,6 @@ export class PlanPanel extends FloatingPanel {
         setIcon(infoIconEl, 'info');
         this.infoButtonEl.createSpan({ cls: 'plan-toolbar-btn-text', text: t('panel.planTaskInfo') });
         this.infoButtonEl.addEventListener('click', () => this.toggleInfoPanel());
-
-        // 左侧底部工具栏：「设置习惯」开关
-        this.habitButtonEl = toolbar.createEl('button', { cls: 'plan-toolbar-btn' });
-        const habitIconEl = this.habitButtonEl.createSpan({ cls: 'plan-toolbar-btn-icon' });
-        setIcon(habitIconEl, 'repeat');
-        this.habitButtonEl.createSpan({ cls: 'plan-toolbar-btn-text', text: t('panel.planSetHabit') });
-        this.habitButtonEl.addEventListener('click', () => this.toggleHabitPanel());
-
-        // 左侧底部工具栏：「目标」开关
-        this.goalButtonEl = toolbar.createEl('button', { cls: 'plan-toolbar-btn' });
-        const goalIconEl = this.goalButtonEl.createSpan({ cls: 'plan-toolbar-btn-icon' });
-        setIcon(goalIconEl, 'target');
-        this.goalButtonEl.createSpan({ cls: 'plan-toolbar-btn-text', text: t('panel.planWeekGoal') });
-        this.goalButtonEl.addEventListener('click', () => this.toggleGoalPanel());
 
         // 右侧：年 / 周选项卡（图标 + 文字）+ 对应内容
         const right = this.body.createDiv({ cls: 'plan-right' });
@@ -359,7 +345,7 @@ export class PlanPanel extends FloatingPanel {
             this.setInfoActive(false);
             this.setGoalActive(false);
         }
-        this.habitButtonEl.toggleClass('is-active', this.habitActive);
+        this.habitButtonEl?.toggleClass('is-active', this.habitActive);
         this.refreshTreeTrailingIcons();
         this.renderPane();
         // 激活时若尚未选中任务，默认选中当前根任务，保证习惯面板一定可见
@@ -381,7 +367,7 @@ export class PlanPanel extends FloatingPanel {
     /** 设置习惯面板激活状态（不触发选中逻辑） */
     private setHabitActive(active: boolean): void {
         this.habitActive = active;
-        this.habitButtonEl.toggleClass('is-active', active);
+        this.habitButtonEl?.toggleClass('is-active', active);
         this.refreshTreeTrailingIcons();
         this.renderPane();
         this.renderHabitPanel();
@@ -395,7 +381,7 @@ export class PlanPanel extends FloatingPanel {
             this.setInfoActive(false);
             this.setHabitActive(false);
         }
-        this.goalButtonEl.toggleClass('is-active', this.goalActive);
+        this.goalButtonEl?.toggleClass('is-active', this.goalActive);
         // 目标面板决定年视图事件卡片是否高亮，以及任务条目末尾是否显示目标数量
         this.refreshYearChipHighlight();
         this.refreshTreeTrailingIcons();
@@ -410,7 +396,7 @@ export class PlanPanel extends FloatingPanel {
     /** 设置目标面板激活状态（不触发选中逻辑） */
     private setGoalActive(active: boolean): void {
         this.goalActive = active;
-        this.goalButtonEl.toggleClass('is-active', active);
+        this.goalButtonEl?.toggleClass('is-active', active);
         this.refreshYearChipHighlight();
         this.refreshTreeTrailingIcons();
         this.renderGoalPanel();
@@ -483,7 +469,7 @@ export class PlanPanel extends FloatingPanel {
             ? this.panelOptions.getTasks().find((item) => item.id === this.selectedTaskId)
             : undefined;
         this.habitPanelEl.empty();
-        const visible = this.habitActive && !!task;
+        const visible = this.habitActive && this.tab === 'week' && !!task;
         this.habitPanelEl.toggleClass('is-hidden', !visible);
         if (!visible || !task) return;
 
@@ -557,7 +543,7 @@ export class PlanPanel extends FloatingPanel {
             ? this.panelOptions.getTasks().find((item) => item.id === this.selectedTaskId)
             : undefined;
         this.goalPanelEl.empty();
-        const visible = this.goalActive && !!task;
+        const visible = this.goalActive && this.tab === 'year' && !!task;
         this.goalPanelEl.toggleClass('is-hidden', !visible);
         if (!visible || !task) return;
 
@@ -697,6 +683,8 @@ export class PlanPanel extends FloatingPanel {
         this.weekTabEl.toggleClass('is-active', tab === 'week');
         this.renderPane();
         this.renderGoalPanel();
+        this.renderHabitPanel();
+        this.refreshYearChipHighlight();
     }
 
     private renderPane(): void {
@@ -724,6 +712,8 @@ export class PlanPanel extends FloatingPanel {
             this.renderPane();
             this.renderGoalPanel();
         });
+        // 日期切换旁：「目标」开关（仅年视图）
+        this.goalButtonEl = this.createNavToggle(nav, 'target', t('panel.planWeekGoal'), this.goalActive, () => this.toggleGoalPanel());
 
         const current = parseWeekKey(getCurrentWeekKey());
         const tasks = new Map(this.panelOptions.getTasks().map((task) => [task.id, task]));
@@ -780,7 +770,7 @@ export class PlanPanel extends FloatingPanel {
 
     /** 年历事件卡片是否需要高亮：信息 / 目标面板激活，且该卡片属于左侧选中任务、位于选中的周 */
     private isYearChipHighlighted(week: number, taskId: string): boolean {
-        return (this.infoActive || this.goalActive)
+        return (this.infoActive || (this.goalActive && this.tab === 'year'))
             && this.selectedYearWeek === week
             && taskId === this.selectedTaskId;
     }
@@ -826,6 +816,8 @@ export class PlanPanel extends FloatingPanel {
             this.renderPane();
             this.renderGoalPanel();
         });
+        // 日期切换旁：「习惯」开关（仅周视图）
+        this.habitButtonEl = this.createNavToggle(nav, 'repeat', t('panel.planSetHabit'), this.habitActive, () => this.toggleHabitPanel());
 
         // 与周计划视图一致：表头一行 7 格，表体 7 列共用分隔线
         const grid = this.paneEl.createDiv({ cls: 'plan-week-grid' });
@@ -1017,5 +1009,21 @@ export class PlanPanel extends FloatingPanel {
     private createNavButton(container: HTMLElement, text: string, onClick: () => void): void {
         const button = container.createEl('button', { cls: 'plan-nav-btn', text });
         button.addEventListener('click', onClick);
+    }
+
+    /** 日期切换行右侧的开关按钮（图标 + 文字，带激活态） */
+    private createNavToggle(
+        container: HTMLElement,
+        icon: string,
+        label: string,
+        active: boolean,
+        onClick: () => void,
+    ): HTMLButtonElement {
+        const button = container.createEl('button', { cls: 'plan-toolbar-btn plan-nav-toggle', attr: { type: 'button' } });
+        setIcon(button.createSpan({ cls: 'plan-toolbar-btn-icon' }), icon);
+        button.createSpan({ cls: 'plan-toolbar-btn-text', text: label });
+        button.toggleClass('is-active', active);
+        button.addEventListener('click', onClick);
+        return button;
     }
 }

@@ -234,7 +234,10 @@ export class TodayTasksCard {
             list.createDiv({ cls: 'interface-today-tasks-empty', text: t('interface.bottomEmpty') });
         } else {
             for (const task of tasks) {
+                const dayKey = makeDayKey(this.selectedDate);
+                const completed = this.taskExecutionRepo.isTaskCompleted(dayKey, task.id);
                 const row = list.createDiv({ cls: 'interface-today-tasks-item' });
+                row.toggleClass('is-done', completed);
                 row.title = task.name;
                 row.addEventListener('click', () => this.options.onOpenTaskBoard?.(task.id));
                 row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
@@ -242,7 +245,12 @@ export class TodayTasksCard {
                     cls: 'interface-today-tasks-item-badge',
                     text: task.type === 'main' ? t('panel.mainTaskBadge') : t('panel.sideTaskBadge'),
                 });
-                // 悬停时在条目末尾显示「开始 / 记录」图标；过去日期或计时中隐藏「开始」
+                // 当天已完成：条目末尾常显「圆圈 + 打勾」图标
+                if (completed) {
+                    const doneIconEl = row.createSpan({ cls: 'interface-today-tasks-item-done' });
+                    setIcon(doneIconEl, 'circle-check-big');
+                }
+                // 悬停时标签隐藏、在标签位置显示图标：开始 / 记录 / 完成今日 /（额外任务）删除
                 const actions = row.createDiv({ cls: 'interface-today-tasks-item-actions' });
                 if (this.isTodaySelected() && !this.isRunning()) {
                     const startBtn = this.createRowAction(actions, 'play', t('interface.todayStartTask'));
@@ -251,11 +259,34 @@ export class TodayTasksCard {
                         this.startTask(task.id);
                     });
                 }
-                const recordBtn = this.createRowAction(actions, 'pencil', t('interface.todayRecordTask'));
+                const recordBtn = this.createRowAction(actions, 'history', t('interface.todayRecordTask'));
                 recordBtn.addEventListener('click', (event) => {
                     event.stopPropagation();
                     this.openRecordPanel(task);
                 });
+                const doneBtn = this.createRowAction(
+                    actions,
+                    completed ? 'circle-check-big' : 'check',
+                    t('interface.todayCompleteTask'),
+                );
+                doneBtn.toggleClass('is-done', completed);
+                doneBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    this.taskExecutionRepo.setTaskCompleted(dayKey, task.id, !completed);
+                    void this.saveAll();
+                    this.options.onExecutionChanged?.();
+                    this.renderContent();
+                });
+                if (key === 'extra') {
+                    const deleteBtn = this.createRowAction(actions, 'x', t('interface.todayDeleteExtra'));
+                    deleteBtn.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        this.taskExecutionRepo.removeExtraTask(dayKey, task.id);
+                        void this.saveAll();
+                        this.options.onTasksChanged?.();
+                        this.renderContent();
+                    });
+                }
             }
         }
         // 额外任务：展开后列表末尾显示「新增任务」+ 按钮

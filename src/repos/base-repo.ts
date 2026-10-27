@@ -19,6 +19,8 @@ import type { InterfaceLayoutData } from '../datatypes/interface-layout';
 import type { PrototypeTask, TaskGoalEntry, TaskHabit, TaskWeekGoal, WeekGoalRef } from '../datatypes/prototype-task';
 import type { TaskExecutionData } from '../datatypes/task-execution';
 import type { TimeBoxData } from '../datatypes/timebox-data';
+import type { ThemeData, Theme } from '../datatypes/theme';
+import { DEFAULT_THEME_ID } from '../datatypes/theme';
 import { t } from '../i18n';
 
 /** 缓存目录默认名称 */
@@ -48,6 +50,8 @@ export interface PluginData {
     interfaceLayoutData: InterfaceLayoutData;
     /** 任务执行记录（界面视图「今天任务」计时产生） */
     taskExecutionData: TaskExecutionData;
+    /** 界面主题数据（官方 / 本地主题列表） */
+    themeData: ThemeData;
     /** 原型任务描述 / 分类转换版本（1 = 已从旧任务转换） */
     prototypeTaskMetaMigrationDone?: number;
     /** OKR 记录卡片的填写结果（顶层独立存储，不挂在任务上，避免任务对象膨胀） */
@@ -106,6 +110,7 @@ export class BaseRepo {
             planAssignmentData: d.planAssignmentData,
             interfaceLayoutData: d.interfaceLayoutData,
             taskExecutionData: d.taskExecutionData,
+            themeData: d.themeData,
             prototypeTaskMetaMigrationDone: d.prototypeTaskMetaMigrationDone,
             recordEntries: d.recordEntries,
             runningTask: d.runningTask,
@@ -252,6 +257,8 @@ export class BaseRepo {
         const initialInterfaceLayoutData = parseInterfaceLayoutData(savedData.interfaceLayoutData);
         // 任务执行记录（兼容旧数据：默认空）
         const initialTaskExecutionData = parseTaskExecutionData(savedData.taskExecutionData);
+        // 界面主题数据（兼容旧数据：默认空列表）
+        const initialThemeData = parseThemeData(savedData.themeData);
         // 原型任务描述 / 分类转换版本（兼容旧数据：默认 0）
         const initialPrototypeTaskMetaVersion = typeof savedData.prototypeTaskMetaMigrationDone === 'number'
             ? savedData.prototypeTaskMetaMigrationDone
@@ -293,6 +300,7 @@ export class BaseRepo {
             planAssignmentData: initialPlanAssignmentData,
             interfaceLayoutData: initialInterfaceLayoutData,
             taskExecutionData: initialTaskExecutionData,
+            themeData: initialThemeData,
             prototypeTaskMetaMigrationDone: prototypeTaskMetaMigrated ? 1 : initialPrototypeTaskMetaVersion,
             recordEntries: initialOkrEntries,
             runningTask: initialRunningTask,
@@ -518,9 +526,10 @@ function parseInterfaceLayoutData(raw: unknown): InterfaceLayoutData {
 function parseTaskExecutionData(raw: unknown): TaskExecutionData {
     const records: TaskExecutionData['records'] = [];
     const extraTasksByDay: TaskExecutionData['extraTasksByDay'] = {};
-    if (!raw || typeof raw !== 'object') return { records, extraTasksByDay };
+    const completedTasksByDay: TaskExecutionData['completedTasksByDay'] = {};
+    if (!raw || typeof raw !== 'object') return { records, extraTasksByDay, completedTasksByDay };
     const rawRecords = (raw as { records?: unknown }).records;
-    if (!Array.isArray(rawRecords)) return { records, extraTasksByDay };
+    if (!Array.isArray(rawRecords)) return { records, extraTasksByDay, completedTasksByDay };
     for (const item of rawRecords) {
         if (!item || typeof item !== 'object') continue;
         const r = item as Record<string, unknown>;
@@ -544,7 +553,16 @@ function parseTaskExecutionData(raw: unknown): TaskExecutionData {
             if (validIds.length > 0) extraTasksByDay[dayKey] = validIds;
         }
     }
-    return { records, extraTasksByDay };
+    // 当日已完成任务（兼容旧数据：默认空）
+    const rawCompleted = (raw as { completedTasksByDay?: unknown }).completedTasksByDay;
+    if (rawCompleted && typeof rawCompleted === 'object') {
+        for (const [dayKey, ids] of Object.entries(rawCompleted as Record<string, unknown>)) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey) || !Array.isArray(ids)) continue;
+            const validIds = ids.filter((id): id is string => typeof id === 'string');
+            if (validIds.length > 0) completedTasksByDay[dayKey] = validIds;
+        }
+    }
+    return { records, extraTasksByDay, completedTasksByDay };
 }
 
 /** 解析持久化的进行中任务（兼容旧数据 / 非法数据：返回 undefined） */
@@ -564,4 +582,39 @@ function parseRunningTask(raw: unknown): RunningTask | undefined {
     // 兼容旧数据：endDayOffset 为可选字段（跨天记录）
     if (typeof r.endDayOffset === 'number') task.endDayOffset = r.endDayOffset;
     return task;
+}
+
+/** 解析持久化的界面主题数据（兼容旧数据 / 非法数据：返回默认主题 + 空列表） */
+function parseThemeData(raw: unknown): ThemeData {
+    const officialThemes: ThemeData['officialThemes'] = [];
+    const localThemes: ThemeData['localThemes'] = [];
+    const currentThemeId = raw && typeof raw === 'object'
+        && typeof (raw as { currentThemeId?: unknown }).currentThemeId === 'string'
+        ? (raw as { currentThemeId: string }).currentThemeId
+        : DEFAULT_THEME_ID;
+    if (!raw || typeof raw !== 'object') return { currentThemeId, officialThemes, localThemes };
+    const rawOfficial = (raw as { officialThemes?: unknown }).officialThemes;
+    if (Array.isArray(rawOfficial)) {
+        for (const item of rawOfficial) {
+            const theme = parseTheme(item);
+            if (theme) officialThemes.push(theme);
+        }
+    }
+    const rawLocal = (raw as { localThemes?: unknown }).localThemes;
+    if (Array.isArray(rawLocal)) {
+        for (const item of rawLocal) {
+            const theme = parseTheme(item);
+            if (theme) localThemes.push(theme);
+        }
+    }
+    return { currentThemeId, officialThemes, localThemes };
+}
+
+/** 解析单个主题（非法数据返回 null） */
+function parseTheme(raw: unknown): Theme | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = raw as Record<string, unknown>;
+    if (typeof r.id !== 'string' || typeof r.name !== 'string') return null;
+    const source = r.source === 'local' ? 'local' : 'official';
+    return { id: r.id, name: r.name, source };
 }

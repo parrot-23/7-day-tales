@@ -48,4 +48,25 @@ export class TaskExecutionRepo {
         const list = this.data.extraTasksByDay[dayKey] ?? (this.data.extraTasksByDay[dayKey] = []);
         if (!list.includes(taskId)) list.push(taskId);
     }
+
+    /** 移除当日额外任务 */
+    removeExtraTask(dayKey: string, taskId: string): void {
+        const list = this.data.extraTasksByDay[dayKey];
+        if (!list) return;
+        this.data.extraTasksByDay[dayKey] = list.filter((id) => id !== taskId);
+    }
+
+    /** 某任务在某日是否已标记完成 */
+    isTaskCompleted(dayKey: string, taskId: string): boolean {
+        return (this.data.completedTasksByDay[dayKey] ?? []).includes(taskId);
+    }
+
+    /** 设置某任务在某日的完成标记 */
+    setTaskCompleted(dayKey: string, taskId: string, completed: boolean): void {
+        const list = this.data.completedTasksByDay[dayKey] ?? (this.data.completedTasksByDay[dayKey] = []);
+        const next = completed
+            ? (list.includes(taskId) ? list : [...list, taskId])
+            : list.filter((id) => id !== taskId);
+        this.data.completedTasksByDay[dayKey] = next;
+    }
 }

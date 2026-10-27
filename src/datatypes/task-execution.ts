@@ -19,4 +19,6 @@ export interface TaskExecutionData {
     records: TaskExecutionRecord[];
     /** 按日期键（YYYY-MM-DD）存储的当日额外任务 id 列表 */
     extraTasksByDay: Record<string, string[]>;
+    /** 按日期键（YYYY-MM-DD）存储的当日已完成任务 id 列表（仅标记当天完成） */
+    completedTasksByDay: Record<string, string[]>;
 }

@@ -23,10 +23,13 @@ import { TaskDetailPanel } from '../../panel/task-detail-panel';
 import { TaskPanel } from '../../panel/task-panel';
 import { TimeBoxPanel } from '../../panel/time-box-panel';
 import { WeekCalendarPanel } from '../../panel/week-calendar-panel';
+import { ThemePanel } from '../../panel/theme-panel';
 import type { BaseRepo } from '../../repos/base-repo';
 import type { CategoryRepo } from '../../repos/category-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
+import type { ThemeRepo } from '../../repos/theme-repo';
+import { THEME_DEFINITIONS, getThemeDefinition } from '../../themes/registry';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 
 /**
@@ -61,8 +64,14 @@ export class InterfaceView {
     private editButtonEl: HTMLButtonElement | null = null;
     /** 左下角「添加卡片」按钮（仅编辑模式显示） */
     private addCardButtonEl: HTMLButtonElement | null = null;
+    /** 左下角「主题」按钮（仅编辑模式显示，位于添加按钮上方） */
+    private themeButtonEl: HTMLButtonElement | null = null;
     /** 卡片选择面板 */
     private cardPickerPanel: CardPickerPanel | null = null;
+    /** 主题管理面板 */
+    private themePanel: ThemePanel | null = null;
+    /** 当前主题的动画清理函数（重绘前调用，停止 Canvas 动画） */
+    private themeDispose: (() => void) | null = null;
     /** 计划卡片对应的面板 */
     private planPanel: PlanPanel | null = null;
     /** 检查卡片对应的面板 */
@@ -97,6 +106,17 @@ export class InterfaceView {
     /** 基础仓库（读取界面布局等全量数据） */
     private get baseRepo(): BaseRepo {
         return (this.plugin as Plugin & { repo: BaseRepo }).repo;
+    }
+
+    /** 主题仓库（读取当前主题） */
+    private get themeRepo(): ThemeRepo {
+        return (this.plugin as Plugin & { themeRepo: ThemeRepo }).themeRepo;
+    }
+
+    /** 插件目录（vault 相对路径，用于读取主题图片素材） */
+    private get pluginDir(): string {
+        const manifest = this.plugin.manifest;
+        return manifest.dir ?? `.obsidian/plugins/${manifest.id}`;
     }
 
     /** 点击日期卡片：打开周历面板（已创建时刷新周目标数据） */
@@ -311,10 +331,14 @@ export class InterfaceView {
     }
 
     async renderInto(container: HTMLElement): Promise<void> {
+        // 先停止上一轮主题的动画，避免重绘后仍残留 RAF 循环
+        this.themeDispose?.();
+        this.themeDispose = null;
         container.empty();
         container.addClass('interface-view');
         container.toggleClass('is-editing', this.editMode);
         this.viewEl = container;
+        this.applyTheme(container);
 
         const main = container.createDiv({ cls: 'interface-main' });
 
@@ -395,13 +419,49 @@ export class InterfaceView {
         setIcon(this.addCardButtonEl.createSpan({ cls: 'interface-add-card-icon' }), 'plus');
         this.addCardButtonEl.createSpan({ cls: 'interface-add-card-text', text: t('interface.addCard') });
         this.addCardButtonEl.addEventListener('click', () => this.openCardPicker());
+
+        // 「添加卡片」按钮上方的「主题」按钮：点击打开主题管理面板（仅编辑模式显示）
+        this.themeButtonEl = container.createEl('button', { cls: 'interface-theme-btn' });
+        setIcon(this.themeButtonEl.createSpan({ cls: 'interface-theme-icon' }), 'palette');
+        this.themeButtonEl.createSpan({ cls: 'interface-theme-text', text: t('interface.theme') });
+        this.themeButtonEl.addEventListener('click', () => this.openThemePanel());
+
         this.updateEditButton();
+    }
+
+    /** 应用当前主题：仅作用于界面视图背景（图片素材 + 代码绘制层） */
+    private applyTheme(container: HTMLElement): void {
+        // 清理上一次可能残留的主题类
+        for (const definition of THEME_DEFINITIONS) container.removeClass(`is-theme-${definition.id}`);
+        const theme = getThemeDefinition(this.themeRepo.currentThemeId);
+        if (!theme) return;
+        container.addClass(`is-theme-${theme.id}`);
+        const dispose = theme.mount(container, { app: this.app, pluginDir: this.pluginDir });
+        this.themeDispose = typeof dispose === 'function' ? dispose : null;
     }
 
     /** 打开卡片选择面板 */
     private openCardPicker(): void {
         this.cardPickerPanel ??= new CardPickerPanel((cardId) => this.showPickedCard(cardId));
         this.cardPickerPanel.open();
+    }
+
+    /** 打开主题管理面板 */
+    private openThemePanel(): void {
+        if (!this.themePanel) {
+            this.themePanel = new ThemePanel({
+                app: this.app,
+                pluginDir: this.pluginDir,
+                getCurrentThemeId: () => this.themeRepo.currentThemeId,
+                onApply: (themeId) => {
+                    this.themeRepo.setCurrentTheme(themeId);
+                    void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+                    if (this.viewEl) void this.renderInto(this.viewEl);
+                },
+            });
+        }
+        this.themePanel.refresh();
+        this.themePanel.open();
     }
 
     /** 从卡片选择面板选中卡片后加入界面 */
@@ -489,6 +549,7 @@ export class InterfaceView {
             textEl.textContent = this.editMode ? t('interface.editModeDone') : t('interface.editMode');
         }
         this.addCardButtonEl?.toggleClass('is-hidden', !this.editMode);
+        this.themeButtonEl?.toggleClass('is-hidden', !this.editMode);
     }
 
     /** 打开任务板块信息面板：展示指定任务的收集篮子 / 待办改进 / 文件目录 */

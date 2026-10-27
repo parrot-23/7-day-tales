@@ -41,6 +41,8 @@ export const en: I18nMessages = {
     'interface.todayStartTask': 'Start Task',
     'interface.todayStartAt': 'Start at {time}',
     'interface.todayRecordTask': 'Record Task',
+    'interface.todayCompleteTask': 'Complete today\'s task',
+    'interface.todayDeleteExtra': 'Remove extra task',
     'interface.todayAddTaskButton': 'New Task',
     'interface.todayEndTask': 'End Task',
     'interface.todayAbandonTask': 'Abandon Task',
@@ -66,6 +68,7 @@ export const en: I18nMessages = {
     'interface.editMode': 'Edit',
     'interface.editModeDone': 'Done',
     'interface.addCard': 'Add',
+    'interface.theme': 'Theme',
     'interface.cardPickerTitle': 'Add Card',
     'interface.cardDate': "Today's Date",
     'interface.cardNav': 'Vertical Function Bar',
@@ -183,6 +186,15 @@ export const en: I18nMessages = {
     'panel.recordDurationUnit': 'min',
     'panel.recordMinutes': '{minutes} min',
     'panel.recordInvalidRange': 'Start and end time cannot be the same',
+
+    // Theme management panel
+    'theme.panelTitle': 'Theme Manager',
+    'theme.menuOfficial': 'Official',
+    'theme.menuLocal': 'Local',
+    'theme.contentPlaceholder': 'Content to be implemented',
+    'theme.nameDeepsky': 'Deep Space',
+    'theme.apply': 'Apply',
+    'theme.inUse': 'In use',
 
     // Main navigation (tab button group)
     'nav.interface': 'Interface',
