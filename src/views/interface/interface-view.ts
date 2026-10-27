@@ -107,9 +107,16 @@ export class InterfaceView {
         return (this.plugin as Plugin & { repo: BaseRepo }).repo;
     }
 
-    /** 点击日期卡片：打开周历面板 */
+    /** 点击日期卡片：打开周历面板（已创建时刷新周目标数据） */
     private openDatePanel(): void {
-        this.datePanel ??= new WeekCalendarPanel();
+        if (!this.datePanel) {
+            this.datePanel = new WeekCalendarPanel({
+                getTasks: () => this.prototypeTaskRepo.tasks,
+                onOpenTask: (task) => this.openTaskDetail(task),
+            });
+        } else {
+            this.datePanel.refresh();
+        }
         this.datePanel.open();
     }
 
@@ -160,6 +167,7 @@ export class InterfaceView {
                 onChanged: () => {
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
+                    this.datePanel?.refresh();
                 },
             });
         }
@@ -233,6 +241,7 @@ export class InterfaceView {
                     this.detailPanels.forEach((item) => item.setTasks(this.prototypeTaskRepo.tasks));
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
+                    this.datePanel?.refresh();
                 },
             });
             this.detailPanels.set(task.id, panel);
