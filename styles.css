@@ -7473,6 +7473,221 @@ button.swimlane-section-card-settings {
     text-overflow: ellipsis;
 }
 
+/* 今日任务（折叠列表）卡片：默认不显示，由编辑模式「添加」面板加入；可拖动并持久化位置 */
+.interface-today-tasks-card {
+    /* 字体基准：跟随 Obsidian 正文字号，框内尺寸按此比例缩放 */
+    --tts-fs: var(--font-text-size, 16px);
+    position: absolute;
+    left: 162px;
+    top: 70%;
+    z-index: 3;
+    width: 300px;
+    height: 360px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--tts-fs) * 0.5);
+    box-sizing: border-box;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: calc(var(--tts-fs) * 0.5);
+    background: var(--background-secondary);
+}
+
+/* 编辑模式：拖动时略微降低不透明度 */
+.interface-today-tasks-card.is-dragging {
+    opacity: 0.9;
+}
+
+.interface-today-tasks-card.is-dragging .interface-card-drag {
+    cursor: grabbing;
+}
+
+/* 第一行：左右箭头 + 日期 / 标签（标签在日期下方换行） */
+.interface-today-tasks-nav {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: calc(var(--tts-fs) * 0.25);
+    padding-top: calc(var(--tts-fs) * 0.375);
+}
+
+/* 编辑模式：给顶部拖动方块与右上角 X 留出空间 */
+.interface-view.is-editing .interface-today-tasks-nav {
+    padding-top: calc(var(--tts-fs) * 1);
+    padding-right: 24px;
+}
+
+.interface-today-tasks-nav-btn {
+    flex: 0 0 auto;
+    width: calc(var(--tts-fs) * 1.25);
+    height: calc(var(--tts-fs) * 1.25);
+    padding: 0;
+    border: none;
+    border-radius: calc(var(--tts-fs) * 0.25);
+    background: transparent;
+    color: var(--text-muted);
+    line-height: 1;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.interface-today-tasks-nav-btn:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.interface-today-tasks-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.interface-today-tasks-date-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--tts-fs) * 0.125);
+}
+
+.interface-today-tasks-date {
+    font-size: calc(var(--tts-fs) * 1.125);
+    font-weight: 600;
+    color: var(--text-normal);
+    line-height: 1.2;
+}
+
+.interface-today-tasks-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: calc(var(--tts-fs) * 0.25);
+}
+
+.interface-today-tasks-tag {
+    padding: calc(var(--tts-fs) * 0.0625) calc(var(--tts-fs) * 0.375);
+    border-radius: calc(var(--tts-fs) * 0.625);
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: calc(var(--tts-fs) * 0.6875);
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* 内容区：三个可折叠分区，超出滚动 */
+.interface-today-tasks-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--tts-fs) * 0.25);
+    margin-top: calc(var(--tts-fs) * 0.375);
+    padding-top: calc(var(--tts-fs) * 0.375);
+    border-top: 1px solid var(--background-modifier-border);
+    overflow-y: auto;
+}
+
+.interface-today-tasks-section {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--tts-fs) * 0.125);
+}
+
+.interface-today-tasks-section-head {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--tts-fs) * 0.25);
+    padding: calc(var(--tts-fs) * 0.1875) calc(var(--tts-fs) * 0.25);
+    border-radius: calc(var(--tts-fs) * 0.25);
+    cursor: pointer;
+    user-select: none;
+}
+
+.interface-today-tasks-section-head:hover {
+    background: var(--background-modifier-hover);
+}
+
+.interface-today-tasks-section-chevron {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--text-muted);
+}
+
+.interface-today-tasks-section-chevron .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.interface-today-tasks-section-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: calc(var(--tts-fs) * 0.75);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.interface-today-tasks-section-count {
+    flex: 0 0 auto;
+    min-width: calc(var(--tts-fs) * 1.125);
+    padding: 0 calc(var(--tts-fs) * 0.25);
+    border-radius: calc(var(--tts-fs) * 0.625);
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: calc(var(--tts-fs) * 0.6875);
+    line-height: 1.5;
+    text-align: center;
+}
+
+.interface-today-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--tts-fs) * 0.125);
+    padding-left: calc(var(--tts-fs) * 0.75);
+}
+
+.interface-today-tasks-empty {
+    padding: calc(var(--tts-fs) * 0.1875) 0;
+    font-size: calc(var(--tts-fs) * 0.6875);
+    color: var(--text-faint);
+}
+
+.interface-today-tasks-item {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--tts-fs) * 0.375);
+    padding: calc(var(--tts-fs) * 0.1875) calc(var(--tts-fs) * 0.375);
+    border-radius: calc(var(--tts-fs) * 0.25);
+    font-size: calc(var(--tts-fs) * 0.75);
+}
+
+.interface-today-tasks-item:hover {
+    background: var(--background-modifier-hover);
+}
+
+.interface-today-tasks-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-normal);
+}
+
+.interface-today-tasks-item-badge {
+    flex: 0 0 auto;
+    padding: 0 calc(var(--tts-fs) * 0.25);
+    border-radius: calc(var(--tts-fs) * 0.625);
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: calc(var(--tts-fs) * 0.625);
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
 /* ======================== 文件夹选择面板（panel/folder-picker-panel） ======================== */
 .floating-panel-body.folder-picker-panel {
     display: flex;

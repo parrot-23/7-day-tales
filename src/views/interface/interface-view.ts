@@ -4,6 +4,7 @@ import { Menu, setIcon } from 'obsidian';
 import type { App, Plugin, TFile } from 'obsidian';
 
 import { TodayCard } from '../../cards/task/today-card';
+import { TodayTasksCard } from '../../cards/task/today-tasks-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
 import { t } from '../../i18n';
 import { AchievementPanel } from '../../panel/achievement-panel';
@@ -58,6 +59,8 @@ export class InterfaceView {
     private timeBoxPanel: TimeBoxPanel | null = null;
     /** 今日任务方框组件 */
     private todayCard: TodayCard | null = null;
+    /** 今日任务（折叠列表）卡片组件 */
+    private todayTasksCard: TodayTasksCard | null = null;
     /** 综合方框当前选项卡：收集篮子 / 待办改进 / 文件目录 */
     private bottomTab: BottomTabKey = 'basket';
     /** 综合方框选项卡内容容器 */
@@ -158,7 +161,10 @@ export class InterfaceView {
                 getCategories: () => this.categoryData.categories,
                 planAssignmentRepo: holder.planAssignmentRepo,
                 save: () => holder.saveAll(),
-                onChanged: () => this.todayCard?.refreshTasks(),
+                onChanged: () => {
+                    this.todayCard?.refreshTasks();
+                    this.todayTasksCard?.refresh();
+                },
             });
         }
         this.planPanel.open();
@@ -230,6 +236,7 @@ export class InterfaceView {
                     this.taskPanel?.setTasks(this.rootPrototypeTasks());
                     this.detailPanels.forEach((item) => item.setTasks(this.prototypeTaskRepo.tasks));
                     this.todayCard?.refreshTasks();
+                    this.todayTasksCard?.refresh();
                 },
             });
             this.detailPanels.set(task.id, panel);
@@ -251,6 +258,7 @@ export class InterfaceView {
         this.taskPanel?.setTasks(this.rootPrototypeTasks());
         this.detailPanels.forEach((panel) => panel.setTasks(this.prototypeTaskRepo.tasks));
         this.todayCard?.refreshTasks();
+        this.todayTasksCard?.refresh();
     }
 
     /** 更新原型任务的名称 / 描述 / 分类：写仓库 + 持久化 */
@@ -291,7 +299,18 @@ export class InterfaceView {
             const todayEl = main.querySelector<HTMLElement>('.interface-today');
             if (todayEl) {
                 this.applyCardPosition(todayEl, 'today-clock');
-                if (this.editMode) this.addTodayEditControls(todayEl, main);
+                if (this.editMode) this.addCardEditControls(todayEl, main, 'today-clock');
+            }
+        }
+
+        // 今日任务（折叠列表）卡片：默认不显示，由编辑模式的「添加」面板加入
+        if (this.isCardAdded('today-tasks')) {
+            this.todayTasksCard ??= new TodayTasksCard({ plugin: this.plugin });
+            this.todayTasksCard.render(main);
+            const tasksEl = main.querySelector<HTMLElement>('.interface-today-tasks-card');
+            if (tasksEl) {
+                this.applyCardPosition(tasksEl, 'today-tasks');
+                if (this.editMode) this.addCardEditControls(tasksEl, main, 'today-tasks');
             }
         }
 
@@ -359,8 +378,17 @@ export class InterfaceView {
 
     /** 打开卡片选择面板 */
     private openCardPicker(): void {
-        this.cardPickerPanel ??= new CardPickerPanel(() => this.showTodayCard());
+        this.cardPickerPanel ??= new CardPickerPanel((cardId) => this.showPickedCard(cardId));
         this.cardPickerPanel.open();
+    }
+
+    /** 从卡片选择面板选中卡片后加入界面 */
+    private showPickedCard(cardId: string): void {
+        if (cardId === 'today-clock') {
+            this.showTodayCard();
+            return;
+        }
+        this.setCardAdded(cardId, true);
     }
 
     /** 确保今日任务方框显示（取消布局中的隐藏标记） */
@@ -369,20 +397,24 @@ export class InterfaceView {
         this.setCardHidden('today-clock', false);
     }
 
-    /** 编辑模式下给今日任务方框加顶部拖动方块与右上角 X 按钮 */
-    private addTodayEditControls(todayEl: HTMLElement, main: HTMLElement): void {
+    /** 编辑模式下给卡片加顶部拖动方块与右上角 X 按钮 */
+    private addCardEditControls(cardEl: HTMLElement, main: HTMLElement, cardId: string): void {
         // 顶部中间的拖动方块：按住拖动整张卡片
-        const handle = todayEl.createDiv({ cls: 'interface-card-drag' });
-        this.enableCardDrag(todayEl, main, handle);
+        const handle = cardEl.createDiv({ cls: 'interface-card-drag' });
+        this.enableCardDrag(cardEl, main, handle, cardId);
 
-        const removeBtn = todayEl.createEl('button', {
+        const removeBtn = cardEl.createEl('button', {
             cls: 'interface-card-remove',
             text: '×',
             attr: { 'aria-label': t('interface.removeCard') },
         });
         removeBtn.addEventListener('click', (evt) => {
             evt.stopPropagation();
-            this.setCardHidden('today-clock', true);
+            if (cardId === 'today-clock') {
+                this.setCardHidden(cardId, true);
+            } else {
+                this.setCardAdded(cardId, false);
+            }
         });
     }
 
@@ -395,12 +427,12 @@ export class InterfaceView {
     }
 
     /** 按住顶部方块拖动卡片，松手后保存像素坐标 */
-    private enableCardDrag(todayEl: HTMLElement, main: HTMLElement, handle: HTMLElement): void {
+    private enableCardDrag(cardEl: HTMLElement, main: HTMLElement, handle: HTMLElement, cardId: string): void {
         handle.addEventListener('pointerdown', (evt) => {
             if (evt.button !== 0) return;
             evt.preventDefault();
             const mainRect = main.getBoundingClientRect();
-            const cardRect = todayEl.getBoundingClientRect();
+            const cardRect = cardEl.getBoundingClientRect();
             const offsetX = evt.clientX - cardRect.left;
             const offsetY = evt.clientY - cardRect.top;
 
@@ -413,19 +445,19 @@ export class InterfaceView {
                     moveEvt.clientY - mainRect.top - offsetY,
                     mainRect.height - cardRect.height,
                 ));
-                todayEl.style.left = `${left}px`;
-                todayEl.style.top = `${top}px`;
+                cardEl.style.left = `${left}px`;
+                cardEl.style.top = `${top}px`;
             };
             const onUp = () => {
                 handle.removeEventListener('pointermove', onMove);
-                todayEl.removeClass('is-dragging');
-                this.saveCardPosition('today-clock', {
-                    left: parseFloat(todayEl.style.left) || 0,
-                    top: parseFloat(todayEl.style.top) || 0,
+                cardEl.removeClass('is-dragging');
+                this.saveCardPosition(cardId, {
+                    left: parseFloat(cardEl.style.left) || 0,
+                    top: parseFloat(cardEl.style.top) || 0,
                 });
             };
 
-            todayEl.addClass('is-dragging');
+            cardEl.addClass('is-dragging');
             handle.setPointerCapture(evt.pointerId);
             handle.addEventListener('pointermove', onMove);
             handle.addEventListener('pointerup', onUp, { once: true });
@@ -453,6 +485,23 @@ export class InterfaceView {
         const index = cards.indexOf(cardId);
         if (hidden && index < 0) cards.push(cardId);
         if (!hidden && index >= 0) cards.splice(index, 1);
+        void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+        if (this.viewEl) void this.renderInto(this.viewEl);
+    }
+
+    /** 可选卡片是否已通过「添加」面板加入界面 */
+    private isCardAdded(cardId: string): boolean {
+        return this.baseRepo.data?.interfaceLayoutData.addedCards.includes(cardId) ?? false;
+    }
+
+    /** 设置可选卡片的加入状态：写布局并持久化，随后重绘视图 */
+    private setCardAdded(cardId: string, added: boolean): void {
+        const data = this.baseRepo.data;
+        if (!data) return;
+        const cards = data.interfaceLayoutData.addedCards;
+        const index = cards.indexOf(cardId);
+        if (added && index < 0) cards.push(cardId);
+        if (!added && index >= 0) cards.splice(index, 1);
         void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
         if (this.viewEl) void this.renderInto(this.viewEl);
     }

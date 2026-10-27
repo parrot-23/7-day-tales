@@ -487,11 +487,18 @@ function parsePlanAssignmentData(raw: unknown): PlanAssignmentData {
 function parseInterfaceLayoutData(raw: unknown): InterfaceLayoutData {
     const hiddenCards: string[] = [];
     const cardPositions: InterfaceLayoutData['cardPositions'] = {};
-    if (!raw || typeof raw !== 'object') return { hiddenCards, cardPositions };
+    const addedCards: string[] = [];
+    if (!raw || typeof raw !== 'object') return { hiddenCards, cardPositions, addedCards };
     const rawHidden = (raw as { hiddenCards?: unknown }).hiddenCards;
     if (Array.isArray(rawHidden)) {
         for (const id of rawHidden) {
             if (typeof id === 'string' && !hiddenCards.includes(id)) hiddenCards.push(id);
+        }
+    }
+    const rawAdded = (raw as { addedCards?: unknown }).addedCards;
+    if (Array.isArray(rawAdded)) {
+        for (const id of rawAdded) {
+            if (typeof id === 'string' && !addedCards.includes(id)) addedCards.push(id);
         }
     }
     const rawPositions = (raw as { cardPositions?: unknown }).cardPositions;
@@ -503,7 +510,7 @@ function parseInterfaceLayoutData(raw: unknown): InterfaceLayoutData {
             cardPositions[id] = { left: position.left, top: position.top };
         }
     }
-    return { hiddenCards, cardPositions };
+    return { hiddenCards, cardPositions, addedCards };
 }
 
 /** 解析持久化的任务执行记录（兼容旧数据 / 非法数据：返回空） */

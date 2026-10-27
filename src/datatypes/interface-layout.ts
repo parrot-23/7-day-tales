@@ -11,4 +11,6 @@ export interface InterfaceLayoutData {
     hiddenCards: string[];
     /** 卡片拖动后的位置，键为卡片 id */
     cardPositions: Record<string, InterfaceCardPosition>;
+    /** 通过「添加」面板加入的可选卡片 id 列表（默认不显示） */
+    addedCards: string[];
 }
