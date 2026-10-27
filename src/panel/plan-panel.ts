@@ -3,14 +3,14 @@
 // 排布：选中左侧任务条目后，点击周视图的某一天列，即可把该任务排布到该列（写入 PlanAssignmentRepo）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskHabit } from '../datatypes/prototype-task';
+import type { PrototypeTask, TaskGoalEntry, TaskHabit, WeekGoalRef } from '../datatypes/prototype-task';
 import type { TaskStatus } from '../datatypes/domain';
 import { t } from '../i18n';
 import type { PlanAssignmentRepo } from '../repos/plan-assignment-repo';
 import type { PlanCategory } from '../shared/plan-category-manager';
 import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
-import { GoalAssignmentPanel } from './goal-assignment-panel';
+import { GoalAssignmentPanel, type GoalCandidateGroup } from './goal-assignment-panel';
 
 /** 计划面板配置 */
 export interface PlanPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
@@ -253,6 +253,18 @@ export class PlanPanel extends FloatingPanel {
      */
     private renderTrailingIcon(row: HTMLElement, task: PrototypeTask): void {
         row.querySelector('.plan-tree-status-icon')?.remove();
+        row.querySelector('.plan-tree-goal-badge')?.remove();
+        // 目标面板激活时，末尾显示目标图标 + 该任务自身目标数量（为 0 不显示）
+        if (this.goalActive) {
+            const count = task.goals?.length ?? 0;
+            if (count > 0) {
+                const badge = row.createSpan({ cls: 'plan-tree-goal-badge' });
+                const iconEl = badge.createSpan({ cls: 'plan-tree-goal-icon' });
+                setIcon(iconEl, 'target');
+                badge.createSpan({ cls: 'plan-tree-goal-count', text: String(count) });
+            }
+            return;
+        }
         let icon: string | null = null;
         if (this.habitActive) {
             icon = task.habit?.enabled ? 'repeat' : null;
@@ -384,8 +396,9 @@ export class PlanPanel extends FloatingPanel {
             this.setHabitActive(false);
         }
         this.goalButtonEl.toggleClass('is-active', this.goalActive);
-        // 目标面板决定年视图事件卡片是否高亮
+        // 目标面板决定年视图事件卡片是否高亮，以及任务条目末尾是否显示目标数量
         this.refreshYearChipHighlight();
+        this.refreshTreeTrailingIcons();
         // 激活时若尚未选中任务，默认选中当前根任务，保证目标面板一定可见
         if (this.goalActive && !this.selectedTaskId && this.rootTaskId) {
             this.selectTask(this.rootTaskId);
@@ -399,6 +412,7 @@ export class PlanPanel extends FloatingPanel {
         this.goalActive = active;
         this.goalButtonEl.toggleClass('is-active', active);
         this.refreshYearChipHighlight();
+        this.refreshTreeTrailingIcons();
         this.renderGoalPanel();
     }
 
@@ -554,32 +568,45 @@ export class PlanPanel extends FloatingPanel {
             onAssign: () => this.openGoalPicker(task, weekKey),
         });
 
-        // 仅显示已分配到当前周的待办条目
-        const goalIds = this.getWeekGoalIds(task, weekKey);
-        const selected = (task.improvements ?? []).filter((item) => goalIds.includes(item.id));
+        // 仅显示已绑定到当前周的目标（可来自当前任务或祖先任务）
+        const refs = this.getWeekGoalRefs(task, weekKey);
+        const tasks = this.panelOptions.getTasks();
+        const bound = refs
+            .map((ref) => {
+                const owner = tasks.find((item) => item.id === ref.taskId);
+                const goal = owner?.goals?.find((item) => item.id === ref.goalId);
+                return goal && owner ? { ref, goal, owner } : null;
+            })
+            .filter(
+                (item): item is { ref: WeekGoalRef; goal: TaskGoalEntry; owner: PrototypeTask } =>
+                    item !== null,
+            );
         const list = this.goalPanelEl.createDiv({ cls: 'plan-goal-list' });
-        if (selected.length === 0) {
+        if (bound.length === 0) {
             list.createDiv({ cls: 'plan-goal-empty', text: t('panel.planGoalEmpty') });
             return;
         }
-        for (const item of selected) {
-            this.renderGoalRow(list, item.text, item.done === true, () => {
-                this.setWeekGoalSelected(task, item.id, false, weekKey);
-            });
+        for (const { ref, goal, owner } of bound) {
+            this.renderGoalRow(
+                list,
+                goal.text,
+                owner.id === task.id ? null : owner.name,
+                () => this.setWeekGoalSelected(task, ref, false, weekKey),
+            );
         }
     }
 
-    /** 打开周目标分配面板，勾选当前任务待办条目作为指定周的目标 */
+    /** 打开周目标选择面板：候选目标为当前任务自身及各祖先任务的目标 */
     private openGoalPicker(task: PrototypeTask, weekKey: string): void {
         this.goalPicker?.destroy();
         const { week } = parseWeekKey(weekKey);
         this.goalPicker = new GoalAssignmentPanel({
             taskName: task.name,
             weekLabel: t('panel.planWeekLabel', { week: String(week) }),
-            items: [...(task.improvements ?? [])],
-            selectedIds: this.getWeekGoalIds(task, weekKey),
-            onToggle: (improvementId, selected) => {
-                this.setWeekGoalSelected(task, improvementId, selected, weekKey);
+            groups: this.buildGoalGroups(task),
+            selectedRefs: this.getWeekGoalRefs(task, weekKey),
+            onToggle: (ref, selected) => {
+                this.setWeekGoalSelected(task, ref, selected, weekKey);
             },
             onClose: () => {
                 this.goalPicker = null;
@@ -588,42 +615,60 @@ export class PlanPanel extends FloatingPanel {
         this.goalPicker.open();
     }
 
-    /** 周目标条目行：待办文本 + 末尾「已分配」标签（点击取消该周目标） */
+    /** 当前任务 + 各祖先任务的目标分组（自身在前，父级依次在后） */
+    private buildGoalGroups(task: PrototypeTask): GoalCandidateGroup[] {
+        const tasks = this.panelOptions.getTasks();
+        const groups: GoalCandidateGroup[] = [];
+        const visited = new Set<string>();
+        let current: PrototypeTask | undefined = task;
+        while (current && !visited.has(current.id)) {
+            visited.add(current.id);
+            groups.push({ taskId: current.id, taskName: current.name, goals: current.goals ?? [] });
+            const parentId: string | undefined = current.parentId;
+            current = parentId ? tasks.find((item) => item.id === parentId) : undefined;
+        }
+        return groups;
+    }
+
+    /** 周目标条目行：目标文本 +（父级目标时）所属任务标签 + 末尾「已分配」标签（点击取消绑定） */
     private renderGoalRow(
         parentEl: HTMLElement,
         text: string,
-        done: boolean,
+        ownerName: string | null,
         onClick: () => void,
     ): void {
         const row = parentEl.createDiv({ cls: 'plan-goal-item is-selected' });
-        row.toggleClass('is-done', done);
         row.createSpan({ cls: 'plan-goal-item-text', text });
+        if (ownerName) {
+            row.createSpan({ cls: 'plan-goal-owner-tag', text: ownerName });
+        }
         row.createSpan({ cls: 'plan-goal-assigned-tag', text: t('panel.planGoalAssigned') });
         row.addEventListener('click', onClick);
     }
 
-    /** 读取某任务在指定周已选为目标的待办条目 id（默认当前作用的周） */
-    private getWeekGoalIds(task: PrototypeTask, weekKey = this.getActiveWeekKey()): string[] {
-        return task.weekGoals?.find((goal) => goal.weekKey === weekKey)?.improvementIds ?? [];
+    /** 读取某任务在指定周已绑定的目标引用（默认当前作用的周） */
+    private getWeekGoalRefs(task: PrototypeTask, weekKey = this.getActiveWeekKey()): WeekGoalRef[] {
+        return task.weekGoals?.find((goal) => goal.weekKey === weekKey)?.goalRefs ?? [];
     }
 
-    /** 勾选 / 取消勾选某条待办为指定周目标并持久化 */
+    /** 绑定 / 取消绑定某个目标到指定周并持久化 */
     private setWeekGoalSelected(
         task: PrototypeTask,
-        improvementId: string,
+        ref: WeekGoalRef,
         selected: boolean,
         weekKey = this.getActiveWeekKey(),
     ): void {
         const goals = task.weekGoals ?? [];
         const current = goals.find((goal) => goal.weekKey === weekKey);
-        const ids = current?.improvementIds ?? [];
-        const nextIds = selected
-            ? (ids.includes(improvementId) ? ids : [...ids, improvementId])
-            : ids.filter((id) => id !== improvementId);
+        const refs = current?.goalRefs ?? [];
+        const exists = refs.some((item) => item.taskId === ref.taskId && item.goalId === ref.goalId);
+        const nextRefs = selected
+            ? (exists ? refs : [...refs, ref])
+            : refs.filter((item) => !(item.taskId === ref.taskId && item.goalId === ref.goalId));
         if (current) {
-            current.improvementIds = nextIds;
+            current.goalRefs = nextRefs;
         } else {
-            goals.push({ weekKey, improvementIds: nextIds });
+            goals.push({ weekKey, goalRefs: nextRefs });
         }
         task.weekGoals = goals;
         void this.panelOptions.save();

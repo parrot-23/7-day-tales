@@ -16,7 +16,7 @@ import type { GtdData } from '../datatypes/gtd';
 import { defaultGtdData } from '../datatypes/gtd';
 import type { PlanAssignmentData } from '../datatypes/plan-assignment';
 import type { InterfaceLayoutData } from '../datatypes/interface-layout';
-import type { PrototypeTask, TaskHabit, TaskWeekGoal } from '../datatypes/prototype-task';
+import type { PrototypeTask, TaskGoalEntry, TaskHabit, TaskWeekGoal, WeekGoalRef } from '../datatypes/prototype-task';
 import type { TaskExecutionData } from '../datatypes/task-execution';
 import type { TimeBoxData } from '../datatypes/timebox-data';
 import { t } from '../i18n';
@@ -333,6 +333,7 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
             ...(typeof r.fileDir === 'string' && r.fileDir ? { fileDir: r.fileDir } : {}),
             ...(r.fileTimestamp === true ? { fileTimestamp: true } : {}),
             ...(parseTaskWeekGoals(r.weekGoals) ? { weekGoals: parseTaskWeekGoals(r.weekGoals)! } : {}),
+            ...(parseTaskGoals(r.goals) ? { goals: parseTaskGoals(r.goals)! } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }
@@ -347,10 +348,35 @@ function parseTaskWeekGoals(raw: unknown): TaskWeekGoal[] | null {
         if (!entry || typeof entry !== 'object') continue;
         const r = entry as Record<string, unknown>;
         if (typeof r.weekKey !== 'string' || !r.weekKey) continue;
-        const ids = Array.isArray(r.improvementIds)
-            ? r.improvementIds.filter((id): id is string => typeof id === 'string')
-            : [];
-        goals.push({ weekKey: r.weekKey, improvementIds: ids });
+        // 仅解析新的目标引用；旧的 improvementIds（待办引用）直接忽略
+        const refs: WeekGoalRef[] = [];
+        if (Array.isArray(r.goalRefs)) {
+            for (const item of r.goalRefs) {
+                if (!item || typeof item !== 'object') continue;
+                const ref = item as Record<string, unknown>;
+                if (typeof ref.taskId !== 'string' || typeof ref.goalId !== 'string') continue;
+                refs.push({ taskId: ref.taskId, goalId: ref.goalId });
+            }
+        }
+        goals.push({ weekKey: r.weekKey, goalRefs: refs });
+    }
+    return goals.length > 0 ? goals : null;
+}
+
+/** 解析任务目标清单（无有效条目时返回 null） */
+function parseTaskGoals(raw: unknown): TaskGoalEntry[] | null {
+    if (!Array.isArray(raw)) return null;
+    const goals: TaskGoalEntry[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== 'object') continue;
+        const r = entry as Record<string, unknown>;
+        if (typeof r.id !== 'string' || typeof r.text !== 'string') continue;
+        goals.push({
+            id: r.id,
+            text: r.text,
+            createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+            ...(typeof r.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.dueDate) ? { dueDate: r.dueDate } : {}),
+        });
     }
     return goals.length > 0 ? goals : null;
 }

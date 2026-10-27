@@ -11,6 +11,7 @@ export const en: I18nMessages = {
     'common.clear': 'Clear',
     'common.add': 'Add',
     'common.apply': 'Apply',
+    'common.manage': 'Manage',
 
     // Weekdays
     'week.monday': 'Mon',
@@ -134,6 +135,9 @@ export const en: I18nMessages = {
     'panel.todoEmpty': 'No todo / improvement items',
     'panel.todoPending': 'Todo',
     'panel.todoDone': 'Done',
+    'panel.goalListTitle': 'Goal list',
+    'panel.goalAddPlaceholder': 'Enter a goal name',
+    'panel.goalEmpty': 'No goals yet',
     'panel.fileTimestamp': 'Enable timestamp',
     'panel.fileDir': 'Folder',
     'panel.fileAdd': 'Add',
@@ -143,7 +147,7 @@ export const en: I18nMessages = {
     'panel.fileCreate': 'Create',
     'panel.fileCreateFailed': 'Failed to create file',
     'panel.formCheckSetting': 'Form check-in',
-    'panel.okrSetting': 'OKR setup',
+    'panel.okrSetting': 'Goal',
     'panel.formCheckPending': 'Form check-in settings to be configured',
     'panel.okrPending': 'OKR settings to be configured',
     'panel.targetFile': 'Task File',

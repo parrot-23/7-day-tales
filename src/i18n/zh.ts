@@ -9,6 +9,7 @@ export const zh = {
     'common.clear': '清除',
     'common.add': '添加',
     'common.apply': '应用',
+    'common.manage': '管理',
 
     // 星期
     'week.monday': '周一',
@@ -132,6 +133,9 @@ export const zh = {
     'panel.todoEmpty': '暂无待办 / 改进条目',
     'panel.todoPending': '待办',
     'panel.todoDone': '已完成',
+    'panel.goalListTitle': '目标清单',
+    'panel.goalAddPlaceholder': '输入目标名称',
+    'panel.goalEmpty': '暂无目标条目',
     'panel.fileTimestamp': '启用时间戳',
     'panel.fileDir': '文件目录',
     'panel.fileAdd': '添加',
@@ -141,7 +145,7 @@ export const zh = {
     'panel.fileCreate': '创建',
     'panel.fileCreateFailed': '创建文件失败',
     'panel.formCheckSetting': '表单打卡',
-    'panel.okrSetting': 'OKR设置',
+    'panel.okrSetting': '目标',
     'panel.formCheckPending': '表单打卡设置项待配置',
     'panel.okrPending': 'OKR 设置项待配置',
     'panel.targetFile': '任务文件',
