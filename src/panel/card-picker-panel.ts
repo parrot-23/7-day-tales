@@ -7,6 +7,7 @@ import { FloatingPanel } from './floating-panel';
 
 /** 可添加的卡片：id + 图标 + 文案 key */
 const CARD_ITEMS: { id: string; icon: string; labelKey: Parameters<typeof t>[0] }[] = [
+    { id: 'date', icon: 'calendar-day', labelKey: 'interface.cardDate' },
     { id: 'today-clock', icon: 'clock', labelKey: 'interface.cardTodayClock' },
     { id: 'today-tasks', icon: 'list-checks', labelKey: 'interface.cardTodayTasks' },
 ];

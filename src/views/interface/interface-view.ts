@@ -1,8 +1,10 @@
 // 界面视图：新一级视图「界面」下的二级落地页。
-// 布局：左侧日期 / 任务 / OKR 三张小卡片，右侧计划 / 检查 / 收集 / 画廊 / 成就榜单 / 数据六张卡片，底部一个方框。
+// 布局：日期 / 今日时钟 / 今日任务等浮动卡片，右侧计划 / 检查 / 收集 / 画廊 / 成就榜单等入口卡片，底部一个方框。
 import { Menu, setIcon } from 'obsidian';
 import type { App, Plugin, TFile } from 'obsidian';
 
+import { DateCard } from '../../cards/date-card';
+import { createInterfaceCardShell } from '../../cards/interface-card-shell';
 import { TodayCard } from '../../cards/task/today-card';
 import { TodayTasksCard } from '../../cards/task/today-tasks-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
@@ -275,17 +277,11 @@ export class InterfaceView {
 
         const main = container.createDiv({ cls: 'interface-main' });
 
-        // 左侧：日期
-        const left = main.createDiv({ cls: 'interface-col is-left' });
-
-        const dateCard = left.createDiv({ cls: 'interface-card interface-date-card' });
-        const now = new Date();
-        dateCard.createDiv({
-            cls: 'interface-date-month',
-            text: t('interface.monthTitle', { month: String(now.getMonth() + 1) }),
-        });
-        dateCard.createDiv({ cls: 'interface-date-day', text: String(now.getDate()) });
-        dateCard.addEventListener('click', () => this.openDatePanel());
+        // 今日日期卡片：默认不显示，由编辑模式的「添加」面板加入
+        if (this.isCardAdded('date')) {
+            const dateBody = this.mountCard(main, 'date', 'card-date', () => this.setCardAdded('date', false));
+            new DateCard({ onClick: () => this.openDatePanel() }).render(dateBody);
+        }
 
         // 中间：今日任务方框（编辑模式下可移除，隐藏状态随布局持久化）
         if (!this.isCardHidden('today-clock')) {
@@ -295,23 +291,15 @@ export class InterfaceView {
                 categoryData: this.categoryData,
                 onRunningTaskChanged: () => this.renderBottomContent(),
             });
-            this.todayCard.render(main);
-            const todayEl = main.querySelector<HTMLElement>('.interface-today');
-            if (todayEl) {
-                this.applyCardPosition(todayEl, 'today-clock');
-                if (this.editMode) this.addCardEditControls(todayEl, main, 'today-clock');
-            }
+            const todayBody = this.mountCard(main, 'today-clock', 'card-today-clock', () => this.setCardHidden('today-clock', true));
+            this.todayCard.render(todayBody);
         }
 
         // 今日任务（折叠列表）卡片：默认不显示，由编辑模式的「添加」面板加入
         if (this.isCardAdded('today-tasks')) {
             this.todayTasksCard ??= new TodayTasksCard({ plugin: this.plugin });
-            this.todayTasksCard.render(main);
-            const tasksEl = main.querySelector<HTMLElement>('.interface-today-tasks-card');
-            if (tasksEl) {
-                this.applyCardPosition(tasksEl, 'today-tasks');
-                if (this.editMode) this.addCardEditControls(tasksEl, main, 'today-tasks');
-            }
+            const tasksBody = this.mountCard(main, 'today-tasks', 'card-today-tasks', () => this.setCardAdded('today-tasks', false));
+            this.todayTasksCard.render(tasksBody);
         }
 
         // 右侧：任务 / 时间盒（置顶）
@@ -397,70 +385,20 @@ export class InterfaceView {
         this.setCardHidden('today-clock', false);
     }
 
-    /** 编辑模式下给卡片加顶部拖动方块与右上角 X 按钮 */
-    private addCardEditControls(cardEl: HTMLElement, main: HTMLElement, cardId: string): void {
-        // 顶部中间的拖动方块：按住拖动整张卡片
-        const handle = cardEl.createDiv({ cls: 'interface-card-drag' });
-        this.enableCardDrag(cardEl, main, handle, cardId);
-
-        const removeBtn = cardEl.createEl('button', {
-            cls: 'interface-card-remove',
-            text: '×',
-            attr: { 'aria-label': t('interface.removeCard') },
-        });
-        removeBtn.addEventListener('click', (evt) => {
-            evt.stopPropagation();
-            if (cardId === 'today-clock') {
-                this.setCardHidden(cardId, true);
-            } else {
-                this.setCardAdded(cardId, false);
-            }
-        });
-    }
-
-    /** 应用保存的卡片位置，无保存值时使用 CSS 默认位置（靠左上） */
-    private applyCardPosition(el: HTMLElement, cardId: string): void {
-        const position = this.baseRepo.data?.interfaceLayoutData.cardPositions[cardId];
-        if (!position) return;
-        el.style.left = `${position.left}px`;
-        el.style.top = `${position.top}px`;
-    }
-
-    /** 按住顶部方块拖动卡片，松手后保存像素坐标 */
-    private enableCardDrag(cardEl: HTMLElement, main: HTMLElement, handle: HTMLElement, cardId: string): void {
-        handle.addEventListener('pointerdown', (evt) => {
-            if (evt.button !== 0) return;
-            evt.preventDefault();
-            const mainRect = main.getBoundingClientRect();
-            const cardRect = cardEl.getBoundingClientRect();
-            const offsetX = evt.clientX - cardRect.left;
-            const offsetY = evt.clientY - cardRect.top;
-
-            const onMove = (moveEvt: PointerEvent) => {
-                const left = Math.max(0, Math.min(
-                    moveEvt.clientX - mainRect.left - offsetX,
-                    mainRect.width - cardRect.width,
-                ));
-                const top = Math.max(0, Math.min(
-                    moveEvt.clientY - mainRect.top - offsetY,
-                    mainRect.height - cardRect.height,
-                ));
-                cardEl.style.left = `${left}px`;
-                cardEl.style.top = `${top}px`;
-            };
-            const onUp = () => {
-                handle.removeEventListener('pointermove', onMove);
-                cardEl.removeClass('is-dragging');
-                this.saveCardPosition(cardId, {
-                    left: parseFloat(cardEl.style.left) || 0,
-                    top: parseFloat(cardEl.style.top) || 0,
-                });
-            };
-
-            cardEl.addClass('is-dragging');
-            handle.setPointerCapture(evt.pointerId);
-            handle.addEventListener('pointermove', onMove);
-            handle.addEventListener('pointerup', onUp, { once: true });
+    /** 挂载浮动卡片外壳：统一定位、边框、拖动、移除与编辑模式点击拦截 */
+    private mountCard(
+        parentEl: HTMLElement,
+        cardId: string,
+        cardClass: string,
+        onRemove: () => void,
+    ): HTMLElement {
+        return createInterfaceCardShell(parentEl, {
+            cardId,
+            cardClass,
+            editMode: this.editMode,
+            position: this.baseRepo.data?.interfaceLayoutData.cardPositions[cardId],
+            onMove: (position) => this.saveCardPosition(cardId, position),
+            onRemove,
         });
     }
 

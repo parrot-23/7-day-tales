@@ -6869,14 +6869,59 @@ button.swimlane-section-card-settings {
     flex: 0 0 auto;
 }
 
-/* 中间的今日任务方框：绝对定位，默认靠左上（左侧卡片右侧），可拖动并持久化位置 */
-.interface-today {
+/* 浮动卡片外壳：统一绝对定位、边框 / 背景 / 圆角；编辑模式下由外壳挂载拖动条、X 与点击拦截 */
+.interface-card-shell {
+    position: absolute;
+    z-index: 3;
+    box-sizing: border-box;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+    transition: border-width 0.15s ease, border-color 0.15s ease;
+}
+
+/* 编辑模式：拖动时略微降低不透明度 */
+.interface-card-shell.is-dragging {
+    opacity: 0.9;
+}
+
+.interface-card-shell.is-dragging .interface-card-drag {
+    cursor: grabbing;
+}
+
+/* 内容容器：铺满外壳，内部布局由各卡片自行负责 */
+.interface-card-shell-body {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* 今日日期卡片外壳：150×120，默认左上；悬停时保留原来的强调边框 */
+.card-date {
+    left: 0;
+    top: 0;
+    width: 150px;
+    height: 120px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.card-date:hover {
+    border-width: 3px;
+    border-color: var(--interactive-accent);
+}
+
+/* 编辑模式下卡片不可点击，光标改为默认（拖动条自身保持 grab） */
+.card-date.is-editing {
+    cursor: default;
+}
+
+/* 今日时钟卡片外壳：宽度取内容区一半，默认靠左上（日期卡片右侧） */
+.card-today-clock {
     /* 字体基准：跟随 Obsidian 正文字号，框内所有尺寸按此比例等比缩放 */
     --today-fs: var(--font-text-size, 16px);
-    position: absolute;
     left: 162px;
     top: 0;
-    z-index: 3;
     /* 原宽度 = 容器宽度 - 两侧卡片(150×2) - 间距(12×2)；取其一半 */
     width: calc(50% - 162px);
     /* 随字体等比增高，最多占内容区的 70% */
@@ -6884,20 +6929,30 @@ button.swimlane-section-card-settings {
     max-height: 70%;
     min-height: calc(var(--today-fs) * 12);
     min-width: 0;
+}
+
+/* 今日任务卡片外壳：300×360，默认右下 */
+.card-today-tasks {
+    left: 162px;
+    top: 70%;
+    width: 300px;
+    height: 360px;
+    min-width: 0;
+}
+
+/* 今日时钟卡片内容：定位 / 边框 / 背景由外壳提供 */
+.interface-today {
+    /* 字体基准：跟随 Obsidian 正文字号，框内所有尺寸按此比例等比缩放 */
+    --today-fs: var(--font-text-size, 16px);
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     gap: calc(var(--today-fs) * 0.5);
     padding: calc(var(--today-fs) * 0.75);
     box-sizing: border-box;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: calc(var(--today-fs) * 0.5);
-    background: var(--background-secondary);
 }
 
-/* 编辑模式：拖动时略微降低不透明度 */
-.interface-today.is-dragging {
-    opacity: 0.9;
-}
 
 /* 顶部的拖动小横条 */
 .interface-card-drag {
@@ -6916,10 +6971,6 @@ button.swimlane-section-card-settings {
 
 .interface-card-drag:hover {
     background: var(--text-muted);
-}
-
-.interface-today.is-dragging .interface-card-drag {
-    cursor: grabbing;
 }
 
 .interface-today-title {
@@ -7314,9 +7365,14 @@ button.swimlane-section-card-settings {
     border-color: var(--interactive-accent);
 }
 
-/* 日期卡片：顶部月份标题 + 大号日号 */
+/* 日期卡片内容：月份 + 大号日号，铺满外壳并居中 */
 .interface-date-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 6px;
 }
 
@@ -7473,33 +7529,16 @@ button.swimlane-section-card-settings {
     text-overflow: ellipsis;
 }
 
-/* 今日任务（折叠列表）卡片：默认不显示，由编辑模式「添加」面板加入；可拖动并持久化位置 */
+/* 今日任务（折叠列表）卡片内容：定位 / 边框 / 背景由外壳提供 */
 .interface-today-tasks-card {
     /* 字体基准：跟随 Obsidian 正文字号，框内尺寸按此比例缩放 */
     --tts-fs: var(--font-text-size, 16px);
-    position: absolute;
-    left: 162px;
-    top: 70%;
-    z-index: 3;
-    width: 300px;
-    height: 360px;
-    min-width: 0;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     padding: calc(var(--tts-fs) * 0.5);
     box-sizing: border-box;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: calc(var(--tts-fs) * 0.5);
-    background: var(--background-secondary);
-}
-
-/* 编辑模式：拖动时略微降低不透明度 */
-.interface-today-tasks-card.is-dragging {
-    opacity: 0.9;
-}
-
-.interface-today-tasks-card.is-dragging .interface-card-drag {
-    cursor: grabbing;
 }
 
 /* 第一行：左右箭头 + 日期 / 标签（标签在日期下方换行） */
