@@ -97,7 +97,7 @@ export class ThemePanel extends FloatingPanel {
             const card = contentEl.createDiv({ cls: 'theme-preview-card' });
             card.toggleClass('is-active', isActive);
 
-            // 缩略图：使用主题的图片素材
+            // 缩略图：使用主题的图片素材；无素材的主题显示占位（空白主题为「不使用任何主题」）
             const thumb = card.createDiv({ cls: 'theme-preview-thumb' });
             const assetPath = theme.assets[0]?.path;
             if (assetPath) {
@@ -105,6 +105,11 @@ export class ThemePanel extends FloatingPanel {
                     `${this.panelOptions.pluginDir}/${assetPath}`,
                 );
                 thumb.style.backgroundImage = `url("${url}")`;
+            } else if (theme.noteKey) {
+                thumb.addClass('is-blank');
+                thumb.createSpan({ cls: 'theme-preview-thumb-note', text: t(theme.noteKey) });
+            } else {
+                thumb.addClass('is-plain');
             }
 
             const info = card.createDiv({ cls: 'theme-preview-info' });

@@ -29,6 +29,8 @@ export interface ThemeDefinition {
     nameKey: keyof I18nMessages;
     /** 主题使用的图片素材 */
     assets: ThemeAsset[];
+    /** 缩略图占位文案 key（无图片素材时显示，如空白主题） */
+    noteKey?: keyof I18nMessages;
     /** 在容器内绘制代码层（星空 / 光晕 / 星云），可返回清理函数用于停止动画 */
     mount: (container: HTMLElement, ctx: ThemeMountContext) => (() => void) | void;
 }

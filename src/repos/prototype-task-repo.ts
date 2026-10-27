@@ -50,12 +50,16 @@ export class PrototypeTaskRepo {
         }
     }
 
-    /** 更新任务名称 / 描述 / 分类（任务不存在时忽略） */
-    update(taskId: string, patch: { name?: string; description?: string; categoryId?: string }): void {
+    /** 更新任务名称 / 描述 / 分类 / 类型（任务不存在时忽略） */
+    update(
+        taskId: string,
+        patch: { name?: string; description?: string; categoryId?: string; type?: PrototypeTaskType },
+    ): void {
         const task = this.tasks.find((item) => item.id === taskId);
         if (!task) return;
         if (patch.name !== undefined) task.name = patch.name;
         if (patch.description !== undefined) task.description = patch.description;
         if (patch.categoryId !== undefined) task.categoryId = patch.categoryId;
+        if (patch.type !== undefined) task.type = patch.type;
     }
 }

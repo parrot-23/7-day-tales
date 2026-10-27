@@ -139,6 +139,7 @@ export class InterfaceView {
                 tasks: this.rootPrototypeTasks(),
                 onSubmit: (payload) => this.addPrototypeTask(payload.name, payload.type),
                 onTaskClick: (task) => this.openTaskDetail(task),
+                onChangeTaskType: (task, type) => this.changePrototypeTaskType(task, type),
             });
         } else {
             this.taskPanel.setTasks(this.rootPrototypeTasks());
@@ -322,6 +323,13 @@ export class InterfaceView {
         this.detailPanels.forEach((panel) => panel.setTasks(this.prototypeTaskRepo.tasks));
         this.todayCard?.refreshTasks();
         this.todayTasksCard?.refresh();
+    }
+
+    /** 切换原型任务类型（主线 / 支线）：写仓库 + 持久化 + 刷新列表 */
+    private changePrototypeTaskType(task: PrototypeTask, type: PrototypeTaskType): void {
+        this.prototypeTaskRepo.update(task.id, { type });
+        void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+        this.refreshTaskConsumers();
     }
 
     /** 更新原型任务的名称 / 描述 / 分类：写仓库 + 持久化 */

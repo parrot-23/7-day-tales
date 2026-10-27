@@ -1,6 +1,6 @@
 // 任务面板：基于 FloatingPanel 的任务添加入口。
-// 上方两个大按钮（图标 + 文字）：添加主线任务 / 添加支线任务；
-// 点击后展开表单：任务名称输入 + 一行归属方块（收集篮子 / 待办改进清单 / OKR 篮子 / 任务文件）。
+// 布局从上到下：第一行输入框 + 类型下拉 + 添加按钮；第二行归属方块（收集篮子 / 待办改进等）；
+// 最下方为已有任务的单行列表（主线 / 支线用左侧颜色竖条区分）。
 import { setIcon } from 'obsidian';
 
 import type { PrototypeTask } from '../datatypes/prototype-task';
@@ -24,8 +24,10 @@ export interface TaskPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
     onSubmit?: (payload: TaskPanelSubmitPayload) => void;
     /** 已有的主线 / 支线任务（用于展示） */
     tasks?: PrototypeTask[];
-    /** 点击已有任务方块的回调 */
+    /** 点击已有任务条目的回调 */
     onTaskClick?: (task: PrototypeTask) => void;
+    /** 切换已有任务类型（主线 / 支线）的回调 */
+    onChangeTaskType?: (task: PrototypeTask, type: TaskPanelTaskType) => void;
 }
 
 /** 归属方块定义（仅展示，不参与选择） */
@@ -40,48 +42,54 @@ const TARGETS: { icon: string; labelKey: Parameters<typeof t>[0] }[] = [
 /** 任务面板 */
 export class TaskPanel extends FloatingPanel {
     private panelOptions: TaskPanelOptions;
-    private formEl!: HTMLElement;
     private inputEl!: HTMLInputElement;
     private typeSelectEl!: HTMLSelectElement;
     private existingEl!: HTMLElement;
+    /** 类型切换下拉（挂在 body 上，保证层级高于悬浮面板） */
+    private typeMenuEl: HTMLElement | null = null;
+    private typeMenuCleanup: (() => void) | null = null;
 
     constructor(options: TaskPanelOptions = {}) {
         super({
             width: 520,
-            title: options.title ?? t('panel.taskPanelTitle'),
             ...options,
+            title: options.title ?? t('panel.taskPanelTitle'),
+            onClose: () => {
+                this.closeTypeMenu();
+                options.onClose?.();
+            },
         });
         this.panelOptions = options;
         this.renderContent();
     }
 
-    /** 渲染任务方块区 + 表单区 */
+    /** 渲染输入区 + 归属方块 + 已有任务列表 */
     private renderContent(): void {
         const body = this.body;
         body.addClass('task-panel');
 
-        // 已有任务方块，末尾跟一个「+」添加按钮
-        this.existingEl = body.createDiv({ cls: 'task-panel-existing' });
-        this.setTasks(this.panelOptions.tasks ?? []);
-
-        // 表单：默认隐藏，点击「+」后展开
-        this.formEl = body.createDiv({ cls: 'task-panel-form' });
-        this.formEl.style.display = 'none';
-
-        // 第一行：任务名称 + 类型下拉（主线 / 支线）
-        const nameRow = this.formEl.createDiv({ cls: 'task-panel-name-row' });
+        // 第一行：任务名称输入 + 类型下拉 + 添加按钮（常显）
+        const nameRow = body.createDiv({ cls: 'task-panel-name-row' });
         this.inputEl = nameRow.createEl('input', { cls: 'task-panel-input' });
         this.inputEl.type = 'text';
         this.inputEl.addEventListener('keydown', (evt) => {
             if (evt.key === 'Enter') this.submit();
         });
+
         this.typeSelectEl = nameRow.createEl('select', { cls: 'dropdown task-panel-type-select' });
         this.typeSelectEl.createEl('option', { text: t('panel.mainTaskBadge'), value: 'main' });
         this.typeSelectEl.createEl('option', { text: t('panel.sideTaskBadge'), value: 'side' });
         this.typeSelectEl.addEventListener('change', () => this.syncPlaceholder());
+        this.syncPlaceholder();
 
-        // 第二行：归属方块（仅展示）
-        const targets = this.formEl.createDiv({ cls: 'task-panel-targets' });
+        const addBtn = nameRow.createEl('button', {
+            cls: 'mod-cta task-panel-add-btn',
+            text: t('panel.addTask'),
+        });
+        addBtn.addEventListener('click', () => this.submit());
+
+        // 第二行：归属方块（仅展示，压缩高度）
+        const targets = body.createDiv({ cls: 'task-panel-targets' });
         for (const target of TARGETS) {
             const el = targets.createDiv({ cls: 'task-panel-target' });
             const iconEl = el.createDiv({ cls: 'task-panel-target-icon' });
@@ -89,52 +97,104 @@ export class TaskPanel extends FloatingPanel {
             el.createDiv({ cls: 'task-panel-target-label', text: t(target.labelKey) });
         }
 
-        // 底部：取消 / 确认
-        const footer = this.formEl.createDiv({ cls: 'task-panel-form-footer' });
-        const cancelBtn = footer.createEl('button', { text: t('common.cancel') });
-        cancelBtn.addEventListener('click', () => this.hideForm());
-        const confirmBtn = footer.createEl('button', {
-            cls: 'mod-cta',
-            text: t('common.confirm'),
-        });
-        confirmBtn.addEventListener('click', () => this.submit());
+        // 已有任务：单行列表
+        this.existingEl = body.createDiv({ cls: 'task-panel-existing' });
+        this.setTasks(this.panelOptions.tasks ?? []);
     }
 
-    /** 刷新已有任务方块（末尾始终保留「+」添加按钮） */
+    /** 刷新已有任务列表 */
     setTasks(tasks: PrototypeTask[]): void {
         this.existingEl.empty();
         for (const task of tasks) {
-            const el = this.existingEl.createDiv({
-                cls: `task-panel-existing-item is-${task.type}`,
-            });
+            const el = this.existingEl.createDiv({ cls: `task-panel-existing-item is-${task.type}` });
             el.setAttribute('title', task.name);
-            const iconEl = el.createDiv({ cls: 'task-panel-existing-icon' });
+
+            // 左侧方块：图标 + 任务名称
+            const tileEl = el.createDiv({ cls: 'task-panel-task-tile' });
+            const iconEl = tileEl.createDiv({ cls: 'task-panel-task-icon' });
             setIcon(iconEl, task.type === 'main' ? 'star' : 'git-branch');
-            el.createDiv({ cls: 'task-panel-existing-label', text: task.name });
-            el.createDiv({
-                cls: 'task-panel-existing-type',
-                text: t(task.type === 'main' ? 'panel.mainTaskBadge' : 'panel.sideTaskBadge'),
+            tileEl.createDiv({ cls: 'task-panel-task-name', text: task.name });
+
+            // 右侧：任务描述（无描述时显示占位文案）
+            const bodyEl = el.createDiv({ cls: 'task-panel-task-body' });
+            const hasDescription = Boolean(task.description && task.description.trim());
+            bodyEl.createDiv({
+                cls: `task-panel-task-desc${hasDescription ? '' : ' is-empty'}`,
+                text: hasDescription ? task.description! : t('panel.noDescription'),
             });
+
+            // 最右侧：类型标签（可点击下拉切换）
+            const typeEl = el.createDiv({
+                cls: `task-panel-task-type${this.panelOptions.onChangeTaskType ? ' is-switchable' : ''}`,
+            });
+            typeEl.createSpan({ text: t(task.type === 'main' ? 'panel.mainTaskBadge' : 'panel.sideTaskBadge') });
+            if (this.panelOptions.onChangeTaskType) {
+                setIcon(typeEl.createSpan({ cls: 'task-panel-task-type-caret' }), 'chevron-down');
+                typeEl.addEventListener('click', (evt) => {
+                    evt.stopPropagation();
+                    this.openTypeMenu(evt, typeEl, task);
+                });
+            }
+
             if (this.panelOptions.onTaskClick) {
                 el.addClass('is-clickable');
                 el.addEventListener('click', () => this.panelOptions.onTaskClick?.(task));
             }
         }
-
-        // 末尾「+」按钮：与任务方块同尺寸
-        const addEl = this.existingEl.createDiv({ cls: 'task-panel-existing-item task-panel-add-item' });
-        addEl.setAttribute('title', t('panel.addTask'));
-        const addIconEl = addEl.createDiv({ cls: 'task-panel-existing-icon' });
-        setIcon(addIconEl, 'plus');
-        addEl.addEventListener('click', () => this.showForm());
     }
 
-    /** 展开表单，默认类型为主线任务 */
-    private showForm(): void {
-        this.typeSelectEl.value = 'main';
-        this.syncPlaceholder();
-        this.formEl.style.display = 'flex';
-        this.inputEl.focus();
+    /** 在类型标签下方弹出切换菜单（自绘，层级高于悬浮面板） */
+    private openTypeMenu(evt: MouseEvent, anchor: HTMLElement, task: PrototypeTask): void {
+        evt.stopPropagation();
+        this.closeTypeMenu();
+
+        const menu = document.body.createDiv({ cls: 'task-panel-type-menu' });
+        const renderOption = (type: TaskPanelTaskType, labelKey: 'panel.mainTaskBadge' | 'panel.sideTaskBadge') => {
+            const isActive = task.type === type;
+            const item = menu.createDiv({ cls: `task-panel-type-menu-item${isActive ? ' is-active' : ''}` });
+            item.createSpan({ text: t(labelKey) });
+            if (isActive) setIcon(item.createSpan({ cls: 'task-panel-type-menu-check' }), 'check');
+            item.addEventListener('click', (itemEvt) => {
+                itemEvt.stopPropagation();
+                this.closeTypeMenu();
+                if (!isActive) this.panelOptions.onChangeTaskType?.(task, type);
+            });
+        };
+        renderOption('main', 'panel.mainTaskBadge');
+        renderOption('side', 'panel.sideTaskBadge');
+
+        // 右对齐到标签右边缘，展开在标签下方
+        const rect = anchor.getBoundingClientRect();
+        menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+        menu.style.right = `${Math.round(Math.max(8, window.innerWidth - rect.right))}px`;
+
+        // 点击菜单外、按 Esc、面板滚动时关闭
+        const onPointerDown = (downEvt: PointerEvent) => {
+            const target = downEvt.target as Node | null;
+            if (target && menu.contains(target)) return;
+            this.closeTypeMenu();
+        };
+        const onKeyDown = (keyEvt: KeyboardEvent) => {
+            if (keyEvt.key === 'Escape') this.closeTypeMenu();
+        };
+        const onScroll = () => this.closeTypeMenu();
+        window.addEventListener('pointerdown', onPointerDown, true);
+        window.addEventListener('keydown', onKeyDown, true);
+        window.addEventListener('scroll', onScroll, true);
+        this.typeMenuCleanup = () => {
+            window.removeEventListener('pointerdown', onPointerDown, true);
+            window.removeEventListener('keydown', onKeyDown, true);
+            window.removeEventListener('scroll', onScroll, true);
+        };
+        this.typeMenuEl = menu;
+    }
+
+    /** 关闭类型切换下拉 */
+    private closeTypeMenu(): void {
+        this.typeMenuCleanup?.();
+        this.typeMenuCleanup = null;
+        this.typeMenuEl?.remove();
+        this.typeMenuEl = null;
     }
 
     /** 按下拉选中的类型更新占位文案 */
@@ -142,12 +202,6 @@ export class TaskPanel extends FloatingPanel {
         this.inputEl.placeholder = this.typeSelectEl.value === 'side'
             ? t('panel.sideTaskName')
             : t('panel.mainTaskName');
-    }
-
-    /** 收起表单 */
-    private hideForm(): void {
-        this.formEl.style.display = 'none';
-        this.inputEl.value = '';
     }
 
     /** 确认提交 */
@@ -161,7 +215,7 @@ export class TaskPanel extends FloatingPanel {
             type: this.typeSelectEl.value === 'side' ? 'side' : 'main',
             name,
         });
-        this.hideForm();
+        this.inputEl.value = '';
         this.close();
     }
 }

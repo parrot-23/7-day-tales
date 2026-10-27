@@ -10,7 +10,7 @@ import type { PlanCategoryData } from '../shared/plan-category-manager';
 import { ConfirmModal } from '../system/confirm-modal';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
-import { GoalListPanel } from './goal-list-panel';
+import { GoalListView } from './goal-list-view';
 
 /** 任务详情面板配置 */
 export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
@@ -38,8 +38,9 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
     onReorderTasks?: (ordered: PrototypeTask[]) => void;
 }
 
-/** 右侧归属分区：showCount 为 true 时在标签后显示条目数量占位 */
+/** 右侧分区选项卡：showCount 为 true 时在标签后显示条目数量占位 */
 const SECTIONS: { labelKey: Parameters<typeof t>[0]; showCount?: boolean }[] = [
+    { labelKey: 'panel.goalTab' },
     { labelKey: 'panel.targetTodo', showCount: true },
     { labelKey: 'panel.targetInbox', showCount: true },
     { labelKey: 'panel.targetFile', showCount: true },
@@ -90,20 +91,18 @@ export class TaskDetailPanel extends FloatingPanel {
     private fileCreateMode = false;
     /** 左侧底部工具栏：表单打卡按钮 */
     private formButtonEl!: HTMLButtonElement;
-    /** 左侧底部工具栏：OKR 设置按钮 */
-    private okrButtonEl!: HTMLButtonElement;
-    /** 右侧底部设置面板（表单打卡 / OKR 设置） */
+    /** 右侧底部设置面板（表单打卡） */
     private settingPanelEl!: HTMLElement;
-    /** 当前打开的目标清单面板 */
-    private goalListPanel: GoalListPanel | null = null;
     /** 当前激活的设置面板类型 */
-    private settingActive: 'form' | 'okr' | null = null;
+    private settingActive: 'form' | null = null;
     /** 右侧容器（切换左侧选中任务时整体重建） */
     private rightEl!: HTMLElement;
     /** 当前选中的归属分区索引（切换任务后保持不变） */
     private currentSection = 0;
     /** 面板打开时的根任务 id（左侧任务树始终以它为根，不随右侧切换变化） */
     private rootTaskId: string;
+    /** 左侧顶部的根任务下拉（可切换任务树的根） */
+    private rootSelectEl!: HTMLSelectElement;
     /** 当前进行中的内联编辑取消函数（切换任务时先调用以放弃编辑） */
     private activeInlineEditAbort: (() => void) | null = null;
     /** 拖动结束后抑制一次点击，避免误选中 */
@@ -137,7 +136,25 @@ export class TaskDetailPanel extends FloatingPanel {
     /** 刷新全量任务并重绘任务树 */
     setTasks(tasks: PrototypeTask[]): void {
         this.tasks = tasks;
+        this.refreshRootSelect();
         this.renderTree();
+    }
+
+    /** 重建根任务下拉（顶层任务 = 无父任务的根任务） */
+    private refreshRootSelect(): void {
+        const roots = this.tasks.filter((task) => !task.parentId);
+        if (!roots.some((task) => task.id === this.rootTaskId)) {
+            this.rootTaskId = roots[0]?.id ?? this.rootTaskId;
+        }
+        this.rootSelectEl.empty();
+        if (roots.length === 0) {
+            this.rootSelectEl.createEl('option', { text: t('panel.planNoTask'), value: '' });
+            return;
+        }
+        for (const task of roots) {
+            this.rootSelectEl.createEl('option', { text: task.name, value: task.id });
+        }
+        this.rootSelectEl.value = this.rootTaskId;
     }
 
     /** 渲染左右结构 */
@@ -147,6 +164,17 @@ export class TaskDetailPanel extends FloatingPanel {
 
         // 左侧
         const left = body.createDiv({ cls: 'task-detail-left' });
+
+        // 根任务下拉：切换任务树的根（位于类型标题行上方）
+        this.rootSelectEl = left.createEl('select', { cls: 'dropdown plan-root-select task-detail-root-select' });
+        this.rootSelectEl.addEventListener('change', () => {
+            const taskId = this.rootSelectEl.value;
+            if (!taskId || taskId === this.rootTaskId) return;
+            this.rootTaskId = taskId;
+            this.renderTree();
+            this.selectTask(taskId);
+        });
+
         const header = left.createDiv({ cls: 'task-detail-header' });
         header.createSpan({
             cls: 'task-detail-type',
@@ -174,6 +202,12 @@ export class TaskDetailPanel extends FloatingPanel {
             text: t('common.confirm'),
         });
         confirmBtn.addEventListener('click', () => this.submitAdd());
+        // 失去焦点（焦点移出小面板）时自动收起
+        this.addFormEl.addEventListener('focusout', (evt) => {
+            const next = evt.relatedTarget as Node | null;
+            if (next && this.addFormEl.contains(next)) return;
+            this.hideAddForm();
+        });
 
         // 后代任务树
         this.treeEl = left.createDiv({ cls: 'task-detail-tree' });
@@ -188,21 +222,16 @@ export class TaskDetailPanel extends FloatingPanel {
             const taskId = row?.dataset.taskId;
             if (taskId) this.selectTask(taskId);
         });
+        this.refreshRootSelect();
         this.renderTree();
 
-        // 左侧底部工具栏：表单打卡 / OKR 设置（互斥激活，右侧底部显示对应面板）
+        // 左侧底部工具栏：表单打卡（激活后右侧底部显示设置面板）
         const toolbar = left.createDiv({ cls: 'task-detail-toolbar' });
         this.formButtonEl = this.createToolbarButton(
             toolbar,
             'check-square',
             t('panel.formCheckSetting'),
-            () => this.toggleSetting('form'),
-        );
-        this.okrButtonEl = this.createToolbarButton(
-            toolbar,
-            'target',
-            t('panel.okrSetting'),
-            () => this.toggleSetting('okr'),
+            () => this.toggleSetting(),
         );
 
         // 右侧：任务信息（名称 / 分类 / 描述）+ 归属分区选项卡（切换左侧选中任务时整体重建）
@@ -306,6 +335,7 @@ export class TaskDetailPanel extends FloatingPanel {
 
             const sectionEl = this.sectionsEl.createDiv({ cls: 'task-detail-section' });
             const sectionBody = sectionEl.createDiv({ cls: 'task-detail-section-body' });
+            if (section.labelKey === 'panel.goalTab') this.renderGoalSection(sectionBody);
             if (section.labelKey === 'panel.targetInbox') this.renderBasket(sectionBody);
             if (section.labelKey === 'panel.targetTodo') this.renderTodo(sectionBody);
             if (section.labelKey === 'panel.targetFile') this.renderFiles(sectionBody);
@@ -368,22 +398,15 @@ export class TaskDetailPanel extends FloatingPanel {
         return button;
     }
 
-    /** 切换设置面板（互斥单选：再次点击当前按钮则关闭） */
-    private toggleSetting(kind: 'form' | 'okr'): void {
-        this.settingActive = this.settingActive === kind ? null : kind;
+    /** 切换表单打卡设置面板（再次点击按钮则关闭） */
+    private toggleSetting(): void {
+        this.settingActive = this.settingActive === 'form' ? null : 'form';
         this.renderSettingPanel();
-        // 目标激活状态决定任务树末尾是否显示目标数量
-        this.renderTree();
     }
 
-    /** 渲染右侧底部设置面板（未激活时隐藏，内容暂为占位） */
+    /** 渲染右侧底部设置面板（未激活时隐藏） */
     private renderSettingPanel(): void {
-        // 切换到其它设置项时关闭目标清单面板
-        if (this.settingActive !== 'okr' && this.goalListPanel?.isOpen) {
-            this.goalListPanel.close();
-        }
         this.formButtonEl.toggleClass('is-active', this.settingActive === 'form');
-        this.okrButtonEl.toggleClass('is-active', this.settingActive === 'okr');
         this.settingPanelEl.empty();
         const visible = this.settingActive !== null;
         this.settingPanelEl.toggleClass('is-hidden', !visible);
@@ -401,73 +424,19 @@ export class TaskDetailPanel extends FloatingPanel {
             cls: 'plan-info-category',
             text: category?.label ?? t('defaultCategory.uncategorized'),
         });
-        // 「目标」面板第一行末尾：管理按钮，打开当前任务的目标清单
-        if (this.settingActive === 'okr') {
-            const manageBtn = head.createEl('button', {
-                cls: 'task-detail-setting-add-btn',
-                attr: { type: 'button', 'aria-label': t('common.manage') },
-            });
-            setIcon(manageBtn, 'sliders-horizontal');
-            manageBtn.addEventListener('click', () => this.openGoalListPanel(task));
-        }
 
-        // 第二行：表单打卡为占位；目标显示全部目标方块
+        // 第二行：表单打卡内容（暂为占位）
         const body = this.settingPanelEl.createDiv({ cls: 'task-detail-setting-body' });
-        if (this.settingActive === 'form') {
-            body.createDiv({ cls: 'task-detail-setting-placeholder', text: t('panel.formCheckPending') });
-        } else {
-            this.renderGoalCards(body, task);
-        }
+        body.createDiv({ cls: 'task-detail-setting-placeholder', text: t('panel.formCheckPending') });
     }
 
-    /** 「目标」面板第二行：目标方块（图标 + 名称 + 截止日期，未设置截止不显示） */
-    private renderGoalCards(container: HTMLElement, task: PrototypeTask): void {
-        const goals = task.goals ?? [];
-        if (goals.length === 0) {
-            container.createDiv({ cls: 'task-detail-setting-placeholder', text: t('panel.goalEmpty') });
-            return;
-        }
-        const grid = container.createDiv({ cls: 'task-detail-goal-grid' });
-        for (const goal of goals) {
-            const card = grid.createDiv({ cls: 'task-detail-goal-card' });
-            card.title = goal.text;
-            const iconEl = card.createSpan({ cls: 'task-detail-goal-card-icon' });
-            setIcon(iconEl, 'target');
-            card.createSpan({ cls: 'task-detail-goal-card-name', text: goal.text });
-            if (goal.dueDate) {
-                card.createSpan({ cls: 'task-detail-goal-card-due', text: this.formatGoalDue(goal.dueDate) });
-            }
-        }
-    }
-
-    /** 目标截止日期文案（如 10月30日） */
-    private formatGoalDue(dueDate: string): string {
-        const due = new Date(`${dueDate}T00:00:00`);
-        if (Number.isNaN(due.getTime())) return '';
-        return getLang() === 'zh'
-            ? `${due.getMonth() + 1}月${due.getDate()}日`
-            : `${due.getMonth() + 1}/${due.getDate()}`;
-    }
-
-    /** 打开当前任务的目标清单面板（已打开时复用） */
-    private openGoalListPanel(task: PrototypeTask): void {
-        if (this.goalListPanel) {
-            this.goalListPanel.open();
-            return;
-        }
-        this.goalListPanel = new GoalListPanel({
-            task,
+    /** 「目标」选项卡：目标清单（输入 / 截止时间 / 列表） */
+    private renderGoalSection(container: HTMLElement): void {
+        new GoalListView(container, {
+            task: this.task,
             save: this.panelOptions.save,
-            onChanged: () => {
-                this.renderSettingPanel();
-                this.renderTree();
-            },
-            onClose: () => {
-                this.goalListPanel?.destroy();
-                this.goalListPanel = null;
-            },
+            onChanged: () => this.renderTree(),
         });
-        this.goalListPanel.open();
     }
 
     /** 就地编辑：把元素内容换成输入框，回车 / 失焦提交，Esc 取消 */
@@ -1065,15 +1034,13 @@ export class TaskDetailPanel extends FloatingPanel {
             const iconEl = row.createSpan({ cls: 'task-detail-tree-icon' });
             setIcon(iconEl, 'git-branch');
             row.createSpan({ cls: 'task-detail-tree-label', text: child.name });
-            // 「目标」按钮激活时，条目末尾显示目标图标 + 该任务自身目标数量（为 0 不显示）
-            if (this.settingActive === 'okr') {
-                const count = child.goals?.length ?? 0;
-                if (count > 0) {
-                    const goalEl = row.createSpan({ cls: 'task-detail-tree-goal' });
-                    const goalIconEl = goalEl.createSpan({ cls: 'task-detail-tree-goal-icon' });
-                    setIcon(goalIconEl, 'target');
-                    goalEl.createSpan({ cls: 'task-detail-tree-goal-count', text: String(count) });
-                }
+            // 条目末尾始终显示目标图标 + 该任务自身目标数量（为 0 不显示）
+            const goalCount = child.goals?.length ?? 0;
+            if (goalCount > 0) {
+                const goalEl = row.createSpan({ cls: 'task-detail-tree-goal' });
+                const goalIconEl = goalEl.createSpan({ cls: 'task-detail-tree-goal-icon' });
+                setIcon(goalIconEl, 'target');
+                goalEl.createSpan({ cls: 'task-detail-tree-goal-count', text: String(goalCount) });
             }
             row.toggleClass('is-selected', child.id === this.selectedTaskId);
             row.addEventListener('mousedown', (evt) => this.startTreeLongPress(evt, child, row));
@@ -1270,9 +1237,6 @@ export class TaskDetailPanel extends FloatingPanel {
         if (next && next.id !== this.task.id) {
             // 右侧整体切换为选中任务：名称 / 分类 / 描述 / 归属分区，未提交的内联编辑先行放弃
             this.activeInlineEditAbort?.();
-            // 目标清单面板指向旧任务，切换任务时销毁避免编辑错对象
-            this.goalListPanel?.destroy();
-            this.goalListPanel = null;
             this.task = next;
             this.setTitle(next.name);
             this.basketSelectMode = false;
