@@ -7,6 +7,7 @@ import type { BasketItem, ImprovementEntry } from '../datatypes/domain';
 import type { PrototypeTask } from '../datatypes/prototype-task';
 import { getLang, t } from '../i18n';
 import type { PlanCategoryData } from '../shared/plan-category-manager';
+import { ConfirmModal } from '../system/confirm-modal';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
 import { GoalListPanel } from './goal-list-panel';
@@ -29,6 +30,12 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
     save: () => Promise<void>;
     /** 任务树拖动排序 / 调整层级后的回调（父面板刷新任务列表等） */
     onTasksChanged?: () => void;
+    /** 归档回调（父面板负责写仓库并持久化） */
+    onArchiveTask?: (taskId: string) => void;
+    /** 删除回调（父面板负责写仓库并持久化） */
+    onDeleteTask?: (taskId: string) => void;
+    /** 任务树拖拽排序回调（父面板按新顺序写回仓库） */
+    onReorderTasks?: (ordered: PrototypeTask[]) => void;
 }
 
 /** 右侧归属分区：showCount 为 true 时在标签后显示条目数量占位 */
@@ -210,8 +217,11 @@ export class TaskDetailPanel extends FloatingPanel {
         this.tabs = [];
         this.currentSection = Math.min(this.currentSection, SECTIONS.length - 1);
 
-        // 第一行：任务名称 + 编辑图标，右侧颜色圆点 + 分类名称
-        const head = right.createDiv({ cls: 'task-detail-head' });
+        // 第一、二行：任务名称 + 分类，右侧为跨两行的「归档 / 删除」方块按钮
+        const headBlock = right.createDiv({ cls: 'task-detail-head-block' });
+        const headInfo = headBlock.createDiv({ cls: 'task-detail-head-info' });
+
+        const head = headInfo.createDiv({ cls: 'task-detail-head' });
         const nameEl = head.createSpan({ cls: 'task-detail-name', text: this.task.name });
         const nameEdit = head.createSpan({ cls: 'task-detail-edit-icon' });
         setIcon(nameEdit, 'pencil');
@@ -230,8 +240,7 @@ export class TaskDetailPanel extends FloatingPanel {
             });
         });
 
-        // 第二行：颜色圆点 + 分类名称 + 编辑图标
-        const categoryRow = right.createDiv({ cls: 'task-detail-category-row' });
+        const categoryRow = headInfo.createDiv({ cls: 'task-detail-category-row' });
         const category = this.panelOptions.categoryData?.categories
             .find((item) => item.id === this.task.categoryId);
         const dotEl = categoryRow.createSpan({ cls: 'task-detail-category-dot' });
@@ -244,6 +253,10 @@ export class TaskDetailPanel extends FloatingPanel {
         setIcon(categoryEdit, 'pencil');
         categoryEdit.setAttribute('aria-label', 'Edit');
         categoryEdit.addEventListener('click', () => this.startCategoryEdit(dotEl, categoryNameEl));
+
+        const headActions = headBlock.createDiv({ cls: 'task-detail-head-actions' });
+        this.createHeadAction(headActions, 'archive', t('common.archive'), false, () => this.archiveTask());
+        this.createHeadAction(headActions, 'trash-2', t('common.delete'), true, () => this.confirmDeleteTask());
 
         // 第三行：任务描述 + 编辑图标（单行，溢出省略）
         const descRow = right.createDiv({ cls: 'task-detail-desc-row' });
@@ -302,6 +315,42 @@ export class TaskDetailPanel extends FloatingPanel {
         // 滚轮切换：在右侧内容区滚动时左右切换选项卡
         this.sectionsEl.addEventListener('wheel', (evt) => this.handleWheel(evt), { passive: false });
         this.renderSettingPanel();
+    }
+
+    /** 创建右侧标题区的方块按钮（图标 + 换行 + 名称） */
+    private createHeadAction(
+        parent: HTMLElement,
+        icon: string,
+        label: string,
+        danger: boolean,
+        onClick: () => void,
+    ): void {
+        const button = parent.createEl('button', {
+            cls: `task-detail-head-action${danger ? ' is-danger' : ''}`,
+            attr: { type: 'button', 'aria-label': label },
+        });
+        setIcon(button.createSpan({ cls: 'task-detail-head-action-icon' }), icon);
+        button.createSpan({ cls: 'task-detail-head-action-label', text: label });
+        button.addEventListener('click', onClick);
+    }
+
+    /** 归档当前任务：写完仓库后关闭面板 */
+    private archiveTask(): void {
+        this.panelOptions.onArchiveTask?.(this.task.id);
+        this.close();
+    }
+
+    /** 删除当前任务：确认后删除并关闭面板 */
+    private confirmDeleteTask(): void {
+        new ConfirmModal(
+            this.panelOptions.app,
+            t('panel.deleteTaskTitle'),
+            t('panel.deleteTaskDetail', { name: this.task.name }),
+            () => {
+                this.panelOptions.onDeleteTask?.(this.task.id);
+                this.close();
+            },
+        ).open();
     }
 
     /** 创建左侧工具栏按钮（图标 + 文字） */
@@ -1184,8 +1233,12 @@ export class TaskDetailPanel extends FloatingPanel {
             const insertAt = refIndex < 0 ? rest.length : (drop.placeAfter ? refIndex + 1 : refIndex);
             next = [...rest.slice(0, insertAt), ...moving, ...rest.slice(insertAt)];
         }
-        // 原地替换数组内容，保持引用不变（其它面板持有同一数组）
-        this.tasks.splice(0, this.tasks.length, ...next);
+        // 优先交由父面板按新顺序写回仓库；未提供时退回本地数组替换
+        if (this.panelOptions.onReorderTasks) {
+            this.panelOptions.onReorderTasks(next);
+        } else {
+            this.tasks.splice(0, this.tasks.length, ...next);
+        }
 
         this.renderTree();
         void this.panelOptions.save().then(() => this.panelOptions.onTasksChanged?.());

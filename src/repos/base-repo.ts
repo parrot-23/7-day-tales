@@ -334,6 +334,7 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
             ...(r.fileTimestamp === true ? { fileTimestamp: true } : {}),
             ...(parseTaskWeekGoals(r.weekGoals) ? { weekGoals: parseTaskWeekGoals(r.weekGoals)! } : {}),
             ...(parseTaskGoals(r.goals) ? { goals: parseTaskGoals(r.goals)! } : {}),
+            ...(r.archived === true ? { archived: true } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
         });
     }

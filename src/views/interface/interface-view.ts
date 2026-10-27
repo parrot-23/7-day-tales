@@ -1,13 +1,14 @@
 // 界面视图：新一级视图「界面」下的二级落地页。
-// 布局：日期 / 今日时钟 / 今日任务等浮动卡片，右侧计划 / 检查 / 收集 / 画廊 / 成就榜单等入口卡片，底部一个方框。
-import { Menu, setIcon } from 'obsidian';
-import type { App, Plugin, TFile } from 'obsidian';
+// 布局：日期 / 今日时钟 / 今日任务 / 时钟等浮动卡片，右侧垂直功能栏；任务板块内容改为面板（点击任务条目打开）。
+import { setIcon } from 'obsidian';
+import type { App, Plugin } from 'obsidian';
 
 import { DateCard } from '../../cards/date-card';
 import { createInterfaceCardShell } from '../../cards/interface-card-shell';
 import { NavCard } from '../../cards/nav-card';
 import { TodayCard } from '../../cards/task/today-card';
 import { TodayTasksCard } from '../../cards/task/today-tasks-card';
+import { ClockCard } from '../../cards/clock-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
 import { t } from '../../i18n';
 import { AchievementPanel } from '../../panel/achievement-panel';
@@ -17,6 +18,7 @@ import { CollectPanel } from '../../panel/collect-panel';
 import { DataPanel } from '../../panel/data-panel';
 import { GalleryPanel } from '../../panel/gallery-panel';
 import { PlanPanel } from '../../panel/plan-panel';
+import { TaskSectionsPanel } from '../../panel/task-sections-panel';
 import { TaskDetailPanel } from '../../panel/task-detail-panel';
 import { TaskPanel } from '../../panel/task-panel';
 import { TimeBoxPanel } from '../../panel/time-box-panel';
@@ -26,16 +28,6 @@ import type { CategoryRepo } from '../../repos/category-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
-
-/** 综合方框选项卡 */
-type BottomTabKey = 'basket' | 'todo' | 'file';
-
-/** 综合方框选项卡：顺序与文案 */
-const BOTTOM_TABS: { key: BottomTabKey; labelKey: Parameters<typeof t>[0] }[] = [
-    { key: 'basket', labelKey: 'interface.bottomTabBasket' },
-    { key: 'todo', labelKey: 'interface.bottomTabTodo' },
-    { key: 'file', labelKey: 'interface.bottomTabFile' },
-];
 
 /**
  * 界面视图：与其它二级视图一致，通过 renderInto 渲染到指定容器。
@@ -55,12 +47,12 @@ export class InterfaceView {
     private todayCard: TodayCard | null = null;
     /** 今日任务（折叠列表）卡片组件 */
     private todayTasksCard: TodayTasksCard | null = null;
+    /** 独立时钟卡片组件 */
+    private clockCard: ClockCard | null = null;
     /** 垂直功能栏卡片组件 */
     private navCard: NavCard | null = null;
-    /** 综合方框当前选项卡：收集篮子 / 待办改进 / 文件目录 */
-    private bottomTab: BottomTabKey = 'basket';
-    /** 综合方框选项卡内容容器 */
-    private bottomBodyEl: HTMLElement | null = null;
+    /** 任务板块信息面板（复用同一实例） */
+    private taskSectionsPanel: TaskSectionsPanel | null = null;
     /** 视图根容器（控制编辑态网点背景） */
     private viewEl: HTMLElement | null = null;
     /** 是否处于编辑模式（仅背景提示，暂不提供拖拽） */
@@ -167,6 +159,7 @@ export class InterfaceView {
                 onChanged: () => {
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
+                    this.clockCard?.refresh();
                     this.datePanel?.refresh();
                 },
             });
@@ -236,11 +229,15 @@ export class InterfaceView {
                 save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
                 onAddChild: (name, parentId) => this.addPrototypeTask(name, task.type, parentId),
                 onUpdateTask: (taskId, patch) => this.updatePrototypeTask(taskId, patch),
+                onArchiveTask: (taskId) => this.archivePrototypeTask(taskId),
+                onDeleteTask: (taskId) => this.deletePrototypeTask(taskId),
+                onReorderTasks: (ordered) => this.reorderPrototypeTasks(ordered),
                 onTasksChanged: () => {
                     this.taskPanel?.setTasks(this.rootPrototypeTasks());
                     this.detailPanels.forEach((item) => item.setTasks(this.prototypeTaskRepo.tasks));
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
+                    this.clockCard?.refresh();
                     this.datePanel?.refresh();
                 },
             });
@@ -254,6 +251,47 @@ export class InterfaceView {
     /** 根原型任务（不含子任务） */
     private rootPrototypeTasks(): PrototypeTask[] {
         return this.prototypeTaskRepo.tasks.filter((task) => !task.parentId);
+    }
+
+    /** 归档任务：隐藏但保留数据，销毁对应详情面板并刷新列表 */
+    private archivePrototypeTask(taskId: string): void {
+        this.prototypeTaskRepo.archive(taskId);
+        this.destroyTaskDetail(taskId);
+        void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+        this.refreshTaskConsumers();
+    }
+
+    /** 删除任务：仅删当前任务（子任务提升为根任务），销毁对应详情面板并刷新列表 */
+    private deletePrototypeTask(taskId: string): void {
+        this.prototypeTaskRepo.remove(taskId);
+        this.destroyTaskDetail(taskId);
+        void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+        this.refreshTaskConsumers();
+    }
+
+    /** 销毁任务详情面板实例（归档 / 删除后不再复用） */
+    private destroyTaskDetail(taskId: string): void {
+        this.detailPanels.get(taskId)?.destroy();
+        this.detailPanels.delete(taskId);
+    }
+
+    /** 按任务树拖拽结果重排仓库顺序（归档任务保留在末尾） */
+    private reorderPrototypeTasks(ordered: PrototypeTask[]): void {
+        const all = this.prototypeTaskRepo.allTasks;
+        const orderedIds = new Set(ordered.map((task) => task.id));
+        const hidden = all.filter((task) => !orderedIds.has(task.id));
+        all.splice(0, all.length, ...ordered, ...hidden);
+        this.detailPanels.forEach((panel) => panel.setTasks(this.prototypeTaskRepo.tasks));
+    }
+
+    /** 任务集合变化后刷新所有读取任务列表的界面 */
+    private refreshTaskConsumers(): void {
+        this.taskPanel?.setTasks(this.rootPrototypeTasks());
+        this.detailPanels.forEach((panel) => panel.setTasks(this.prototypeTaskRepo.tasks));
+        this.todayCard?.refreshTasks();
+        this.todayTasksCard?.refresh();
+        this.clockCard?.refresh();
+        this.datePanel?.refresh();
     }
 
     /** 新增原型任务：写仓库 + 持久化 + 刷新面板列表与详情树 */
@@ -292,7 +330,10 @@ export class InterfaceView {
                 app: this.app,
                 plugin: this.plugin,
                 categoryData: this.categoryData,
-                onRunningTaskChanged: () => this.renderBottomContent(),
+                onRunningTaskChanged: () => {
+                    this.todayTasksCard?.refresh();
+                    this.clockCard?.refresh();
+                },
             });
             const todayBody = this.mountCard(main, 'today-clock', 'card-today-clock', () => this.setCardHidden('today-clock', true));
             this.todayCard.render(todayBody);
@@ -300,9 +341,30 @@ export class InterfaceView {
 
         // 今日任务（折叠列表）卡片：默认不显示，由编辑模式的「添加」面板加入
         if (this.isCardAdded('today-tasks')) {
-            this.todayTasksCard ??= new TodayTasksCard({ plugin: this.plugin });
+            this.todayTasksCard ??= new TodayTasksCard({
+                plugin: this.plugin,
+                onRunningTaskChanged: () => {
+                    this.todayCard?.reloadRunningState();
+                    this.clockCard?.refresh();
+                },
+                onExecutionChanged: () => {
+                    this.todayCard?.refreshClockDisplay();
+                    this.clockCard?.refresh();
+                },
+                onTasksChanged: () => {
+                    this.todayCard?.refreshTasks();
+                },
+                onOpenTaskBoard: (taskId) => this.openTaskBoard(taskId),
+            });
             const tasksBody = this.mountCard(main, 'today-tasks', 'card-today-tasks', () => this.setCardAdded('today-tasks', false));
             this.todayTasksCard.render(tasksBody);
+        }
+
+        // 时钟卡片（24 小时时钟单独绘制）：默认不显示，由编辑模式的「添加」面板加入
+        if (this.isCardAdded('clock')) {
+            this.clockCard ??= new ClockCard({ plugin: this.plugin, categoryData: this.categoryData });
+            const clockBody = this.mountCard(main, 'clock', 'card-clock', () => this.setCardAdded('clock', false));
+            this.clockCard.render(clockBody);
         }
 
         // 右侧：垂直功能栏（默认显示，编辑模式下可移除）
@@ -321,29 +383,6 @@ export class InterfaceView {
             const navBody = this.mountCard(main, 'nav', 'card-nav', () => this.setCardHidden('nav', true));
             this.navCard.render(navBody);
         }
-
-        // 综合方框：标题 + 右上角 + 号（操作台）+ 选项卡（收集篮子 / 待办改进 / 文件目录）+ 内容区
-        const bottom = container.createDiv({ cls: 'interface-bottom' });
-        const bottomHeader = bottom.createDiv({ cls: 'interface-bottom-header' });
-        bottomHeader.createDiv({ cls: 'interface-bottom-title', text: t('interface.bottomTitle') });
-        const bottomAddBtn = bottomHeader.createEl('button', {
-            cls: 'interface-today-add',
-            attr: { 'aria-label': t('interface.bottomAdd') },
-        });
-        setIcon(bottomAddBtn, 'plus');
-        bottomAddBtn.addEventListener('click', (evt) => this.openBottomAddMenu(evt));
-
-        const bottomTabsEl = bottom.createDiv({ cls: 'interface-bottom-tabs' });
-        for (const tab of BOTTOM_TABS) {
-            const tabBtn = bottomTabsEl.createEl('button', { cls: 'interface-bottom-tab', text: t(tab.labelKey) });
-            tabBtn.dataset.tab = tab.key;
-            tabBtn.addEventListener('click', () => {
-                this.bottomTab = tab.key;
-                this.renderBottomContent();
-            });
-        }
-        this.bottomBodyEl = bottom.createDiv({ cls: 'interface-bottom-body' });
-        this.renderBottomContent();
 
         // 左下角悬浮：编辑 / 完成（编辑态仅显示网点背景，暂不提供拖拽）
         this.editButtonEl = container.createEl('button', { cls: 'interface-edit-btn' });
@@ -452,84 +491,13 @@ export class InterfaceView {
         this.addCardButtonEl?.toggleClass('is-hidden', !this.editMode);
     }
 
-    /** 综合方框「+」：下拉菜单（当前仅「操作台」，点击行为暂未实现） */
-    private openBottomAddMenu(evt: MouseEvent): void {
-        const menu = new Menu();
-        menu.addItem((item) => item
-            .setTitle(t('interface.bottomConsole'))
-            .setIcon('gauge'));
-        menu.showAtMouseEvent(evt);
-    }
-
-    /** 综合方框：刷新选项卡选中态并渲染内容（数据源为当前进行中的任务） */
-    private renderBottomContent(): void {
-        const bodyEl = this.bottomBodyEl;
-        if (!bodyEl) return;
-        bodyEl.parentElement?.querySelectorAll('.interface-bottom-tab').forEach((el) => {
-            el.toggleClass('is-active', (el as HTMLElement).dataset.tab === this.bottomTab);
+    /** 打开任务板块信息面板：展示指定任务的收集篮子 / 待办改进 / 文件目录 */
+    private openTaskBoard(taskId: string): void {
+        this.taskSectionsPanel ??= new TaskSectionsPanel({
+            app: this.app,
+            getTask: (id) => this.prototypeTaskRepo.tasks.find((item) => item.id === id),
+            categories: this.categoryData.categories,
         });
-        bodyEl.empty();
-
-        const runningTaskId = this.todayCard?.runningTaskId;
-        const task = runningTaskId
-            ? this.prototypeTaskRepo.tasks.find((item) => item.id === runningTaskId)
-            : undefined;
-        if (!task) {
-            bodyEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomNoRunning') });
-            return;
-        }
-
-        if (this.bottomTab === 'basket') {
-            const items = task.basket ?? [];
-            if (items.length === 0) {
-                bodyEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
-                return;
-            }
-            for (const item of items) this.createBottomItemRow(bodyEl, 'inbox', item.text);
-            return;
-        }
-
-        if (this.bottomTab === 'todo') {
-            const items = task.improvements ?? [];
-            if (items.length === 0) {
-                bodyEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
-                return;
-            }
-            for (const item of items) {
-                const row = this.createBottomItemRow(bodyEl, item.done ? 'check-circle' : 'circle', item.text);
-                if (item.done) row.addClass('is-done');
-            }
-            return;
-        }
-
-        if (!task.fileDir) {
-            bodyEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomNoFolder') });
-            return;
-        }
-        const files = this.listRunningTaskFiles(task.fileDir);
-        if (files.length === 0) {
-            bodyEl.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
-            return;
-        }
-        for (const file of files) {
-            const row = this.createBottomItemRow(bodyEl, 'file-text', file.name);
-            row.title = file.path;
-        }
-    }
-
-    /** 综合方框条目行：图标 + 文本 */
-    private createBottomItemRow(parentEl: HTMLElement, icon: string, text: string): HTMLElement {
-        const row = parentEl.createDiv({ cls: 'interface-bottom-item' });
-        setIcon(row.createSpan({ cls: 'interface-bottom-item-icon' }), icon);
-        row.createSpan({ cls: 'interface-bottom-item-text', text });
-        return row;
-    }
-
-    /** 进行中任务的文件目录下的一级文件（按修改时间倒序） */
-    private listRunningTaskFiles(dir: string | undefined): TFile[] {
-        if (!dir) return [];
-        return this.app.vault.getFiles()
-            .filter((file) => file.parent?.path === dir)
-            .sort((a, b) => b.stat.mtime - a.stat.mtime);
+        this.taskSectionsPanel.openForTask(taskId);
     }
 }

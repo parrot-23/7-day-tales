@@ -6940,6 +6940,39 @@ button.swimlane-section-card-settings {
     min-width: 0;
 }
 
+/* 时钟卡片外壳：220×220，默认左下（日期卡片下方） */
+.card-clock {
+    left: 0;
+    top: 130px;
+    width: 220px;
+    height: 220px;
+    padding: 6px;
+    min-width: 0;
+}
+
+/* 时钟卡片内容：24 小时时钟填满内容区 */
+.interface-clock-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.interface-clock-card-canvas {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.interface-clock-card-canvas svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 /* 今日时钟卡片内容：定位 / 边框 / 背景由外壳提供 */
 .interface-today {
     /* 字体基准：跟随 Obsidian 正文字号，框内所有尺寸按此比例等比缩放 */
@@ -7505,6 +7538,63 @@ button.swimlane-section-card-settings {
     border-bottom-color: var(--interactive-accent);
 }
 
+/* 任务板块信息面板：第一行任务名称 + 分类 */
+.task-sections-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-sections-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-sections-category {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--background-modifier-hover);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.task-sections-category-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+/* 任务板块信息面板：选项卡行与内容区 */
+.task-sections-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-sections-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
 /* 综合方框：选项卡内容（进行中任务的收集篮子 / 待办改进 / 文件目录） */
 .interface-bottom-body {
     display: flex;
@@ -7747,6 +7837,92 @@ button.swimlane-section-card-settings {
     font-size: calc(var(--tts-fs) * 0.625);
     line-height: 1.6;
     white-space: nowrap;
+}
+
+/* 条目末尾的操作图标：默认隐藏，悬停时显示 */
+.interface-today-tasks-item-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: calc(var(--tts-fs) * 0.125);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.interface-today-tasks-item:hover .interface-today-tasks-item-actions,
+.interface-today-tasks-item-actions:focus-within {
+    opacity: 1;
+}
+
+.interface-today-tasks-item-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--tts-fs) * 1.125);
+    height: calc(var(--tts-fs) * 1.125);
+    padding: 0;
+    border: none;
+    border-radius: calc(var(--tts-fs) * 0.25);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.interface-today-tasks-item-action:hover {
+    background: var(--background-modifier-border);
+    color: var(--text-normal);
+}
+
+.interface-today-tasks-item-action .svg-icon {
+    width: calc(var(--tts-fs) * 0.8125);
+    height: calc(var(--tts-fs) * 0.8125);
+}
+
+/* 额外任务列表末尾的「新增任务」按钮 */
+.interface-today-tasks-add {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--tts-fs) * 1.375);
+    height: calc(var(--tts-fs) * 1.375);
+    margin-top: calc(var(--tts-fs) * 0.125);
+    padding: 0;
+    border: none;
+    border-radius: calc(var(--tts-fs) * 0.25);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.interface-today-tasks-add:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.interface-today-tasks-add .svg-icon {
+    width: calc(var(--tts-fs) * 0.8125);
+    height: calc(var(--tts-fs) * 0.8125);
+}
+
+/* 进行中的任务：开始时间 + 累计时长 */
+.interface-today-tasks-running-item {
+    background: var(--background-modifier-hover);
+}
+
+.interface-today-tasks-running-start {
+    flex: 0 0 auto;
+    color: var(--text-faint);
+    font-size: calc(var(--tts-fs) * 0.625);
+    font-variant-numeric: tabular-nums;
+}
+
+.interface-today-tasks-running-elapsed {
+    flex: 0 0 auto;
+    color: var(--interactive-accent);
+    font-size: calc(var(--tts-fs) * 0.6875);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ======================== 文件夹选择面板（panel/folder-picker-panel） ======================== */
@@ -9122,6 +9298,69 @@ button.task-detail-todo-tool-btn:disabled {
 .task-detail-section-body {
     flex: 1;
     min-height: 0;
+}
+
+/* 右侧标题区：名称 / 分类两行 + 跨两行的归档、删除方块按钮 */
+.task-detail-head-block {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-detail-head-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.task-detail-head-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 4px;
+}
+
+.task-detail-head-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.task-detail-head-action:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.task-detail-head-action.is-danger:hover {
+    border-color: var(--text-error);
+    color: var(--text-error);
+}
+
+.task-detail-head-action-icon {
+    display: inline-flex;
+}
+
+.task-detail-head-action-icon .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.task-detail-head-action-label {
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 /* 右侧第一行：任务名称 + 编辑图标，右侧分类 */

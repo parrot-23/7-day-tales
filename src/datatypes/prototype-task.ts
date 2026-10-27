@@ -72,6 +72,8 @@ export interface PrototypeTask {
     weekGoals?: TaskWeekGoal[];
     /** 目标清单条目（任务详情「目标」面板，可选） */
     goals?: TaskGoalEntry[];
+    /** 是否已归档（归档任务在界面中隐藏，数据仍保留） */
+    archived?: boolean;
     /** 创建时间戳 */
     createdAt: number;
 }

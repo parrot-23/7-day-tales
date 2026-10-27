@@ -135,6 +135,45 @@ export class TodayCard {
         return this.runningTodayTaskId;
     }
 
+    /** 其他卡片开始 / 结束计时后同步计时展示与按钮组（卡片未渲染时跳过） */
+    reloadRunningState(): void {
+        if (!this.todayTimerEl) return;
+        const running = this.pdcaRepo.runningTask;
+        const startedAt = running?.source === 'prototype' ? running.startedAt : undefined;
+        const taskExists = running
+            ? this.prototypeTaskRepo.tasks.some((task) => task.id === running.inboxId)
+            : false;
+        if (running && typeof startedAt === 'number' && taskExists) {
+            if (this.timerHandle !== null && this.runningTodayTaskId === running.inboxId) return;
+            this.stopTodayTimer();
+            this.runningTodayTaskId = running.inboxId;
+            this.runningStartedAt = new Date(startedAt);
+            this.todayTimerEl.removeClass('is-hidden');
+            if (this.todayTimerStartEl) {
+                this.todayTimerStartEl.textContent = t('interface.todayStartAt', {
+                    time: this.formatClockTime(this.runningStartedAt),
+                });
+            }
+            this.updateTodayTimerText();
+            if (this.timerHandle === null) {
+                this.timerHandle = window.setInterval(() => this.updateTodayTimerText(), 1000);
+            }
+            this.renderTodayActions(true);
+            this.refreshClock();
+            return;
+        }
+        this.stopTodayTimer();
+        this.todayTimerEl.addClass('is-hidden');
+        if (this.todayTimerElapsedEl) this.todayTimerElapsedEl.textContent = '00:00';
+        this.renderTodayActions(false);
+        this.refreshClock();
+    }
+
+    /** 外部记录变化后刷新时钟外环 */
+    refreshClockDisplay(): void {
+        this.refreshClock();
+    }
+
     /** 在指定容器内渲染今日任务方框 */
     render(parentEl: HTMLElement): void {
         this.stopTodayTimer();

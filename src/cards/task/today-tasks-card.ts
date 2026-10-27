@@ -1,14 +1,18 @@
 // 今日任务卡片：界面视图编辑模式下通过「添加」面板加入。
-// 结构：< 日期 >（第二行标签：第x周 / 周x / 几天前）+ 习惯 / 当天任务 / 额外任务三个可折叠列表。
+// 结构：< 日期 >（第二行标签：第x周 / 周x / 几天前）+ 习惯 / 当天任务 / 额外任务三个可折叠列表，
+// 底部为「开始任务 / 新增任务 / 记录任务」按钮组（与今日时钟卡片共用同一进行中任务）。
 import { setIcon } from 'obsidian';
 import type { Plugin } from 'obsidian';
 
 import type { PrototypeTask } from '../../datatypes/prototype-task';
 import { t } from '../../i18n';
+import { TaskPickerPanel } from '../../panel/task-picker-panel';
+import { TaskRecordPanel } from '../../panel/task-record-panel';
+import type { PdcaRepo } from '../../repos/pdca-repo';
 import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
-import { getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
+import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
 
 /** 当天 0 点 */
 function startOfToday(): Date {
@@ -34,6 +38,14 @@ type SectionKey = 'habit' | 'planned' | 'extra';
 /** 今日任务卡片配置 */
 export interface TodayTasksCardOptions {
     plugin: Plugin;
+    /** 进行中任务变化（开始 / 结束 / 放弃）后通知，用于同步今日时钟卡片 */
+    onRunningTaskChanged?: () => void;
+    /** 执行记录变化后通知，用于刷新今日时钟外环 */
+    onExecutionChanged?: () => void;
+    /** 额外任务变化后通知，用于刷新今日时钟的任务列表 */
+    onTasksChanged?: () => void;
+    /** 点击任务条目：打开任务板块面板 */
+    onOpenTaskBoard?: (taskId: string) => void;
 }
 
 export class TodayTasksCard {
@@ -44,6 +56,16 @@ export class TodayTasksCard {
     private selectedDate: Date = startOfToday();
     /** 三个分区的展开状态（默认全部展开） */
     private expanded: Record<SectionKey, boolean> = { habit: true, planned: true, extra: true };
+    /** 「进行中的任务」折叠行是否展开（默认展开） */
+    private runningExpanded = true;
+    /** 进行中任务的计时刷新句柄 */
+    private runningTimerHandle: number | null = null;
+    /** 进行中任务的时长文本节点 */
+    private runningElapsedEl: HTMLElement | null = null;
+    /** 任务选择面板（复用同一实例） */
+    private taskPickerPanel: TaskPickerPanel | null = null;
+    /** 任务记录面板 */
+    private recordPanel: TaskRecordPanel | null = null;
 
     constructor(options: TodayTasksCardOptions) {
         this.options = options;
@@ -65,6 +87,16 @@ export class TodayTasksCard {
         return (this.plugin as Plugin & { taskExecutionRepo: TaskExecutionRepo }).taskExecutionRepo;
     }
 
+    /** PDCA 领域仓库（读写进行中任务） */
+    private get pdcaRepo(): PdcaRepo {
+        return (this.plugin as Plugin & { pdcaRepo: PdcaRepo }).pdcaRepo;
+    }
+
+    /** 唯一持久化出口 */
+    private saveAll(): Promise<void> {
+        return (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+    }
+
     /** 在指定容器内渲染卡片 */
     render(parentEl: HTMLElement): void {
         this.containerEl = parentEl.createDiv({ cls: 'interface-today-tasks-card' });
@@ -79,12 +111,66 @@ export class TodayTasksCard {
     private renderContent(): void {
         const card = this.containerEl;
         if (!card) return;
+        this.stopRunningTicker();
         card.empty();
         this.renderNav(card);
+
+        const habit = this.habitTasks();
+        const planned = this.plannedTasks();
+        const extra = this.extraTasks();
+
         const body = card.createDiv({ cls: 'interface-today-tasks-body' });
-        this.renderSection(body, 'habit', t('interface.todayHabitTitle'), this.habitTasks());
-        this.renderSection(body, 'planned', t('interface.todayPlannedTitle'), this.plannedTasks());
-        this.renderSection(body, 'extra', t('interface.todayExtraTitle'), this.extraTasks());
+        this.renderRunningSection(body);
+        this.renderSection(body, 'habit', t('interface.todayHabitTitle'), habit);
+        this.renderSection(body, 'planned', t('interface.todayPlannedTitle'), planned);
+        this.renderSection(body, 'extra', t('interface.todayExtraTitle'), extra, () => this.openTaskPicker());
+    }
+
+    /** 最上方的「进行中的任务」折叠行：任务名称 + 开始时间 / 累计时长 + 完成 / 放弃 */
+    private renderRunningSection(body: HTMLElement): void {
+        const running = this.pdcaRepo.runningTask;
+        if (!running || !this.isTodaySelected() || typeof running.startedAt !== 'number') return;
+        const task = this.prototypeTaskRepo.tasks.find((item) => item.id === running.inboxId);
+        if (!task) return;
+
+        const section = body.createDiv({ cls: 'interface-today-tasks-section interface-today-tasks-running' });
+        const head = section.createDiv({ cls: 'interface-today-tasks-section-head' });
+        const chevron = head.createSpan({ cls: 'interface-today-tasks-section-chevron' });
+        setIcon(chevron, this.runningExpanded ? 'chevron-down' : 'chevron-right');
+        head.createSpan({ cls: 'interface-today-tasks-section-title', text: t('interface.todayRunningTitle') });
+        head.addEventListener('click', () => {
+            this.runningExpanded = !this.runningExpanded;
+            this.renderContent();
+        });
+        if (!this.runningExpanded) return;
+
+        const list = section.createDiv({ cls: 'interface-today-tasks-list' });
+        const row = list.createDiv({ cls: 'interface-today-tasks-item interface-today-tasks-running-item' });
+        row.title = task.name;
+        row.addEventListener('click', () => this.options.onOpenTaskBoard?.(task.id));
+        row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
+        row.createSpan({
+            cls: 'interface-today-tasks-running-start',
+            text: this.formatClockTime(new Date(running.startedAt)),
+        });
+        this.runningElapsedEl = row.createSpan({
+            cls: 'interface-today-tasks-running-elapsed',
+            text: this.formatElapsed(Date.now() - running.startedAt),
+        });
+
+        const actions = row.createDiv({ cls: 'interface-today-tasks-item-actions' });
+        const doneBtn = this.createRowAction(actions, 'check', t('interface.todayEndTask'));
+        doneBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.finishRunningTask();
+        });
+        const abandonBtn = this.createRowAction(actions, 'x', t('interface.todayAbandonTask'));
+        abandonBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.abandonRunningTask();
+        });
+
+        this.startRunningTicker(running.startedAt);
     }
 
     /** 第一行：左右箭头 + 日期；第二行：第x周 / 周x / 几天前 标签 */
@@ -129,6 +215,7 @@ export class TodayTasksCard {
         key: SectionKey,
         title: string,
         tasks: PrototypeTask[],
+        onAdd?: () => void,
     ): void {
         const section = body.createDiv({ cls: 'interface-today-tasks-section' });
         const head = section.createDiv({ cls: 'interface-today-tasks-section-head' });
@@ -145,17 +232,179 @@ export class TodayTasksCard {
         const list = section.createDiv({ cls: 'interface-today-tasks-list' });
         if (tasks.length === 0) {
             list.createDiv({ cls: 'interface-today-tasks-empty', text: t('interface.bottomEmpty') });
-            return;
+        } else {
+            for (const task of tasks) {
+                const row = list.createDiv({ cls: 'interface-today-tasks-item' });
+                row.title = task.name;
+                row.addEventListener('click', () => this.options.onOpenTaskBoard?.(task.id));
+                row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
+                row.createSpan({
+                    cls: 'interface-today-tasks-item-badge',
+                    text: task.type === 'main' ? t('panel.mainTaskBadge') : t('panel.sideTaskBadge'),
+                });
+                // 悬停时在条目末尾显示「开始 / 记录」图标；过去日期或计时中隐藏「开始」
+                const actions = row.createDiv({ cls: 'interface-today-tasks-item-actions' });
+                if (this.isTodaySelected() && !this.isRunning()) {
+                    const startBtn = this.createRowAction(actions, 'play', t('interface.todayStartTask'));
+                    startBtn.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        this.startTask(task.id);
+                    });
+                }
+                const recordBtn = this.createRowAction(actions, 'pencil', t('interface.todayRecordTask'));
+                recordBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    this.openRecordPanel(task);
+                });
+            }
         }
-        for (const task of tasks) {
-            const row = list.createDiv({ cls: 'interface-today-tasks-item' });
-            row.title = task.name;
-            row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
-            row.createSpan({
-                cls: 'interface-today-tasks-item-badge',
-                text: task.type === 'main' ? t('panel.mainTaskBadge') : t('panel.sideTaskBadge'),
+        // 额外任务：展开后列表末尾显示「新增任务」+ 按钮
+        if (onAdd) {
+            const addBtn = list.createEl('button', {
+                cls: 'interface-today-tasks-add',
+                attr: { type: 'button', 'aria-label': t('interface.todayAddTaskButton') },
+            });
+            setIcon(addBtn, 'plus');
+            addBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                onAdd();
             });
         }
+    }
+
+    /** 条目末尾的操作图标（悬停时显示） */
+    private createRowAction(container: HTMLElement, icon: string, label: string): HTMLButtonElement {
+        const button = container.createEl('button', {
+            cls: 'interface-today-tasks-item-action',
+            attr: { type: 'button', 'aria-label': label },
+        });
+        setIcon(button, icon);
+        return button;
+    }
+
+    /** 是否存在进行中的计时（与今日时钟共用同一持久化字段） */
+    private isRunning(): boolean {
+        const running = this.pdcaRepo.runningTask;
+        if (!running || running.source !== 'prototype' || typeof running.startedAt !== 'number') return false;
+        return this.prototypeTaskRepo.tasks.some((task) => task.id === running.inboxId);
+    }
+
+    /** 开始该任务的计时：写入进行中任务并通知今日时钟同步 */
+    private startTask(taskId: string): void {
+        if (!this.isTodaySelected() || this.isRunning()) return;
+        const now = new Date();
+        this.pdcaRepo.setRunningTask({
+            inboxId: taskId,
+            start: now.getHours() * 60 + now.getMinutes(),
+            dayKey: getCurrentDayKey(),
+            source: 'prototype',
+            startedAt: now.getTime(),
+        });
+        void this.saveAll();
+        this.options.onRunningTaskChanged?.();
+        this.renderContent();
+    }
+
+    /** 完成进行中任务：满 1 分钟才写入执行记录（与今日时钟一致） */
+    private finishRunningTask(): void {
+        const running = this.pdcaRepo.runningTask;
+        if (running?.source === 'prototype' && typeof running.startedAt === 'number') {
+            const endAt = Date.now();
+            if (endAt - running.startedAt >= 60000) {
+                this.taskExecutionRepo.add(running.inboxId, running.startedAt, endAt);
+                this.options.onExecutionChanged?.();
+            }
+        }
+        this.clearRunningTask();
+    }
+
+    /** 放弃进行中任务：不写入执行记录 */
+    private abandonRunningTask(): void {
+        this.clearRunningTask();
+    }
+
+    /** 清除进行中任务并通知今日时钟同步 */
+    private clearRunningTask(): void {
+        this.stopRunningTicker();
+        this.pdcaRepo.setRunningTask(undefined);
+        void this.saveAll();
+        this.options.onRunningTaskChanged?.();
+        this.renderContent();
+    }
+
+    /** 每秒刷新进行中任务的累计时长 */
+    private startRunningTicker(startedAt: number): void {
+        this.stopRunningTicker();
+        this.runningTimerHandle = window.setInterval(() => {
+            if (!this.containerEl?.isConnected) {
+                this.stopRunningTicker();
+                return;
+            }
+            if (this.runningElapsedEl) {
+                this.runningElapsedEl.textContent = this.formatElapsed(Date.now() - startedAt);
+            }
+        }, 1000);
+    }
+
+    private stopRunningTicker(): void {
+        if (this.runningTimerHandle !== null) {
+            window.clearInterval(this.runningTimerHandle);
+            this.runningTimerHandle = null;
+        }
+    }
+
+    /** 时:分 */
+    private formatClockTime(date: Date): string {
+        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    /** 累计时长（分:秒，超过 1 小时带小时位） */
+    private formatElapsed(ms: number): string {
+        const total = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        const pad = (value: number): string => String(value).padStart(2, '0');
+        return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    /** 点击「新增任务」：打开任务选择面板，选中后加入所选日期的额外任务 */
+    private openTaskPicker(): void {
+        if (!this.taskPickerPanel) {
+            this.taskPickerPanel = new TaskPickerPanel({
+                getTasks: () => this.prototypeTaskRepo.tasks,
+                onSelect: (taskId) => {
+                    this.taskExecutionRepo.addExtraTask(makeDayKey(this.selectedDate), taskId);
+                    void this.saveAll();
+                    this.options.onTasksChanged?.();
+                    this.renderContent();
+                },
+            });
+        }
+        this.taskPickerPanel.open();
+    }
+
+    /** 点击条目末尾的记录图标：为该任务打开记录面板，时间归属所选日期 */
+    private openRecordPanel(task: PrototypeTask): void {
+        const now = new Date();
+        const end = new Date(this.selectedDate);
+        end.setHours(now.getHours(), now.getMinutes(), 0, 0);
+        const start = new Date(end.getTime() - 30 * 60000);
+        const formatTime = (date: Date): string =>
+            `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        this.recordPanel?.destroy();
+        this.recordPanel = new TaskRecordPanel({
+            title: `${t('panel.taskRecordTitle')} · ${task.name}`,
+            startTime: formatTime(start),
+            endTime: formatTime(end),
+            date: this.selectedDate,
+            onConfirm: (startAt, endAt) => {
+                this.taskExecutionRepo.add(task.id, startAt, endAt);
+                void this.saveAll();
+                this.options.onExecutionChanged?.();
+            },
+        });
+        this.recordPanel.open();
     }
 
     /** 习惯列表：启用习惯且所选星期生效的任务（按习惯时间排序） */

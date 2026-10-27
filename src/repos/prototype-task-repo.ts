@@ -10,8 +10,13 @@ export class PrototypeTaskRepo {
         this.baseRepo = baseRepo;
     }
 
-    /** 原型任务列表引用（视图读取用） */
+    /** 原型任务列表引用（视图读取用，已剔除归档任务） */
     get tasks(): PrototypeTask[] {
+        return this.allTasks.filter((task) => task.archived !== true);
+    }
+
+    /** 全量原型任务（含归档，仓库内部读写用） */
+    get allTasks(): PrototypeTask[] {
         return this.baseRepo.data!.prototypeTasks;
     }
 
@@ -24,8 +29,25 @@ export class PrototypeTaskRepo {
             createdAt: Date.now(),
         };
         if (parentId) task.parentId = parentId;
-        this.tasks.push(task);
+        this.allTasks.push(task);
         return task;
+    }
+
+    /** 归档任务：从所有界面隐藏，数据仍保留在存储中 */
+    archive(taskId: string): void {
+        const task = this.allTasks.find((item) => item.id === taskId);
+        if (task) task.archived = true;
+    }
+
+    /** 删除任务：仅删除当前任务，其子任务提升为根任务 */
+    remove(taskId: string): void {
+        const all = this.allTasks;
+        const index = all.findIndex((item) => item.id === taskId);
+        if (index < 0) return;
+        all.splice(index, 1);
+        for (const task of all) {
+            if (task.parentId === taskId) task.parentId = undefined;
+        }
     }
 
     /** 更新任务名称 / 描述 / 分类（任务不存在时忽略） */
