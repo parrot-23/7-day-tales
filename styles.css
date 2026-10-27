@@ -7389,41 +7389,63 @@ button.swimlane-section-card-settings {
     color: var(--text-normal);
 }
 
-/* 右侧卡片：图标在上、文字在下（尺寸比通用卡片各缩小 30px） */
-.interface-col.is-right .interface-card {
+/* 垂直功能栏卡片：外壳提供边框 / 背景，内部逐行排列「图标 + 文字」按钮 */
+.card-nav {
+    left: calc(100% - 120px);
+    top: 0;
     width: 120px;
-    height: 90px;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px;
+    height: auto;
+    padding: 4px;
 }
 
-.interface-entry-card-icon {
+.interface-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+.interface-nav-btn {
     display: flex;
     align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
     color: var(--text-muted);
-}
-
-.interface-entry-card-icon svg {
-    width: 18px;
-    height: 18px;
-}
-
-/* 任务卡片：图标 + 任务 */
-.interface-metric-card {
-    gap: 4px;
-}
-
-.interface-metric-label {
     font-size: 13px;
     font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.interface-nav-btn:hover {
+    background: var(--background-modifier-hover);
     color: var(--text-normal);
 }
 
-/* 右侧入口卡片：计划 / 检查 / 收集 / 画廊 / 时间盒 / 成就榜单 */
-.interface-entry-card {
-    font-size: 13px;
-    font-weight: 600;
+.interface-nav-btn-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--text-muted);
+}
+
+.interface-nav-btn:hover .interface-nav-btn-icon {
+    color: var(--text-normal);
+}
+
+.interface-nav-btn-icon .svg-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.interface-nav-btn-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* 底部方框：宽度为页面的 2/3 并居中 */

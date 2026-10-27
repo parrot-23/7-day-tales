@@ -5,6 +5,7 @@ import type { App, Plugin, TFile } from 'obsidian';
 
 import { DateCard } from '../../cards/date-card';
 import { createInterfaceCardShell } from '../../cards/interface-card-shell';
+import { NavCard } from '../../cards/nav-card';
 import { TodayCard } from '../../cards/task/today-card';
 import { TodayTasksCard } from '../../cards/task/today-tasks-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
@@ -25,15 +26,6 @@ import type { CategoryRepo } from '../../repos/category-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
-
-/** 右侧入口卡片：文案 key 与图标 */
-const ENTRY_CARDS: { label: Parameters<typeof t>[0]; icon: string }[] = [
-    { label: 'interface.plan', icon: 'calendar-days' },
-    { label: 'interface.check', icon: 'clipboard-check' },
-    { label: 'interface.collect', icon: 'inbox' },
-    { label: 'interface.gallery', icon: 'image' },
-    { label: 'achievement.title', icon: 'trophy' },
-];
 
 /** 综合方框选项卡 */
 type BottomTabKey = 'basket' | 'todo' | 'file';
@@ -63,6 +55,8 @@ export class InterfaceView {
     private todayCard: TodayCard | null = null;
     /** 今日任务（折叠列表）卡片组件 */
     private todayTasksCard: TodayTasksCard | null = null;
+    /** 垂直功能栏卡片组件 */
+    private navCard: NavCard | null = null;
     /** 综合方框当前选项卡：收集篮子 / 待办改进 / 文件目录 */
     private bottomTab: BottomTabKey = 'basket';
     /** 综合方框选项卡内容容器 */
@@ -302,29 +296,21 @@ export class InterfaceView {
             this.todayTasksCard.render(tasksBody);
         }
 
-        // 右侧：任务 / 时间盒（置顶）
-        const right = main.createDiv({ cls: 'interface-col is-right' });
-        const taskCard = right.createDiv({ cls: 'interface-card interface-metric-card' });
-        setIcon(taskCard.createSpan({ cls: 'interface-entry-card-icon' }), 'list-todo');
-        taskCard.createSpan({ cls: 'interface-metric-label', text: t('interface.task') });
-        taskCard.addEventListener('click', () => this.openTaskPanel());
-
-        const timeBoxCard = right.createDiv({ cls: 'interface-card interface-entry-card' });
-        setIcon(timeBoxCard.createSpan({ cls: 'interface-entry-card-icon' }), 'calendar-clock');
-        timeBoxCard.createSpan({ cls: 'interface-entry-card-text', text: t('interface.timeBox') });
-        timeBoxCard.addEventListener('click', () => this.openTimeBoxPanel());
-
-        // 右侧：计划 / 检查 / 收集 / 画廊 / 成就榜单（图标 + 文字）
-        for (const { label, icon } of ENTRY_CARDS) {
-            const card = right.createDiv({ cls: 'interface-card interface-entry-card' });
-            const iconEl = card.createSpan({ cls: 'interface-entry-card-icon' });
-            setIcon(iconEl, icon);
-            card.createSpan({ cls: 'interface-entry-card-text', text: t(label) });
-            if (label === 'interface.plan') card.addEventListener('click', () => this.openPlanPanel());
-            if (label === 'interface.check') card.addEventListener('click', () => this.openCheckPanel());
-            if (label === 'interface.collect') card.addEventListener('click', () => this.openCollectPanel());
-            if (label === 'interface.gallery') card.addEventListener('click', () => this.openGalleryPanel());
-            if (label === 'achievement.title') card.addEventListener('click', () => this.openAchievementPanel());
+        // 右侧：垂直功能栏（默认显示，编辑模式下可移除）
+        if (!this.isCardHidden('nav')) {
+            this.navCard ??= new NavCard({
+                items: [
+                    { labelKey: 'interface.timeBox', icon: 'calendar-clock', onClick: () => this.openTimeBoxPanel() },
+                    { labelKey: 'interface.task', icon: 'list-todo', onClick: () => this.openTaskPanel() },
+                    { labelKey: 'interface.plan', icon: 'calendar-days', onClick: () => this.openPlanPanel() },
+                    { labelKey: 'interface.check', icon: 'clipboard-check', onClick: () => this.openCheckPanel() },
+                    { labelKey: 'interface.collect', icon: 'inbox', onClick: () => this.openCollectPanel() },
+                    { labelKey: 'interface.gallery', icon: 'image', onClick: () => this.openGalleryPanel() },
+                    { labelKey: 'achievement.title', icon: 'trophy', onClick: () => this.openAchievementPanel() },
+                ],
+            });
+            const navBody = this.mountCard(main, 'nav', 'card-nav', () => this.setCardHidden('nav', true));
+            this.navCard.render(navBody);
         }
 
         // 综合方框：标题 + 右上角 + 号（操作台）+ 选项卡（收集篮子 / 待办改进 / 文件目录）+ 内容区
@@ -372,17 +358,12 @@ export class InterfaceView {
 
     /** 从卡片选择面板选中卡片后加入界面 */
     private showPickedCard(cardId: string): void {
-        if (cardId === 'today-clock') {
-            this.showTodayCard();
+        // 今日时钟 / 垂直功能栏默认显示：可能被编辑模式移除，重新加入时清除隐藏标记
+        if (cardId === 'today-clock' || cardId === 'nav') {
+            this.setCardHidden(cardId, false);
             return;
         }
         this.setCardAdded(cardId, true);
-    }
-
-    /** 确保今日任务方框显示（取消布局中的隐藏标记） */
-    private showTodayCard(): void {
-        if (!this.isCardHidden('today-clock')) return;
-        this.setCardHidden('today-clock', false);
     }
 
     /** 挂载浮动卡片外壳：统一定位、边框、拖动、移除与编辑模式点击拦截 */

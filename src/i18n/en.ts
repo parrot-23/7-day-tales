@@ -66,6 +66,7 @@ export const en: I18nMessages = {
     'interface.addCard': 'Add',
     'interface.cardPickerTitle': 'Add Card',
     'interface.cardDate': "Today's Date",
+    'interface.cardNav': 'Vertical Function Bar',
     'interface.cardTodayClock': 'Today Clock Tasks',
     'interface.cardTodayTasks': 'Today Tasks',
     'interface.removeCard': 'Remove Card',

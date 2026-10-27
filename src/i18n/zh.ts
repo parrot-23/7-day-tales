@@ -64,6 +64,7 @@ export const zh = {
     'interface.addCard': '添加',
     'interface.cardPickerTitle': '添加卡片',
     'interface.cardDate': '今日日期',
+    'interface.cardNav': '垂直功能栏',
     'interface.cardTodayClock': '今日时钟任务',
     'interface.cardTodayTasks': '今日任务',
     'interface.removeCard': '移除卡片',
