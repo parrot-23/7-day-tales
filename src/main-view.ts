@@ -9,7 +9,6 @@ import { TopBar } from './component/topbar/top-bar';
 import type { PdcaRepo } from './repos/pdca-repo';
 import type { InboxRepo } from './repos/inbox-repo';
 import type { CategoryRepo } from './repos/category-repo';
-import type { TemplateRepo } from './repos/template-repo';
 import type { PlanSchemeRepo } from './repos/plan-scheme-repo';
 import type { PrototypeTaskRepo } from './repos/prototype-task-repo';
 import { t } from './i18n';
@@ -105,11 +104,6 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         return (this.plugin as Plugin & { categoryRepo: CategoryRepo }).categoryRepo;
     }
 
-    /** 从插件实例获取日模板领域仓库 */
-    private templateRepo(): TemplateRepo {
-        return (this.plugin as Plugin & { templateRepo: TemplateRepo }).templateRepo;
-    }
-
     /** 从插件实例获取时间计划方案领域仓库 */
     private planSchemeRepo(): PlanSchemeRepo {
         return (this.plugin as Plugin & { planSchemeRepo: PlanSchemeRepo }).planSchemeRepo;
@@ -133,9 +127,8 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         await this.renderContent();
     }
 
-    /** 清空数据后重置视图与默认分类 / 模板 / 方案 */
+    /** 清空数据后重置视图与默认分类 / 方案 */
     async resetData() {
-        this.templateRepo().clear();
         this.categoryRepo().replaceAll([
             { id: 'uncategorized', label: t('defaultCategory.uncategorized'), color: '#888888' },
             { id: 'work', label: t('defaultCategory.work'), color: '#4c8dff' },

@@ -42,8 +42,6 @@ export function ensureUncategorizedCategory(categoryData: PlanCategoryData): voi
     }
 }
 
-// 分类图例已抽离为公共组件：见 shared/category-legend.ts
-
 export class CategoryConfigModal extends Modal {
     private categoryData: PlanCategoryData;
     private draft: PlanCategory[];

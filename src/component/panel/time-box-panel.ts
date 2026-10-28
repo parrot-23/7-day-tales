@@ -1,12 +1,11 @@
 // 时间盒面板：基于 FloatingPanel，用于配置时间盒。
-// 结构：顶部图例（复用周计划视图的分类图例）+ 7 列 × 24 小时的日历格子。
+// 结构：顶部图例（分类色块 + 名称）+ 7 列 × 24 小时的日历格子。
 // 交互：选中图例分类后，在网格上点击或拖动即可把该分类涂到格子上，数据存入 TimeBoxRepo。
 import type { App } from 'obsidian';
 
 import type { TimeBoxRepo } from '../../repos/timebox-repo';
 import { t } from '../../i18n';
 import type { CategoryRepo } from '../../repos/category-repo';
-import { renderPlanCategoryLegend } from '../../shared/category-legend';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 import { getCurrentDayKey, getCurrentWeekKey, makeDayKeyFromWeek } from '../../shared/plan-data';
 import { CategoryPanel } from './category-panel';
@@ -120,19 +119,20 @@ export class TimeBoxPanel extends FloatingPanel {
     /** 渲染分类图例行（选中态随点击更新，末尾附分类配置图标） */
     private renderLegend(): void {
         this.legendEl.empty();
-        const legend = renderPlanCategoryLegend(
-            this.panelOptions.app,
-            this.legendEl,
-            this.panelOptions.categoryData,
-            () => this.renderLegend(),
-            this.selectedCategoryId,
-            (id) => {
-                this.selectedCategoryId = this.selectedCategoryId === id ? undefined : id;
+        const legend = this.legendEl.createDiv({ cls: 'range-legend' });
+        legend.createDiv({ text: t('category.legend'), cls: 'legend-title' });
+
+        for (const cat of this.panelOptions.categoryData.categories) {
+            const row = legend.createDiv({ cls: 'legend-item' });
+            if (cat.id === this.selectedCategoryId) row.addClass('is-selected');
+            const swatch = row.createDiv({ cls: 'legend-color' });
+            swatch.setCssProps({ '--swatch-color': cat.color ?? '#888888' });
+            row.createSpan({ text: cat.label });
+            row.onclick = () => {
+                this.selectedCategoryId = this.selectedCategoryId === cat.id ? undefined : cat.id;
                 this.renderLegend();
-            },
-            false,
-            this.panelOptions.categoryRepo,
-        );
+            };
+        }
 
         const gearBtn = legend.createDiv({ cls: 'category-gear-btn', text: '⚙️' });
         gearBtn.setAttribute('aria-label', t('category.config'));

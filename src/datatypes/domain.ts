@@ -2,7 +2,7 @@
 // 这些是插件最核心的数据标准，被周计划、日执行、年计划、泳道图、工作台等多个视图共用，
 // 统一在此定义，保证各视图读取的数据口径一致。
 
-import type { WeekKey } from '../shared/plan-data';
+import type { CategorizedRange, WeekKey } from '../shared/plan-data';
 
 /** 计划事件（周计划视图排布的事件） */
 export interface EventBlock {
@@ -181,6 +181,28 @@ export interface OkrRecord {
     periodKey: string;
     /** 记录值：频次为次数，区间为数值 */
     value: number;
+}
+
+/** 日模板 */
+export interface DayTemplate {
+    id: string;
+    name: string;
+    /** 模板包含的时间区块（不含 id，应用时再生成） */
+    ranges: Omit<CategorizedRange, 'id'>[];
+}
+
+/** 单日的模板属性（日属性绑定） */
+export interface DayProperty {
+    /** 星期几（1=周一 ～ 7=周日） */
+    day: number;
+    /** 绑定的日模板 ID */
+    templateId: string;
+}
+
+/** 日模板相关数据的顶层容器 */
+export interface DayTemplateData {
+    dayTemplates: DayTemplate[];
+    dayProperties: DayProperty[];
 }
 
 /** 里程碑 / 成果条目下的清单行（一个条目可包含多行） */

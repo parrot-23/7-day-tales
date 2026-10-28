@@ -14,7 +14,7 @@ import type { TaskExecutionRepo } from '../../../repos/task-execution-repo';
 import type { TimeBoxRepo } from '../../../repos/timebox-repo';
 import type { PlanCategoryData } from '../../../shared/plan-category-manager';
 import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../../shared/plan-data';
-import { ConfirmModal } from '../../../system/confirm-modal';
+import { ConfirmModal } from '../../../ob/confirm-modal';
 
 /** 指定日期 0 点 */
 function startOfDay(date: Date): Date {

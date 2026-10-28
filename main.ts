@@ -8,7 +8,6 @@ import { PdcaRepo } from './src/repos/pdca-repo';
 import { WorkbenchRepo } from './src/repos/workbench-repo';
 import { InboxRepo } from './src/repos/inbox-repo';
 import { CategoryRepo } from './src/repos/category-repo';
-import { TemplateRepo } from './src/repos/template-repo';
 import { PlanSchemeRepo } from './src/repos/plan-scheme-repo';
 import { PrototypeTaskRepo } from './src/repos/prototype-task-repo';
 import { TaskExecutionRepo } from './src/repos/task-execution-repo';
@@ -20,8 +19,8 @@ import { getCurrentWeekKey } from './src/shared/plan-data';
 import { initLogger, log } from './src/shared/logger';
 import { downloadImageToCache } from './src/helper/cache-image';
 import { HelpModal } from './src/helper/help-modal';
-import { ParrotPlanSettingTab } from './src/system/setting-tab';
-import { RunningTaskStatusBar } from './src/system/status-bar';
+import { ParrotPlanSettingTab } from './src/ob/setting-tab';
+import { RunningTaskStatusBar } from './src/ob/status-bar';
 
 export default class ParrotPlanPlugin extends Plugin {
     /** 基础数据仓库：唯一数据源 + 唯一保存出口 */
@@ -41,9 +40,6 @@ export default class ParrotPlanPlugin extends Plugin {
 
     /** 分类领域仓库 */
     categoryRepo: CategoryRepo;
-
-    /** 日模板领域仓库 */
-    templateRepo: TemplateRepo;
 
     /** 时间计划方案领域仓库 */
     planSchemeRepo: PlanSchemeRepo;
@@ -142,7 +138,6 @@ export default class ParrotPlanPlugin extends Plugin {
         this.workbenchRepo = new WorkbenchRepo(this.repo);
         this.inboxRepo = new InboxRepo(this.repo);
         this.categoryRepo = new CategoryRepo(this.repo);
-        this.templateRepo = new TemplateRepo(this.repo);
         this.planSchemeRepo = new PlanSchemeRepo(this.repo);
         this.prototypeTaskRepo = new PrototypeTaskRepo(this.repo);
         this.timeBoxRepo = new TimeBoxRepo(this.repo);
