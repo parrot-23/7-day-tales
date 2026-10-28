@@ -1,6 +1,6 @@
 // 今日日期卡片：月份 + 大号日号，点击打开周历面板。
 // 作为可通过编辑模式「添加」面板加入的独立卡片，默认隐藏。
-import { t } from '../i18n';
+import { t } from '../../i18n';
 
 /** 今日日期卡片配置 */
 export interface DateCardOptions {

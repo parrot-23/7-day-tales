@@ -198,16 +198,12 @@ export const zh = {
     'theme.apply': '应用',
     'theme.inUse': '使用中',
 
-    // 主导航（tab 按钮组）
-    'nav.interface': '界面',
-    'nav.interfaceHome': '界面',
-    'nav.workbench': '工作台',
+    // 顶部工具栏与状态栏
     'nav.data': '数据',
     'data.tabExecutionRecords': '执行记录',
     'data.tabRecordCard': '记录卡',
     'data.tableContent': '内容',
     'data.executionNoData': '暂无执行记录',
-    'nav.placeholder': '当前是「{name}」页面',
     'nav.runningLabel': '进行中',
     'nav.runningElapsed': '已用 {minutes} 分钟',
     'nav.runningStatusBar': '{name}：{duration}',
@@ -215,6 +211,13 @@ export const zh = {
     'nav.statusBarDurationHm': '{hours}小时{minutes}分钟',
     'nav.statusBarDurationH': '{hours}小时',
     'nav.statusBarDurationM': '{minutes}分钟',
+    'nav.prevDay': '前一天',
+    'nav.nextDay': '后一天',
+    'nav.openCalendar': '打开周历',
+    'nav.today': '今天',
+    'nav.yesterday': '昨天',
+    'nav.daysAgo': '{days}天前',
+    'nav.backToToday': '回到今天',
 
     // 成就榜单视图
     'achievement.title': '成就榜单',

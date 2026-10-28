@@ -3,8 +3,8 @@
 // 最下方为已有任务的单行列表（主线 / 支线用左侧颜色竖条区分）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask } from '../datatypes/prototype-task';
-import { t } from '../i18n';
+import type { PrototypeTask } from '../../datatypes/prototype-task';
+import { t } from '../../i18n';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 任务类型：主线 / 支线 */

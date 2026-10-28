@@ -3,24 +3,29 @@
 import { setIcon } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { t } from '../../i18n';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { t } from '../../../i18n';
 import { TaskPickerPanel } from '../../panel/task-picker-panel';
 import { TaskRecordPanel } from '../../panel/task-record-panel';
-import type { PdcaRepo } from '../../repos/pdca-repo';
-import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
-import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
-import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
-import type { TimeBoxRepo } from '../../repos/timebox-repo';
-import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
-import { ConfirmModal } from '../../system/confirm-modal';
+import type { PdcaRepo } from '../../../repos/pdca-repo';
+import type { PlanAssignmentRepo } from '../../../repos/plan-assignment-repo';
+import type { PrototypeTaskRepo } from '../../../repos/prototype-task-repo';
+import type { TaskExecutionRepo } from '../../../repos/task-execution-repo';
+import type { TimeBoxRepo } from '../../../repos/timebox-repo';
+import type { PlanCategoryData } from '../../../shared/plan-category-manager';
+import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../../shared/plan-data';
+import { ConfirmModal } from '../../../system/confirm-modal';
+
+/** 指定日期 0 点 */
+function startOfDay(date: Date): Date {
+    const result = new Date(date);
+    result.setHours(0, 0, 0, 0);
+    return result;
+}
 
 /** 当天 0 点 */
 function startOfToday(): Date {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
+    return startOfDay(new Date());
 }
 
 /** 今日任务方框配置 */
@@ -29,6 +34,10 @@ export interface TodayCardOptions {
     plugin: Plugin;
     categoryData: PlanCategoryData;
     onRunningTaskChanged: () => void;
+    /** 初始查看日期（默认今天） */
+    initialDate?: Date;
+    /** 卡片内切换日期后回调（供顶部工具栏同步） */
+    onSelectedDateChange?: (date: Date) => void;
 }
 
 export class TodayCard {
@@ -91,6 +100,7 @@ export class TodayCard {
 
     constructor(options: TodayCardOptions) {
         this.options = options;
+        if (options.initialDate) this.selectedDate = startOfDay(options.initialDate);
     }
 
     private get app(): App {
@@ -133,6 +143,24 @@ export class TodayCard {
     /** 当前进行中的任务 id（综合方框读取用） */
     get runningTaskId(): string | undefined {
         return this.runningTodayTaskId;
+    }
+
+    /** 当前查看的日期（顶部工具栏同步用） */
+    getSelectedDate(): Date {
+        return new Date(this.selectedDate);
+    }
+
+    /** 外部切换查看日期（顶部工具栏调用，右边界为今天） */
+    setSelectedDate(date: Date): void {
+        const next = startOfDay(date);
+        if (next.getTime() > startOfToday().getTime()) return;
+        if (next.getTime() === this.selectedDate.getTime()) return;
+        this.exitRecordView();
+        this.selectedDate = next;
+        this.selectedTodayTaskId = undefined;
+        this.updateDateNav();
+        this.renderTodayTasks();
+        this.refreshClock();
     }
 
     /** 其他卡片开始 / 结束计时后同步计时展示与按钮组（卡片未渲染时跳过） */
@@ -356,6 +384,7 @@ export class TodayCard {
         this.updateDateNav();
         this.renderTodayTasks();
         this.refreshClock();
+        this.options.onSelectedDateChange?.(this.selectedDate);
     }
 
     /** 渲染操作按钮组：计时中显示「结束任务 / 放弃任务」，否则显示「开始任务 / 记录任务」 */

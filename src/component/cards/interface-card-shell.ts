@@ -1,8 +1,8 @@
 // 界面视图浮动卡片外壳：统一卡片外观与编辑模式交互。
 // 今日日期 / 今日时钟 / 今日任务三种卡片只负责渲染内部内容，
 // 定位、边框、背景、拖动条、右上角 X 与编辑模式下的点击拦截都由此外壳提供。
-import type { InterfaceCardPosition } from '../datatypes/interface-layout';
-import { t } from '../i18n';
+import type { InterfaceCardPosition } from '../../datatypes/interface-layout';
+import { t } from '../../i18n';
 
 /** 拖动判定阈值（像素）：移动超过该距离才视为拖动 */
 const DRAG_THRESHOLD = 3;

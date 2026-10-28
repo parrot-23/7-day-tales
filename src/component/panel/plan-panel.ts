@@ -3,12 +3,12 @@
 // 排布：选中左侧任务条目后，点击周视图的某一天列，即可把该任务排布到该列（写入 PlanAssignmentRepo）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskGoalEntry, TaskHabit, WeekGoalRef } from '../datatypes/prototype-task';
-import type { TaskStatus } from '../datatypes/domain';
-import { t } from '../i18n';
-import type { PlanAssignmentRepo } from '../repos/plan-assignment-repo';
-import type { PlanCategory } from '../shared/plan-category-manager';
-import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../shared/plan-data';
+import type { PrototypeTask, TaskGoalEntry, TaskHabit, WeekGoalRef } from '../../datatypes/prototype-task';
+import type { TaskStatus } from '../../datatypes/domain';
+import { t } from '../../i18n';
+import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
+import type { PlanCategory } from '../../shared/plan-category-manager';
+import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { GoalAssignmentPanel, type GoalCandidateGroup } from './goal-assignment-panel';
 

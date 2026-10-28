@@ -2,8 +2,8 @@
 // 结构：输入行（输入框 + 新建按钮）+ 工具栏（设置截止时间）+ 目标条目列表（名称 / 截止日期 / 删除）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskGoalEntry } from '../datatypes/prototype-task';
-import { getLang, t } from '../i18n';
+import type { PrototypeTask, TaskGoalEntry } from '../../datatypes/prototype-task';
+import { getLang, t } from '../../i18n';
 
 /** 目标清单视图配置 */
 export interface GoalListViewOptions {

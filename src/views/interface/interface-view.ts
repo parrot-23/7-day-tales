@@ -3,35 +3,44 @@
 import { setIcon } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 
-import { DateCard } from '../../cards/date-card';
-import { createInterfaceCardShell } from '../../cards/interface-card-shell';
-import { NavCard } from '../../cards/nav-card';
-import { TodayCard } from '../../cards/task/today-card';
-import { TodayTasksCard } from '../../cards/task/today-tasks-card';
-import { ClockCard } from '../../cards/clock-card';
+import { DateCard } from '../../component/cards/date-card';
+import { createInterfaceCardShell } from '../../component/cards/interface-card-shell';
+import { NavCard } from '../../component/cards/nav-card';
+import { TodayCard } from '../../component/cards/task/today-card';
+import { TodayTasksCard } from '../../component/cards/task/today-tasks-card';
+import { ClockCard } from '../../component/cards/clock-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
 import { t } from '../../i18n';
-import { AchievementPanel } from '../../panel/achievement-panel';
-import { CardPickerPanel } from '../../panel/card-picker-panel';
-import { CheckPanel } from '../../panel/check-panel';
-import { CollectPanel } from '../../panel/collect-panel';
-import { DataPanel } from '../../panel/data-panel';
-import { GalleryPanel } from '../../panel/gallery-panel';
-import { PlanPanel } from '../../panel/plan-panel';
-import { TaskSectionsPanel } from '../../panel/task-sections-panel';
-import { TaskDetailPanel } from '../../panel/task-detail-panel';
-import { TaskPanel } from '../../panel/task-panel';
-import { TimeBoxPanel } from '../../panel/time-box-panel';
-import { WeekCalendarPanel } from '../../panel/week-calendar-panel';
-import { ThemePanel } from '../../panel/theme-panel';
+import { AchievementPanel } from '../../component/panel/achievement-panel';
+import { CardPickerPanel } from '../../component/panel/card-picker-panel';
+import { CheckPanel } from '../../component/panel/check-panel';
+import { CollectPanel } from '../../component/panel/collect-panel';
+import { DataPanel } from '../../component/panel/data-panel';
+import { GalleryPanel } from '../../component/panel/gallery-panel';
+import { PlanPanel } from '../../component/panel/plan-panel';
+import { TaskSectionsPanel } from '../../component/panel/task-sections-panel';
+import { TaskDetailPanel } from '../../component/panel/task-detail-panel';
+import { TaskPanel } from '../../component/panel/task-panel';
+import { TimeBoxPanel } from '../../component/panel/time-box-panel';
+import { WeekCalendarPanel } from '../../component/panel/week-calendar-panel';
+import { ThemePanel } from '../../component/panel/theme-panel';
 import type { BaseRepo } from '../../repos/base-repo';
 import type { CategoryRepo } from '../../repos/category-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { ThemeRepo } from '../../repos/theme-repo';
-import { THEME_DEFINITIONS, getThemeDefinition } from '../../themes/registry';
-import { applyThemeColors, setCurrentThemeColors } from '../../themes/theme-colors';
+import { THEME_DEFINITIONS, getThemeDefinition } from '../../themestory/registry';
+import { applyThemeColors, setCurrentThemeColors } from '../../themestory/theme-colors';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
+import { getCurrentWeekKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
+
+/** 界面视图配置 */
+export interface InterfaceViewOptions {
+    /** 顶部工具栏当前选中的日期（用于初始化今日任务卡片） */
+    getSelectedDate?: () => Date;
+    /** 卡片内切换日期后回调（供顶部工具栏同步） */
+    onSelectedDateChange?: (date: Date) => void;
+}
 
 /**
  * 界面视图：与其它二级视图一致，通过 renderInto 渲染到指定容器。
@@ -87,11 +96,14 @@ export class InterfaceView {
     private dataPanel: DataPanel | null = null;
     /** 分类数据（与周计划视图共享同一份） */
     private categoryData: PlanCategoryData;
+    /** 外部（顶部工具栏）联动配置 */
+    private readonly viewOptions: InterfaceViewOptions;
 
-    constructor(app: App, plugin: Plugin, categoryData: PlanCategoryData) {
+    constructor(app: App, plugin: Plugin, categoryData: PlanCategoryData, viewOptions: InterfaceViewOptions = {}) {
         this.app = app;
         this.plugin = plugin;
         this.categoryData = categoryData;
+        this.viewOptions = viewOptions;
     }
 
     /** 原型任务仓库 */
@@ -120,17 +132,26 @@ export class InterfaceView {
         return manifest.dir ?? `.obsidian/plugins/${manifest.id}`;
     }
 
-    /** 点击日期卡片：打开周历面板（已创建时刷新周目标数据） */
-    private openDatePanel(): void {
+    /** 打开周历面板：默认本周 / 今天，传入日期则定位到该日期所在周并高亮该日 */
+    openDatePanel(date?: Date): void {
+        const weekKey = date ? makeWeekKey(date.getFullYear(), getISOWeek(date)) : getCurrentWeekKey();
+        const highlightDayKey = date ? makeDayKey(date) : undefined;
         if (!this.datePanel) {
             this.datePanel = new WeekCalendarPanel({
+                startWeekKey: weekKey,
+                highlightDayKey,
                 getTasks: () => this.prototypeTaskRepo.tasks,
                 onOpenTask: (task) => this.openTaskDetail(task),
             });
         } else {
-            this.datePanel.refresh();
+            this.datePanel.showWeek(weekKey, highlightDayKey);
         }
         this.datePanel.open();
+    }
+
+    /** 顶部工具栏切换日期：同步到今日任务卡片（卡片未创建时由初始化参数生效） */
+    setSelectedDate(date: Date): void {
+        this.todayCard?.setSelectedDate(date);
     }
 
     /** 点击任务卡片：打开任务面板 */
@@ -363,6 +384,8 @@ export class InterfaceView {
                 app: this.app,
                 plugin: this.plugin,
                 categoryData: this.categoryData,
+                initialDate: this.viewOptions.getSelectedDate?.(),
+                onSelectedDateChange: this.viewOptions.onSelectedDateChange,
                 onRunningTaskChanged: () => {
                     this.todayTasksCard?.refresh();
                     this.clockCard?.refresh();

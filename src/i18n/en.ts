@@ -200,16 +200,12 @@ export const en: I18nMessages = {
     'theme.apply': 'Apply',
     'theme.inUse': 'In use',
 
-    // Main navigation (tab button group)
-    'nav.interface': 'Interface',
-    'nav.interfaceHome': 'Interface',
-    'nav.workbench': 'Workbench',
+    // Top toolbar and status bar
     'nav.data': 'Data',
     'data.tabExecutionRecords': 'Execution Records',
     'data.tabRecordCard': 'Record Card',
     'data.tableContent': 'Content',
     'data.executionNoData': 'No execution records yet',
-    'nav.placeholder': 'This is the "{name}" page',
     'nav.runningLabel': 'Running',
     'nav.runningElapsed': '{minutes} min elapsed',
     'nav.runningStatusBar': '{name}: {duration}',
@@ -217,6 +213,13 @@ export const en: I18nMessages = {
     'nav.statusBarDurationHm': '{hours} h {minutes} min',
     'nav.statusBarDurationH': '{hours} h',
     'nav.statusBarDurationM': '{minutes} min',
+    'nav.prevDay': 'Previous day',
+    'nav.nextDay': 'Next day',
+    'nav.openCalendar': 'Open week calendar',
+    'nav.today': 'Today',
+    'nav.yesterday': 'Yesterday',
+    'nav.daysAgo': '{days} days ago',
+    'nav.backToToday': 'Back to today',
 
     // Achievement view
     'achievement.title': 'Achievements',

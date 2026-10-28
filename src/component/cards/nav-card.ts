@@ -2,7 +2,7 @@
 // 默认显示，编辑模式下可移除并可从「添加」面板重新加入。
 import { setIcon } from 'obsidian';
 
-import { t } from '../i18n';
+import { t } from '../../i18n';
 
 /** 功能栏条目：文案 key + 图标 + 点击行为 */
 export interface NavCardItem {

@@ -3,8 +3,8 @@
 import { setIcon } from 'obsidian';
 import type { App } from 'obsidian';
 
-import type { PrototypeTask } from '../datatypes/prototype-task';
-import { t } from '../i18n';
+import type { PrototypeTask } from '../../datatypes/prototype-task';
+import { t } from '../../i18n';
 import type { FloatingPanelOptions } from './floating-panel';
 import { FloatingPanel } from './floating-panel';
 

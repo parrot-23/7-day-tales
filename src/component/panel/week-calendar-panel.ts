@@ -3,9 +3,9 @@
 // 日期行下方为一块填满剩余位置的「这周目标」卡片（汇总各任务绑定到该周的目标）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskGoalEntry } from '../datatypes/prototype-task';
-import { getLang, t } from '../i18n';
-import { getCurrentDayKey, getCurrentWeekKey, makeDayKeyFromWeek } from '../shared/plan-data';
+import type { PrototypeTask, TaskGoalEntry } from '../../datatypes/prototype-task';
+import { getLang, t } from '../../i18n';
+import { getCurrentDayKey, getCurrentWeekKey, makeDayKeyFromWeek } from '../../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 周历面板配置 */
@@ -14,6 +14,8 @@ export interface WeekCalendarPanelOptions extends Omit<FloatingPanelOptions, 'ti
     title?: string;
     /** 起始周键（第一行），默认本周 */
     startWeekKey?: string;
+    /** 需要高亮的日期键（默认今天） */
+    highlightDayKey?: string;
     /** 任务列表提供者（用于汇总该周绑定的目标） */
     getTasks?: () => PrototypeTask[];
     /** 点击周目标条目时回调（打开所属任务详情） */
@@ -28,7 +30,9 @@ export class WeekCalendarPanel extends FloatingPanel {
     /** 面板配置（含数据提供者） */
     private readonly panelOptions: WeekCalendarPanelOptions;
     /** 当前展示的周键 */
-    private readonly startWeekKey: string;
+    private startWeekKey: string;
+    /** 当前高亮的日期键（未设置时高亮今天） */
+    private highlightDayKey?: string;
 
     constructor(options: WeekCalendarPanelOptions = {}) {
         super({
@@ -38,6 +42,7 @@ export class WeekCalendarPanel extends FloatingPanel {
         });
         this.panelOptions = options;
         this.startWeekKey = options.startWeekKey ?? getCurrentWeekKey();
+        this.highlightDayKey = options.highlightDayKey;
         this.renderCalendar();
     }
 
@@ -45,6 +50,13 @@ export class WeekCalendarPanel extends FloatingPanel {
     refresh(): void {
         this.body.empty();
         this.renderCalendar();
+    }
+
+    /** 切换展示的周并高亮指定日期（不传则高亮今天） */
+    showWeek(weekKey: string, highlightDayKey?: string): void {
+        this.startWeekKey = weekKey;
+        this.highlightDayKey = highlightDayKey;
+        this.refresh();
     }
 
     /** 渲染顶部窄条 + 一行七列日期格子 + 「这周目标」卡片 */
@@ -61,11 +73,11 @@ export class WeekCalendarPanel extends FloatingPanel {
         }
 
         // 日期格子：只保留一行（周一至周日）
-        const todayKey = getCurrentDayKey();
+        const highlightKey = this.highlightDayKey ?? getCurrentDayKey();
         for (let col = 0; col < 7; col++) {
             const dayKey = makeDayKeyFromWeek(this.startWeekKey, col + 1);
             const cell = grid.createDiv({ cls: 'week-calendar-cell' });
-            if (dayKey === todayKey) cell.addClass('is-today');
+            if (dayKey === highlightKey) cell.addClass('is-today');
             cell.setText(String(Number(dayKey.slice(8, 10))));
         }
 

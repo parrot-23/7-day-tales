@@ -2,13 +2,13 @@
 // 仅展示今天：夜间扇区、24 刻度、中心时间盒饼图、外环执行记录、时针；弧段仅悬停放大，不可点击。
 import type { Plugin } from 'obsidian';
 
-import type { PrototypeTask } from '../datatypes/prototype-task';
-import type { PdcaRepo } from '../repos/pdca-repo';
-import type { PrototypeTaskRepo } from '../repos/prototype-task-repo';
-import type { TaskExecutionRepo } from '../repos/task-execution-repo';
-import type { TimeBoxRepo } from '../repos/timebox-repo';
-import type { PlanCategoryData } from '../shared/plan-category-manager';
-import { getISOWeek, makeWeekKey } from '../shared/plan-data';
+import type { PrototypeTask } from '../../datatypes/prototype-task';
+import type { PdcaRepo } from '../../repos/pdca-repo';
+import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
+import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
+import type { TimeBoxRepo } from '../../repos/timebox-repo';
+import type { PlanCategoryData } from '../../shared/plan-category-manager';
+import { getISOWeek, makeWeekKey } from '../../shared/plan-data';
 
 /** 时钟卡片配置 */
 export interface ClockCardOptions {

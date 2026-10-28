@@ -1,7 +1,7 @@
 // 周目标选择面板：从计划面板「目标」面板的「分配」按钮打开。
 // 候选目标按任务分组（当前任务 + 各父级任务），点击条目即绑定（或取消绑定）到当前周。
-import type { TaskGoalEntry, WeekGoalRef } from '../datatypes/prototype-task';
-import { t } from '../i18n';
+import type { TaskGoalEntry, WeekGoalRef } from '../../datatypes/prototype-task';
+import { t } from '../../i18n';
 import { FloatingPanel } from './floating-panel';
 
 /** 候选目标分组（一个任务一组） */

@@ -4,17 +4,17 @@
 // 视觉复用二级视图（检查）的分布图样式（24 小时、2 小时一格、7 列）。
 import type { App } from 'obsidian';
 
-import type { PrototypeTask } from '../datatypes/prototype-task';
-import type { CardInstance } from '../datatypes/card';
-import type { CardTemplate } from '../datatypes/form';
-import type { ExecutionRecord, InboxItem } from '../datatypes/domain';
-import { renderCardContent } from '../cardmake/card-component';
-import { createDataProvider } from '../cardmake/engine/provider';
-import { t, getWeekDays } from '../i18n';
-import type { TimeBoxRepo } from '../repos/timebox-repo';
-import type { TaskExecutionRepo } from '../repos/task-execution-repo';
-import type { PlanCategoryData } from '../shared/plan-category-manager';
-import { UNCATEGORIZED_CATEGORY_ID } from '../shared/plan-category-manager';
+import type { PrototypeTask } from '../../datatypes/prototype-task';
+import type { CardInstance } from '../../datatypes/card';
+import type { CardTemplate } from '../../datatypes/form';
+import type { ExecutionRecord, InboxItem } from '../../datatypes/domain';
+import { renderCardContent } from '../../cardmake/card-component';
+import { createDataProvider } from '../../cardmake/engine/provider';
+import { t, getWeekDays } from '../../i18n';
+import type { TimeBoxRepo } from '../../repos/timebox-repo';
+import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
+import type { PlanCategoryData } from '../../shared/plan-category-manager';
+import { UNCATEGORIZED_CATEGORY_ID } from '../../shared/plan-category-manager';
 import {
     getCurrentWeekKey,
     getISOWeek,
@@ -22,7 +22,7 @@ import {
     makeWeekKey,
     parseWeekKey,
     shiftWeekKey,
-} from '../shared/plan-data';
+} from '../../shared/plan-data';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 检查面板配置 */

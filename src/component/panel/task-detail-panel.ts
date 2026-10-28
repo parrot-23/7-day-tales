@@ -3,11 +3,11 @@
 // 右侧：任务名称 / 分类 / 描述 + 归属分区选项卡。
 import { FuzzySuggestModal, Notice, setIcon, type App, type TFile } from 'obsidian';
 
-import type { BasketItem, ImprovementEntry } from '../datatypes/domain';
-import type { PrototypeTask } from '../datatypes/prototype-task';
-import { getLang, t } from '../i18n';
-import type { PlanCategoryData } from '../shared/plan-category-manager';
-import { ConfirmModal } from '../system/confirm-modal';
+import type { BasketItem, ImprovementEntry } from '../../datatypes/domain';
+import type { PrototypeTask } from '../../datatypes/prototype-task';
+import { getLang, t } from '../../i18n';
+import type { PlanCategoryData } from '../../shared/plan-category-manager';
+import { ConfirmModal } from '../../system/confirm-modal';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
 import { GoalListView } from './goal-list-view';

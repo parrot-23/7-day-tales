@@ -1,7 +1,7 @@
 // 公共悬浮面板：页面中一张可拖动的大卡片（非弹窗），右上角 X 按钮关闭。
 // 与视图解耦，可挂在任意容器（默认 document.body）上复用。
-import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../themes/theme-colors';
-import type { ThemeColors } from '../themes/theme-definition';
+import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../../themestory/theme-colors';
+import type { ThemeColors } from '../../themestory/theme-definition';
 
 /** 悬浮面板配置 */
 export interface FloatingPanelOptions {

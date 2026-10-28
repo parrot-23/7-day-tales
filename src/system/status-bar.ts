@@ -2,7 +2,7 @@
 import { setIcon, type Plugin } from 'obsidian';
 
 import { t } from '../i18n';
-import { VIEW_TYPE_MAIN, MainView } from '../main-view';
+import { VIEW_TYPE_MAIN } from '../main-view';
 import type { RunningTask } from '../datatypes/domain';
 
 /**
@@ -53,7 +53,7 @@ export class RunningTaskStatusBar {
             el.createSpan({ text: t('nav.statusBarIdle') });
             el.setAttribute('aria-label', t('nav.statusBarIdle'));
             el.onclick = () => {
-                void this.openInterfaceHome();
+                void this.openMainView();
             };
             return;
         }
@@ -69,7 +69,7 @@ export class RunningTaskStatusBar {
         });
         el.setAttribute('aria-label', t('nav.runningLabel'));
         el.onclick = () => {
-            void this.openInterfaceHome();
+            void this.openMainView();
         };
     }
 
@@ -94,8 +94,8 @@ export class RunningTaskStatusBar {
         this.el = undefined;
     }
 
-    /** 打开主视图并切换到「界面」一级视图首页（状态栏点击用） */
-    private async openInterfaceHome(): Promise<void> {
+    /** 打开 / 聚焦主视图（状态栏点击用） */
+    private async openMainView(): Promise<void> {
         const { workspace } = this.plugin.app;
         let leaf = workspace.getLeavesOfType(VIEW_TYPE_MAIN)[0];
         if (!leaf) {
@@ -103,10 +103,5 @@ export class RunningTaskStatusBar {
             await leaf.setViewState({ type: VIEW_TYPE_MAIN });
         }
         await workspace.revealLeaf(leaf);
-
-        const view = leaf.view;
-        if (view instanceof MainView) {
-            await view.openInterfaceHome();
-        }
     }
 }

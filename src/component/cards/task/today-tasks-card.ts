@@ -4,15 +4,15 @@
 import { setIcon } from 'obsidian';
 import type { Plugin } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { t } from '../../i18n';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { t } from '../../../i18n';
 import { TaskPickerPanel } from '../../panel/task-picker-panel';
 import { TaskRecordPanel } from '../../panel/task-record-panel';
-import type { PdcaRepo } from '../../repos/pdca-repo';
-import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
-import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
-import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
-import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
+import type { PdcaRepo } from '../../../repos/pdca-repo';
+import type { PlanAssignmentRepo } from '../../../repos/plan-assignment-repo';
+import type { PrototypeTaskRepo } from '../../../repos/prototype-task-repo';
+import type { TaskExecutionRepo } from '../../../repos/task-execution-repo';
+import { getCurrentDayKey, getISOWeek, makeDayKey, makeWeekKey } from '../../../shared/plan-data';
 
 /** 当天 0 点 */
 function startOfToday(): Date {

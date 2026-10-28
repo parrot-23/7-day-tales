@@ -2,7 +2,7 @@
 import type { App } from 'obsidian';
 import { TFolder, setIcon } from 'obsidian';
 
-import { t } from '../i18n';
+import { t } from '../../i18n';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 文件夹选择结果 */

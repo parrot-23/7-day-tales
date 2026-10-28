@@ -166,7 +166,7 @@ export default class ParrotPlanPlugin extends Plugin {
                     executions: d.executions.length,
                 });
                 return new MainView(leaf, this, d.categoryData,
-                    d.events, d.executions, d.inboxData, d.plannedWeeks, d.workbench,
+                    d.events, d.executions, d.inboxData, d.plannedWeeks,
                     this.cacheDirName,
                 );
             }

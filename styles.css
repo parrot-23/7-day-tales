@@ -838,7 +838,7 @@ body.is-parrot-plan-active .status-bar {
     display: none;
 }
 
-/* 顶部导航栏（左上角按钮组） */
+/* 顶部导航栏（顶部工具栏一行）：与卡片 / 面板共用主题底色 */
 .parrot-plan-nav {
     position: relative;
     flex-shrink: 0;
@@ -846,112 +846,135 @@ body.is-parrot-plan-active .status-bar {
     flex-direction: column;
     gap: 6px;
     padding: 8px 12px;
+    background: var(--sdt-card-bg, var(--background-secondary));
     border-bottom: 1px solid var(--sdt-card-border, var(--background-modifier-border));
 }
 
-/* 第一行：一级视图（PDCA / 任务OKR） */
-.parrot-plan-nav-primary-row {
+/* 顶部工具栏：日期与周历居中，右侧操作区靠右 */
+.parrot-plan-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.parrot-plan-topbar-date {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
 }
 
-/* 第二行：二级视图（绝对定位浮层，悬浮时覆盖在内容上方，随内容自适应宽度） */
-.parrot-plan-nav-secondary-row {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 100;
+/* 右侧操作区：进行中任务 + 帮助按钮 */
+.parrot-plan-topbar-actions {
+    justify-self: end;
+    min-width: 0;
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 6px 8px;
-    background: var(--sdt-control-bg, var(--background-primary));
-    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
-    border-radius: 6px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    align-items: center;
+    gap: 8px;
 }
 
-.parrot-plan-nav-secondary-row.is-hidden {
-    display: none;
-}
-
-/* 一级视图按钮：比二级更醒目 */
-.parrot-plan-nav-primary-btn {
-    padding: 5px 16px;
-    border-radius: 6px;
+/* 相对日期胶囊：今天高亮，其余中性；位于日期切换右侧 */
+button.parrot-plan-topbar-relative-pill {
+    flex-shrink: 0;
+    min-width: 48px;
+    height: 22px;
+    margin-left: 4px;
+    padding: 0 10px;
+    border-radius: 999px;
     border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
     background: var(--sdt-interactive-bg, var(--interactive-normal));
-    color: var(--sdt-text-primary, var(--text-normal));
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button.parrot-plan-topbar-relative-pill:hover:not(:disabled) {
+    background: var(--sdt-interactive-hover, var(--interactive-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 今天：主题强调色高亮 */
+button.parrot-plan-topbar-relative-pill.is-today {
+    background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+}
+
+button.parrot-plan-topbar-relative-pill:disabled {
+    opacity: 1;
+    cursor: default;
+}
+
+/* 按钮选择器带 button 前缀，与 Obsidian 全局 button:not(.clickable-icon) 持平，
+   避免主题下按钮背景 / 文字被回退成 Obsidian 默认浅色 */
+button.parrot-plan-topbar-date-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.parrot-plan-topbar-date-btn:hover:not(:disabled) {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.parrot-plan-topbar-date-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.parrot-plan-topbar-date-label {
+    min-width: 44px;
+    text-align: center;
     font-size: 14px;
     font-weight: 600;
-}
-
-.parrot-plan-nav-primary-btn.is-active {
-    background: #dbeafe;
-    color: #2563eb;
-    border-color: #93c5fd;
-}
-
-.parrot-plan-nav-primary-btn.is-hovered {
-    border-color: #2563eb;
-}
-
-/* 一级标签行右侧：当前一级视图下的全部二级视图名称 */
-.parrot-plan-nav-secondary-title {
-    display: flex;
-    align-items: baseline;
-    gap: 24px;
-    margin-left: 10px;
-    padding: 0 4px;
-    white-space: nowrap;
-    border-left: 1px solid var(--sdt-card-border, var(--background-modifier-border));
-}
-
-.parrot-plan-nav-secondary-title-item {
-    color: var(--sdt-text-secondary, var(--text-muted));
-    font-size: 14px;
-    font-weight: 400;
-}
-
-.parrot-plan-nav-secondary-title-item.is-clickable {
-    cursor: pointer;
-}
-
-.parrot-plan-nav-secondary-title-item.is-clickable:hover {
     color: var(--sdt-text-primary, var(--text-normal));
 }
 
-.parrot-plan-nav-secondary-title-item.is-current {
-    color: var(--sdt-text-primary, var(--text-normal));
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.parrot-plan-nav-btn {
-    padding: 4px 12px;
-    border-radius: 4px;
+button.parrot-plan-topbar-calendar-btn {
+    width: 26px;
+    height: 26px;
+    margin-right: 4px;
+    padding: 0;
     border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
     background: var(--sdt-interactive-bg, var(--interactive-normal));
     color: var(--sdt-text-primary, var(--text-normal));
     cursor: pointer;
-    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.parrot-plan-nav-btn:hover {
+.parrot-plan-topbar-calendar-btn:hover {
     background: var(--sdt-interactive-hover, var(--interactive-hover));
 }
 
-.parrot-plan-nav-btn.is-active {
-    background: #dbeafe;
-    color: #2563eb;
-    border-color: #93c5fd;
+.parrot-plan-topbar-calendar-btn svg {
+    width: 16px;
+    height: 16px;
 }
 
-/* 帮助按钮：推到导航栏最右侧 */
-.parrot-plan-nav-help-btn {
-    margin-left: auto;
+/* 帮助按钮 */
+button.parrot-plan-nav-help-btn {
+    flex-shrink: 0;
     width: 26px;
     height: 26px;
     padding: 0;
@@ -972,9 +995,10 @@ body.is-parrot-plan-active .status-bar {
     background: var(--sdt-interactive-hover, var(--interactive-hover));
 }
 
-/* 进行中任务卡片容器：推到一级标签行右侧（帮助按钮左侧） */
+/* 进行中任务卡片容器：位于顶部工具栏右侧操作区（帮助按钮左侧） */
 .parrot-plan-running-card-wrap {
-    margin-left: auto;
+    min-width: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
 }
@@ -998,7 +1022,7 @@ body.is-parrot-plan-active .status-bar {
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
-    max-width: 320px;
+    max-width: min(320px, 100%);
 }
 
 .parrot-plan-running-card:hover {

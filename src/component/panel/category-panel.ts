@@ -3,14 +3,14 @@
 // 但独立实现，不复用 CategoryConfigModal。
 import { Setting } from 'obsidian';
 
-import { t } from '../i18n';
-import type { CategoryRepo } from '../repos/category-repo';
+import { t } from '../../i18n';
+import type { CategoryRepo } from '../../repos/category-repo';
 import {
     ensureUncategorizedCategory,
     UNCATEGORIZED_CATEGORY_ID,
     type PlanCategory,
     type PlanCategoryData,
-} from '../shared/plan-category-manager';
+} from '../../shared/plan-category-manager';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 
 /** 分类面板配置 */
