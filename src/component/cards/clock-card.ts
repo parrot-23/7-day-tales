@@ -1,5 +1,5 @@
 // 时钟卡片：把「今日时钟任务」中的 24 小时时钟单独绘制为一张卡片。
-// 仅展示今天：夜间扇区、24 刻度、中心时间盒饼图、外环执行记录、时针；弧段仅悬停放大，不可点击。
+// 展示界面统一日期：夜间扇区、24 刻度、中心时间盒饼图、外环执行记录、时针；弧段仅展示，无悬浮与点击交互。
 import type { Plugin } from 'obsidian';
 
 import type { PrototypeTask } from '../../datatypes/prototype-task';
@@ -14,6 +14,8 @@ import { getISOWeek, makeWeekKey } from '../../shared/plan-data';
 export interface ClockCardOptions {
     plugin: Plugin;
     categoryData: PlanCategoryData;
+    /** 初始查看日期（界面统一日期） */
+    initialDate?: Date;
 }
 
 /** 当天 0 点 */
@@ -21,6 +23,13 @@ function startOfToday(): Date {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     return date;
+}
+
+/** 指定日期 0 点 */
+function startOfDay(date: Date): Date {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
 }
 
 export class ClockCard {
@@ -31,9 +40,12 @@ export class ClockCard {
     private clockEl: HTMLElement | null = null;
     /** 分钟级刷新句柄 */
     private tickHandle: number | null = null;
+    /** 当前查看的日期（界面统一日期） */
+    private selectedDate: Date = startOfToday();
 
     constructor(options: ClockCardOptions) {
         this.options = options;
+        if (options.initialDate) this.selectedDate = startOfDay(options.initialDate);
     }
 
     private get plugin(): Plugin {
@@ -67,6 +79,14 @@ export class ClockCard {
         this.renderClock(this.clockEl);
     }
 
+    /** 外部切换查看日期（界面统一日期广播调用） */
+    setSelectedDate(date: Date): void {
+        const next = startOfDay(date);
+        if (next.getTime() === this.selectedDate.getTime()) return;
+        this.selectedDate = next;
+        this.refresh();
+    }
+
     /** 每分钟重绘一次，让时针随时间走动 */
     private startTicker(): void {
         this.stopTicker();
@@ -86,7 +106,7 @@ export class ClockCard {
         }
     }
 
-    /** 渲染 24 小时时钟（只绘制今天） */
+    /** 渲染 24 小时时钟（绘制界面统一日期当天） */
     private renderClock(container: HTMLElement): void {
         container.empty();
         const ns = 'http://www.w3.org/2000/svg';
@@ -94,7 +114,7 @@ export class ClockCard {
         svg.setAttribute('viewBox', '0 0 220 220');
         container.appendChild(svg);
 
-        const selectedDate = startOfToday();
+        const selectedDate = this.selectedDate;
         const weekKey = makeWeekKey(selectedDate.getFullYear(), getISOWeek(selectedDate));
         const weekday = selectedDate.getDay() === 0 ? 7 : selectedDate.getDay();
 
@@ -209,30 +229,32 @@ export class ClockCard {
         sun.textContent = '🌞';
         sun.style.opacity = '0.85';
 
-        // 时针：指向当前时:分（1 小时 = 15°）
-        const now = new Date();
-        const handHour = now.getHours() + now.getMinutes() / 60;
-        const [tipX, tipY] = point(handHour, radius - 12);
-        const [tailX, tailY] = point(handHour, -8);
-        const currentHour = Math.floor(handHour);
-        const handColor = pieHours.has(currentHour)
-            ? categoryColor(pieHours.get(currentHour)!)
-            : 'var(--interactive-accent)';
-        const hand = add('line', {
-            x1: String(tailX),
-            y1: String(tailY),
-            x2: String(tipX),
-            y2: String(tipY),
-        });
-        hand.style.stroke = handColor;
-        hand.style.strokeWidth = '3.5';
-        hand.style.strokeLinecap = 'round';
-        hand.style.opacity = '0.8';
-        const hub = add('circle', { cx: String(cx), cy: String(cy), r: '4' });
-        hub.style.fill = handColor;
-        hub.style.opacity = '0.8';
+        // 时针：仅查看今天时指向当前时:分（历史日期没有「当前时刻」，不绘制时针）
+        if (selectedDate.getTime() === startOfToday().getTime()) {
+            const now = new Date();
+            const handHour = now.getHours() + now.getMinutes() / 60;
+            const [tipX, tipY] = point(handHour, radius - 12);
+            const [tailX, tailY] = point(handHour, -8);
+            const currentHour = Math.floor(handHour);
+            const handColor = pieHours.has(currentHour)
+                ? categoryColor(pieHours.get(currentHour)!)
+                : 'var(--interactive-accent)';
+            const hand = add('line', {
+                x1: String(tailX),
+                y1: String(tailY),
+                x2: String(tipX),
+                y2: String(tipY),
+            });
+            hand.style.stroke = handColor;
+            hand.style.strokeWidth = '3.5';
+            hand.style.strokeLinecap = 'round';
+            hand.style.opacity = '0.8';
+            const hub = add('circle', { cx: String(cx), cy: String(cy), r: '4' });
+            hub.style.fill = handColor;
+            hub.style.opacity = '0.8';
+        }
 
-        // 外环：今天已保存的执行记录（按时长占比绘制弧段）
+        // 外环：所选日期已保存的执行记录（按时长占比绘制弧段）
         const dayStartMs = selectedDate.getTime();
         const dayEndMs = dayStartMs + 24 * 3600000;
 
@@ -261,35 +283,6 @@ export class ClockCard {
             return node;
         };
 
-        // 整块时钟悬浮：所有弧段一起外扩；移出后恢复
-        const ringEntries: { applyActive: () => void; applyNormal: () => void }[] = [];
-        const attachArcHover = (node: SVGElement, startHour: number, endHour: number, isCircle: boolean): void => {
-            let halo: SVGElement | null = null;
-            if (!isCircle) {
-                halo = add('path', { d: arcPath(startHour, endHour, ringRadius + 3), fill: 'none' });
-                halo.style.stroke = 'var(--interactive-accent)';
-                halo.style.strokeWidth = '18';
-                halo.style.strokeLinecap = 'butt';
-                halo.style.opacity = '0';
-                halo.style.pointerEvents = 'none';
-                // 光晕置于弧段下方，悬浮时表现为边框高亮
-                node.parentNode?.insertBefore(halo, node);
-            }
-            const applyActive = (): void => {
-                if (isCircle) node.setAttribute('r', String(ringRadius + 3));
-                else node.setAttribute('d', arcPath(startHour, endHour, ringRadius + 3));
-                node.style.strokeWidth = '14';
-                if (halo) halo.style.opacity = '1';
-            };
-            const applyNormal = (): void => {
-                if (isCircle) node.setAttribute('r', String(ringRadius));
-                else node.setAttribute('d', arcPath(startHour, endHour, ringRadius));
-                node.style.strokeWidth = '10';
-                if (halo) halo.style.opacity = '0';
-            };
-            ringEntries.push({ applyActive, applyNormal });
-        };
-
         const todayRecords = this.taskExecutionRepo.records
             .filter((record) => record.endAt > dayStartMs && record.startAt < dayEndMs)
             .sort((a, b) => a.startAt - b.startAt);
@@ -298,8 +291,7 @@ export class ClockCard {
             const end = Math.min(dayEndMs, record.endAt);
             const startHour = (start - dayStartMs) / 3600000;
             const endHour = (end - dayStartMs) / 3600000;
-            const arc = drawArc(startHour, endHour, this.categoryColorOf(record.taskId));
-            if (arc) attachArcHover(arc, startHour, endHour, startHour === 0 && endHour === 24);
+            drawArc(startHour, endHour, this.categoryColorOf(record.taskId));
         }
 
         // 进行中的计时：半透明追加弧段
@@ -311,24 +303,9 @@ export class ClockCard {
             if (end > start) {
                 const startHour = (start - dayStartMs) / 3600000;
                 const endHour = (end - dayStartMs) / 3600000;
-                const runningArc = drawArc(startHour, endHour, this.categoryColorOf(running.inboxId), 0.5);
-                // 进行中弧段同样随整钟悬浮加宽，但不叠加光晕
-                if (runningArc) {
-                    const entryNode = runningArc;
-                    ringEntries.push({
-                        applyActive: () => entryNode.setAttribute('d', arcPath(startHour, endHour, ringRadius + 3)),
-                        applyNormal: () => entryNode.setAttribute('d', arcPath(startHour, endHour, ringRadius)),
-                    });
-                }
+                drawArc(startHour, endHour, this.categoryColorOf(running.inboxId), 0.5);
             }
         }
-
-        svg.addEventListener('mouseenter', () => {
-            for (const entry of ringEntries) entry.applyActive();
-        });
-        svg.addEventListener('mouseleave', () => {
-            for (const entry of ringEntries) entry.applyNormal();
-        });
     }
 
     /** 任务分类颜色（无分类 / 分类已删除时使用未分类灰色） */

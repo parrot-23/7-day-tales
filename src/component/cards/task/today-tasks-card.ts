@@ -9,6 +9,7 @@ import { t } from '../../../i18n';
 import { TaskPickerPanel } from '../../panel/task-picker-panel';
 import { TaskRecordPanel } from '../../panel/task-record-panel';
 import type { PdcaRepo } from '../../../repos/pdca-repo';
+import type { CategoryRepo } from '../../../repos/category-repo';
 import type { PlanAssignmentRepo } from '../../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../../repos/task-execution-repo';
@@ -19,6 +20,13 @@ function startOfToday(): Date {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     return date;
+}
+
+/** 指定日期 0 点 */
+function startOfDay(date: Date): Date {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
 }
 
 /** 周一至周日的文案 key */
@@ -38,6 +46,10 @@ type SectionKey = 'habit' | 'planned' | 'extra';
 /** 今日任务卡片配置 */
 export interface TodayTasksCardOptions {
     plugin: Plugin;
+    /** 初始查看日期（界面统一日期） */
+    initialDate?: Date;
+    /** 卡片内切换日期后回调（同步界面统一日期） */
+    onSelectedDateChange?: (date: Date) => void;
     /** 进行中任务变化（开始 / 结束 / 放弃）后通知，用于同步今日时钟卡片 */
     onRunningTaskChanged?: () => void;
     /** 执行记录变化后通知，用于刷新今日时钟外环 */
@@ -56,6 +68,8 @@ export class TodayTasksCard {
     private selectedDate: Date = startOfToday();
     /** 三个分区的展开状态（默认全部展开） */
     private expanded: Record<SectionKey, boolean> = { habit: true, planned: true, extra: true };
+    /** 当前查看日期的任务执行统计（次数 / 秒数），渲染前刷新 */
+    private executionStats = new Map<string, { count: number; seconds: number }>();
     /** 「进行中的任务」折叠行是否展开（默认展开） */
     private runningExpanded = true;
     /** 进行中任务的计时刷新句柄 */
@@ -69,6 +83,7 @@ export class TodayTasksCard {
 
     constructor(options: TodayTasksCardOptions) {
         this.options = options;
+        if (options.initialDate) this.selectedDate = startOfDay(options.initialDate);
     }
 
     private get plugin(): Plugin {
@@ -92,6 +107,11 @@ export class TodayTasksCard {
         return (this.plugin as Plugin & { pdcaRepo: PdcaRepo }).pdcaRepo;
     }
 
+    /** 分类仓库（任务条目前的分类色点） */
+    private get categoryRepo(): CategoryRepo {
+        return (this.plugin as Plugin & { categoryRepo: CategoryRepo }).categoryRepo;
+    }
+
     /** 唯一持久化出口 */
     private saveAll(): Promise<void> {
         return (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
@@ -108,6 +128,15 @@ export class TodayTasksCard {
         if (this.containerEl?.isConnected) this.renderContent();
     }
 
+    /** 外部切换查看日期（界面统一日期广播调用，右边界为今天） */
+    setSelectedDate(date: Date): void {
+        const next = startOfDay(date);
+        if (next.getTime() > startOfToday().getTime()) return;
+        if (next.getTime() === this.selectedDate.getTime()) return;
+        this.selectedDate = next;
+        this.refresh();
+    }
+
     private renderContent(): void {
         const card = this.containerEl;
         if (!card) return;
@@ -118,6 +147,8 @@ export class TodayTasksCard {
         const habit = this.habitTasks();
         const planned = this.plannedTasks();
         const extra = this.extraTasks();
+        // 渲染前刷新当天各任务的执行统计（次数 / 时长），供条目上的胶囊标签使用
+        this.executionStats = this.buildExecutionStats();
 
         const body = card.createDiv({ cls: 'interface-today-tasks-body' });
         this.renderRunningSection(body);
@@ -240,11 +271,32 @@ export class TodayTasksCard {
                 row.toggleClass('is-done', completed);
                 row.title = task.name;
                 row.addEventListener('click', () => this.options.onOpenTaskBoard?.(task.id));
-                row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
+                // 主线 / 支线标签：固定在条目最左侧（配色与任务面板一致）
                 row.createSpan({
-                    cls: 'interface-today-tasks-item-badge',
+                    cls: `interface-today-tasks-item-badge ${task.type === 'main' ? 'is-main' : 'is-side'}`,
                     text: task.type === 'main' ? t('panel.mainTaskBadge') : t('panel.sideTaskBadge'),
                 });
+                // 任务名称前的分类色点（与任务记录卡片一致，未分类为灰色）
+                const category = task.categoryId ? this.categoryRepo.findById(task.categoryId) : undefined;
+                row.createSpan({ cls: 'interface-today-tasks-item-dot' }).style.background = category?.color ?? '#888888';
+                row.createSpan({ cls: 'interface-today-tasks-item-name', text: task.name });
+                // 当天执行统计：执行次数 + 已执行时长（无执行记录时不显示）
+                const stat = this.executionStats.get(task.id);
+                if (stat && stat.count > 0) {
+                    row.createSpan({
+                        cls: 'interface-today-tasks-item-stat',
+                        text: t('interface.todayExecCount', { count: String(stat.count) }),
+                    });
+                    row.createSpan({
+                        cls: 'interface-today-tasks-item-stat',
+                        text: formatDurationSeconds(stat.seconds),
+                    });
+                }
+                // 习惯任务：习惯时间点（HH:mm）放在条目末尾
+                const habitTime = key === 'habit' ? task.habit?.time : undefined;
+                if (habitTime) {
+                    row.createSpan({ cls: 'interface-today-tasks-item-time', text: habitTime });
+                }
                 // 当天已完成：条目末尾常显「圆圈 + 打勾」图标
                 if (completed) {
                     const doneIconEl = row.createSpan({ cls: 'interface-today-tasks-item-done' });
@@ -465,6 +517,23 @@ export class TodayTasksCard {
             .filter((task): task is PrototypeTask => task !== undefined && !plannedIds.has(task.id));
     }
 
+    /** 当天各任务的执行统计：执行次数 + 已执行时长（跨天记录按天裁剪） */
+    private buildExecutionStats(): Map<string, { count: number; seconds: number }> {
+        const dayStart = this.selectedDate.getTime();
+        const dayEnd = dayStart + 24 * 3600000;
+        const stats = new Map<string, { count: number; seconds: number }>();
+        for (const record of this.taskExecutionRepo.records) {
+            const start = Math.max(dayStart, record.startAt);
+            const end = Math.min(dayEnd, record.endAt);
+            if (end <= start) continue;
+            const item = stats.get(record.taskId) ?? { count: 0, seconds: 0 };
+            item.count += 1;
+            item.seconds += (end - start) / 1000;
+            stats.set(record.taskId, item);
+        }
+        return stats;
+    }
+
     private taskMap(): Map<string, PrototypeTask> {
         return new Map(this.prototypeTaskRepo.tasks.map((task) => [task.id, task]));
     }
@@ -490,6 +559,7 @@ export class TodayTasksCard {
         if (next.getTime() > startOfToday().getTime()) return;
         this.selectedDate = next;
         this.renderContent();
+        this.options.onSelectedDateChange?.(this.selectedDate);
     }
 
     /** 日期相对标签：今天 / 昨天 / N天前 */
@@ -499,4 +569,14 @@ export class TodayTasksCard {
         if (diff === 1) return t('interface.dateYesterday');
         return t('interface.dateDaysAgo', { days: String(diff) });
     }
+}
+
+/** 秒数 →「x分」/「x小时」/「x小时y分」 */
+function formatDurationSeconds(seconds: number): string {
+    const totalMinutes = Math.max(1, Math.round(seconds / 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours === 0) return t('interface.durationMinutes', { minutes: String(minutes) });
+    if (minutes === 0) return t('interface.durationHours', { hours: String(hours) });
+    return t('interface.durationHoursMinutes', { hours: String(hours), minutes: String(minutes) });
 }

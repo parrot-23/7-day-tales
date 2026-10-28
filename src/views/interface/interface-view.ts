@@ -42,6 +42,23 @@ export interface InterfaceViewOptions {
     onSelectedDateChange?: (date: Date) => void;
 }
 
+/** 卡片之间的最小水平间距（与界面布局 gap 保持一致） */
+const CARD_GAP = 12;
+
+/** 参与位置夹取与推挤的卡片信息 */
+interface LayoutCardItem {
+    shellEl: HTMLElement;
+    /** 相对界面主区域的坐标与尺寸 */
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    /** 排序基准：持久化坐标，用于保留卡片原本的左右顺序（不能用夹取后的 left） */
+    anchorLeft: number;
+    /** 是否有持久化坐标：只有这类卡片会被推挤，CSS 默认定位的卡片作为固定障碍 */
+    movable: boolean;
+}
+
 /**
  * 界面视图：与其它二级视图一致，通过 renderInto 渲染到指定容器。
  */
@@ -96,6 +113,12 @@ export class InterfaceView {
     private dataPanel: DataPanel | null = null;
     /** 分类数据（与周计划视图共享同一份） */
     private categoryData: PlanCategoryData;
+    /** 卡片外壳（按卡片 id 记录，用于窗口尺寸变化时夹取位置） */
+    private cardShells = new Map<string, HTMLElement>();
+    /** 主区域尺寸监听：窗口变窄时把越界卡片夹回可视区 */
+    private layoutObserver: ResizeObserver | null = null;
+    /** 界面统一日期：顶部工具栏与所有日期相关卡片共用（仅内存，不持久化） */
+    private selectedDate: Date;
     /** 外部（顶部工具栏）联动配置 */
     private readonly viewOptions: InterfaceViewOptions;
 
@@ -104,6 +127,7 @@ export class InterfaceView {
         this.plugin = plugin;
         this.categoryData = categoryData;
         this.viewOptions = viewOptions;
+        this.selectedDate = startOfDay(viewOptions.getSelectedDate?.() ?? new Date());
     }
 
     /** 原型任务仓库 */
@@ -149,9 +173,22 @@ export class InterfaceView {
         this.datePanel.open();
     }
 
-    /** 顶部工具栏切换日期：同步到今日任务卡片（卡片未创建时由初始化参数生效） */
+    /** 顶部工具栏切换日期：写入界面统一日期并广播（卡片未创建时由初始化参数生效） */
     setSelectedDate(date: Date): void {
-        this.todayCard?.setSelectedDate(date);
+        this.applySelectedDate(date);
+    }
+
+    /** 页面级日期状态：统一写入后广播给所有日期相关卡片与顶部工具栏 */
+    private applySelectedDate(date: Date): void {
+        const next = startOfDay(date);
+        // 与顶部工具栏一致：最晚只能查看今天
+        if (next.getTime() > startOfToday().getTime()) return;
+        if (next.getTime() === this.selectedDate.getTime()) return;
+        this.selectedDate = next;
+        this.todayCard?.setSelectedDate(next);
+        this.todayTasksCard?.setSelectedDate(next);
+        this.clockCard?.setSelectedDate(next);
+        this.viewOptions.onSelectedDateChange?.(next);
     }
 
     /** 点击任务卡片：打开任务面板 */
@@ -364,6 +401,10 @@ export class InterfaceView {
         // 先停止上一轮主题的动画，避免重绘后仍残留 RAF 循环
         this.themeDispose?.();
         this.themeDispose = null;
+        // 重绘会销毁旧卡片节点，同时释放上一轮的尺寸监听
+        this.layoutObserver?.disconnect();
+        this.layoutObserver = null;
+        this.cardShells.clear();
         container.empty();
         container.addClass('interface-view');
         container.toggleClass('is-editing', this.editMode);
@@ -384,8 +425,8 @@ export class InterfaceView {
                 app: this.app,
                 plugin: this.plugin,
                 categoryData: this.categoryData,
-                initialDate: this.viewOptions.getSelectedDate?.(),
-                onSelectedDateChange: this.viewOptions.onSelectedDateChange,
+                initialDate: this.selectedDate,
+                onSelectedDateChange: (date) => this.applySelectedDate(date),
                 onRunningTaskChanged: () => {
                     this.todayTasksCard?.refresh();
                     this.clockCard?.refresh();
@@ -399,6 +440,8 @@ export class InterfaceView {
         if (this.isCardAdded('today-tasks')) {
             this.todayTasksCard ??= new TodayTasksCard({
                 plugin: this.plugin,
+                initialDate: this.selectedDate,
+                onSelectedDateChange: (date) => this.applySelectedDate(date),
                 onRunningTaskChanged: () => {
                     this.todayCard?.reloadRunningState();
                     this.clockCard?.refresh();
@@ -418,7 +461,11 @@ export class InterfaceView {
 
         // 时钟卡片（24 小时时钟单独绘制）：默认不显示，由编辑模式的「添加」面板加入
         if (this.isCardAdded('clock')) {
-            this.clockCard ??= new ClockCard({ plugin: this.plugin, categoryData: this.categoryData });
+            this.clockCard ??= new ClockCard({
+                plugin: this.plugin,
+                categoryData: this.categoryData,
+                initialDate: this.selectedDate,
+            });
             const clockBody = this.mountCard(main, 'clock', 'card-clock', () => this.setCardAdded('clock', false));
             this.clockCard.render(clockBody);
         }
@@ -439,6 +486,9 @@ export class InterfaceView {
             const navBody = this.mountCard(main, 'nav', 'card-nav', () => this.setCardHidden('nav', true));
             this.navCard.render(navBody);
         }
+
+        // 卡片挂载完成后监听主区域尺寸：窗口变窄时把越界卡片夹回可视区
+        this.observeMainResize(main);
 
         // 左下角悬浮：编辑 / 完成（编辑态仅显示网点背景，暂不提供拖拽）
         this.editButtonEl = container.createEl('button', { cls: 'interface-edit-btn' });
@@ -519,7 +569,7 @@ export class InterfaceView {
         cardClass: string,
         onRemove: () => void,
     ): HTMLElement {
-        return createInterfaceCardShell(parentEl, {
+        const { shellEl, bodyEl } = createInterfaceCardShell(parentEl, {
             cardId,
             cardClass,
             editMode: this.editMode,
@@ -527,6 +577,82 @@ export class InterfaceView {
             onMove: (position) => this.saveCardPosition(cardId, position),
             onRemove,
         });
+        this.cardShells.set(cardId, shellEl);
+        return bodyEl;
+    }
+
+    /** 监听主区域尺寸变化：卡片坐标按持久化值夹取，窗口恢复后自动回到原位 */
+    private observeMainResize(main: HTMLElement): void {
+        this.layoutObserver = new ResizeObserver(() => this.clampCardPositions(main));
+        this.layoutObserver.observe(main);
+        this.clampCardPositions(main);
+    }
+
+    /**
+     * 夹取越界卡片：以持久化坐标为准贴边显示，并按「边界卡片优先」向左推挤相邻卡片避免重叠。
+     * 结果只写内联样式，不回写布局数据，窗口放大后卡片会回到原来的拖拽位置。
+     */
+    private clampCardPositions(main: HTMLElement): void {
+        const mainRect = main.getBoundingClientRect();
+        if (mainRect.width <= 0 || mainRect.height <= 0) return;
+
+        const items: LayoutCardItem[] = [];
+        this.cardShells.forEach((shellEl, cardId) => {
+            const rect = shellEl.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            const saved = this.baseRepo.data?.interfaceLayoutData.cardPositions[cardId];
+            if (!saved) {
+                // 未拖动过的卡片由 CSS 默认位置（百分比）定位，本身随容器变化，作为固定障碍参与避让
+                items.push({
+                    shellEl,
+                    left: rect.left - mainRect.left,
+                    top: rect.top - mainRect.top,
+                    width,
+                    height,
+                    anchorLeft: rect.left - mainRect.left,
+                    movable: false,
+                });
+                return;
+            }
+            items.push({
+                shellEl,
+                left: Math.max(0, Math.min(saved.left, mainRect.width - width)),
+                top: Math.max(0, Math.min(saved.top, mainRect.height - height)),
+                width,
+                height,
+                anchorLeft: saved.left,
+                movable: true,
+            });
+        });
+
+        // 边界优先：按原始左右顺序处理（最靠右的先占位），再依次向左推挤，避免夹取后顺序被宽度打乱
+        const placed = items.filter((item) => !item.movable);
+        const movableItems = items
+            .filter((item) => item.movable)
+            .sort((a, b) => b.anchorLeft - a.anchorLeft || a.top - b.top);
+
+        for (const item of movableItems) {
+            let left = item.left;
+            // 逐步消解水平重叠：每次推到所有相交卡片的左侧（留出间距），直到不再移动
+            for (let pass = 0; pass <= placed.length; pass += 1) {
+                let moved = false;
+                for (const other of placed) {
+                    if (!isVerticallyOverlapped(item, other)) continue;
+                    // 已在对方左侧且间距足够，或完全在对方右侧：无需处理
+                    if (left + item.width + CARD_GAP <= other.left) continue;
+                    if (left >= other.left + other.width) continue;
+                    left = other.left - CARD_GAP - item.width;
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            // 推到左边界仍放不下时保留重叠（空间不足，不再继续越界）
+            item.left = Math.max(0, left);
+            item.shellEl.style.left = `${item.left}px`;
+            item.shellEl.style.top = `${item.top}px`;
+            placed.push(item);
+        }
     }
 
     /** 保存卡片位置到布局并持久化 */
@@ -596,7 +722,25 @@ export class InterfaceView {
             app: this.app,
             getTask: (id) => this.prototypeTaskRepo.tasks.find((item) => item.id === id),
             categories: this.categoryData.categories,
+            save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
         });
         this.taskSectionsPanel.openForTask(taskId);
     }
+}
+
+/** 两张卡片在垂直方向是否有重叠（水平推挤只在同一行内生效） */
+function isVerticallyOverlapped(a: LayoutCardItem, b: LayoutCardItem): boolean {
+    return a.top < b.top + b.height && a.top + a.height > b.top;
+}
+
+/** 指定日期 0 点 */
+function startOfDay(date: Date): Date {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+}
+
+/** 今天 0 点 */
+function startOfToday(): Date {
+    return startOfDay(new Date());
 }

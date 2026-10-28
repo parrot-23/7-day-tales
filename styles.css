@@ -7713,6 +7713,11 @@ button.swimlane-section-card-settings {
     overflow-y: auto;
 }
 
+/* 任务板块面板「文件目录」：操作栏与文件列表之间留出间距 */
+.task-sections-body .task-detail-files-toolbar {
+    margin-bottom: 6px;
+}
+
 /* 综合方框：选项卡内容（进行中任务的收集篮子 / 待办改进 / 文件目录） */
 .interface-bottom-body {
     display: flex;
@@ -7735,6 +7740,11 @@ button.swimlane-section-card-settings {
 
 .interface-bottom-item:hover {
     background: var(--sdt-hover-bg, var(--background-modifier-hover));
+}
+
+/* 可点击条目（任务文件：点击打开内置编辑面板） */
+.interface-bottom-item.is-clickable {
+    cursor: pointer;
 }
 
 .interface-bottom-item.is-done .interface-bottom-item-text {
@@ -7932,6 +7942,22 @@ button.swimlane-section-card-settings {
     background: var(--sdt-hover-bg, var(--background-modifier-hover));
 }
 
+/* 习惯任务条目的时间点：位于条目末尾，等宽数字 */
+.interface-today-tasks-item-time {
+    flex: 0 0 auto;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: calc(var(--tts-fs) * 0.6875);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 任务名称前的分类色点（与任务记录卡片的色点一致） */
+.interface-today-tasks-item-dot {
+    flex: 0 0 auto;
+    width: calc(var(--tts-fs) * 0.5);
+    height: calc(var(--tts-fs) * 0.5);
+    border-radius: 50%;
+}
+
 .interface-today-tasks-item-name {
     flex: 1;
     min-width: 0;
@@ -7952,6 +7978,30 @@ button.swimlane-section-card-settings {
     white-space: nowrap;
 }
 
+/* 主线 / 支线标签：配色与任务面板（.task-panel-task-type）保持一致 */
+.interface-today-tasks-item-badge.is-main {
+    background: rgba(59, 130, 246, 0.16);
+    color: var(--color-blue);
+}
+
+.interface-today-tasks-item-badge.is-side {
+    background: rgba(168, 85, 247, 0.14);
+    color: var(--color-purple);
+}
+
+/* 当天执行统计胶囊：执行次数 / 已执行时长（无记录时不渲染） */
+.interface-today-tasks-item-stat {
+    flex: 0 0 auto;
+    padding: 0 calc(var(--tts-fs) * 0.25);
+    border-radius: calc(var(--tts-fs) * 0.625);
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: calc(var(--tts-fs) * 0.625);
+    line-height: 1.6;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
 /* 条目末尾的操作图标：默认隐藏（不占位），悬停时替换标签显示 */
 .interface-today-tasks-item-actions {
     flex: 0 0 auto;
@@ -7963,11 +8013,6 @@ button.swimlane-section-card-settings {
 .interface-today-tasks-item:hover .interface-today-tasks-item-actions,
 .interface-today-tasks-item-actions:focus-within {
     display: flex;
-}
-
-/* 悬停时隐藏类型标签，让图标出现在标签所在位置 */
-.interface-today-tasks-item:hover .interface-today-tasks-item-badge {
-    display: none;
 }
 
 /* 当天已完成：名称删除线 + 末尾常显圆圈勾选图标 */
@@ -9909,6 +9954,175 @@ button.task-record-dropdown-item.is-selected {
     color: var(--sdt-text-secondary, var(--text-muted));
 }
 
+/* 检查面板「任务记录」：每周按天生成卡片，卡片内为执行记录列表 */
+.check-records-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.check-records-card {
+    padding: 10px 12px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 8px;
+    background: var(--sdt-card-bg, var(--background-secondary));
+}
+
+/* 卡片头：左侧日期标题，右侧复制按钮 */
+.check-records-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.check-records-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+/* 右上角复制图标：点击复制整张卡片的文字内容 */
+.check-records-card-copy {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    cursor: pointer;
+}
+
+.check-records-card-copy:hover {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.check-records-card-copy .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.check-records-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.check-records-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.check-records-item-time {
+    flex: 0 0 auto;
+    min-width: 92px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-variant-numeric: tabular-nums;
+}
+
+/* 任务名称前的分类色点（与卡片底部汇总行的色点一致） */
+.check-records-item-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.check-records-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.check-records-item-duration {
+    flex: 0 0 auto;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-variant-numeric: tabular-nums;
+}
+
+.check-records-item-badge {
+    flex: 0 0 auto;
+    padding: 0 6px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.check-records-item-badge.is-main {
+    background: rgba(59, 130, 246, 0.16);
+    color: var(--color-blue);
+}
+
+.check-records-item-badge.is-side {
+    background: rgba(168, 85, 247, 0.14);
+    color: var(--color-purple);
+}
+
+.check-records-empty {
+    padding: 24px 0;
+    text-align: center;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: 13px;
+}
+
+/* 卡片底部分类汇总：行标题「分类」+ 各分类当天累计时长 */
+.check-records-summary {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--sdt-card-border, var(--background-modifier-border));
+    font-size: 12px;
+}
+
+.check-records-summary-title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.check-records-summary-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+}
+
+.check-records-summary-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.check-records-summary-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.check-records-summary-duration {
+    font-variant-numeric: tabular-nums;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
 /* 收集面板：左侧收集视图 + 可展开的右侧梳理区 */
 .floating-panel-body.collect-panel {
     display: flex;
@@ -11145,6 +11359,76 @@ button.task-record-dropdown-item.is-selected {
     min-height: 0;
     overflow: auto;
     padding: 12px;
+}
+
+/* ======================== 文件编辑面板 ======================== */
+.floating-panel-body.file-editor-panel {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    height: 600px;
+    max-height: calc(100vh - 160px);
+    padding: 0;
+    overflow: hidden;
+}
+
+.file-editor-panel-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    background: var(--sdt-card-bg, var(--background-secondary));
+}
+
+.file-editor-panel-path {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-editor-panel-status {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.file-editor-panel-status.is-saving {
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 编辑区：Obsidian 全局 textarea 规则（形如 .theme-dark textarea:hover）优先级高于普通类选择器，
+   会给悬停 / 聚焦态换成 --background-modifier-form-field-hover 底色。
+   这里提升选择器层级并加 !important，让所有状态保持同一底色，只保留文字与光标。 */
+.floating-panel .file-editor-panel-input,
+.floating-panel .file-editor-panel-input:hover,
+.floating-panel .file-editor-panel-input:focus,
+.floating-panel .file-editor-panel-input:focus-visible,
+.floating-panel .file-editor-panel-input:active {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    resize: none;
+    font-family: var(--font-monospace);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--sdt-text-primary, var(--text-normal)) !important;
+    /* 悬停 / 聚焦保持同一底色，避免出现背景色变化 */
+    background: var(--sdt-control-bg, var(--background-primary)) !important;
+    background-color: var(--sdt-control-bg, var(--background-primary)) !important;
+    /* 光标颜色跟随文字色，确保编辑位置可见 */
+    caret-color: var(--sdt-text-primary, var(--text-normal));
 }
 
 /* ======================== 主题管理面板（panel/theme-panel：左右结构） ======================== */

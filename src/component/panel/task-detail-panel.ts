@@ -7,7 +7,9 @@ import type { BasketItem, ImprovementEntry } from '../../datatypes/domain';
 import type { PrototypeTask } from '../../datatypes/prototype-task';
 import { getLang, t } from '../../i18n';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
+import { buildTaskFileName, listTaskFiles } from '../../shared/task-file';
 import { ConfirmModal } from '../ob/confirm-modal';
+import { FileEditorPanel } from './file-editor-panel';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
 import { GoalListView } from './goal-list-view';
@@ -89,6 +91,8 @@ export class TaskDetailPanel extends FloatingPanel {
     private fileCountEl: HTMLElement | null = null;
     /** 任务文件是否处于新建文件输入状态 */
     private fileCreateMode = false;
+    /** 文件编辑面板（复用同一实例，切换文件时销毁重建） */
+    private fileEditorPanel: FileEditorPanel | null = null;
     /** 左侧底部工具栏：表单打卡按钮 */
     private formButtonEl!: HTMLButtonElement;
     /** 右侧底部设置面板（表单打卡） */
@@ -541,7 +545,7 @@ export class TaskDetailPanel extends FloatingPanel {
         if (key === 'panel.targetTodo') {
             return (this.task.improvements ?? []).filter((item) => !item.done).length;
         }
-        if (key === 'panel.targetFile') return this.listTaskFiles().length;
+        if (key === 'panel.targetFile') return listTaskFiles(this.panelOptions.app, this.task.fileDir).length;
         return 0;
     }
 
@@ -918,7 +922,7 @@ export class TaskDetailPanel extends FloatingPanel {
 
         // 卡片二：文件列表（文件名 + 最近编辑时间，点击打开）
         const listCard = wrap.createDiv({ cls: 'task-detail-files-card task-detail-files-list-card' });
-        const files = this.listTaskFiles();
+        const files = listTaskFiles(this.panelOptions.app, this.task.fileDir);
         this.fileCountEl?.setText(`(${files.length})`);
 
         if (!this.task.fileDir) {
@@ -934,19 +938,25 @@ export class TaskDetailPanel extends FloatingPanel {
             setIcon(row.createSpan({ cls: 'task-detail-file-icon' }), 'file-text');
             row.createSpan({ cls: 'task-detail-file-name', text: file.basename });
             row.createSpan({ cls: 'task-detail-file-time', text: formatDateTime(file.stat.mtime) });
-            row.addEventListener('click', () => {
-                void this.panelOptions.app.workspace.getLeaf(false).openFile(file);
-            });
+            row.addEventListener('click', () => this.openTaskFile(file));
         }
     }
 
-    /** 绑定目录下的全部文件（按最近编辑时间倒序） */
-    private listTaskFiles(): TFile[] {
-        const dir = this.task.fileDir;
-        if (!dir) return [];
-        return this.panelOptions.app.vault.getFiles()
-            .filter((file) => file.parent?.path === dir)
-            .sort((a, b) => b.stat.mtime - a.stat.mtime);
+    /** 打开任务文件：Markdown 使用内置编辑面板，其它类型交给 Obsidian 默认打开方式 */
+    private openTaskFile(file: TFile): void {
+        if (file.extension !== 'md') {
+            void this.panelOptions.app.workspace.getLeaf(false).openFile(file);
+            return;
+        }
+        this.fileEditorPanel?.destroy();
+        this.fileEditorPanel = new FileEditorPanel({
+            app: this.panelOptions.app,
+            file,
+            onClose: () => {
+                if (this.filesBodyEl?.isConnected) this.renderFiles(this.filesBodyEl);
+            },
+        });
+        this.fileEditorPanel.open();
     }
 
     /** 打开目录选择面板，选定后作为任务文件目录 */
@@ -962,19 +972,17 @@ export class TaskDetailPanel extends FloatingPanel {
         picker.open();
     }
 
-    /** 在绑定目录下新建 Markdown 文件（启用时间戳时加前缀） */
+    /** 在绑定目录下新建 Markdown 文件（启用时间戳时加前缀），并打开内置编辑面板 */
     private async createTaskFile(name: string): Promise<void> {
         const dir = this.task.fileDir;
         if (!dir) return;
-        const safe = name.replace(/[\\/:*?"<>|]/g, '').trim();
-        if (!safe) return;
-        const stamp = this.task.fileTimestamp ? `${formatFileStamp(Date.now())}_` : '';
-        const fileName = safe.toLowerCase().endsWith('.md') ? `${stamp}${safe}` : `${stamp}${safe}.md`;
+        const fileName = buildTaskFileName(name, this.task.fileTimestamp === true);
+        if (!fileName) return;
         try {
             const file = await this.panelOptions.app.vault.create(`${dir}/${fileName}`, '');
             this.fileCreateMode = false;
             if (this.filesBodyEl) this.renderFiles(this.filesBodyEl);
-            void this.panelOptions.app.workspace.getLeaf(false).openFile(file);
+            this.openTaskFile(file);
         } catch {
             new Notice(t('panel.fileCreateFailed'));
         }
@@ -1286,17 +1294,6 @@ function formatDateTime(ts: number): string {
     const h = String(d.getHours()).padStart(2, '0');
     const mi = String(d.getMinutes()).padStart(2, '0');
     return `${y}-${mo}-${da} ${h}:${mi}`;
-}
-
-/** 文件名的日期时间戳前缀（YYYY-MM-DD_HH-mm） */
-function formatFileStamp(ts: number): string {
-    const d = new Date(ts);
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2, '0');
-    const da = String(d.getDate()).padStart(2, '0');
-    const h = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${mo}-${da}_${h}-${mi}`;
 }
 
 /** 收集篮子「整理到文件」：选择一个 Markdown 文件作为追加目标 */

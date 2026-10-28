@@ -22,14 +22,20 @@ export interface InterfaceCardShellOptions {
     onRemove: () => void;
 }
 
+/** 卡片外壳创建结果：外壳用于定位 / 夹取，内容容器用于渲染卡片内容 */
+export interface InterfaceCardShellElements {
+    shellEl: HTMLElement;
+    bodyEl: HTMLElement;
+}
+
 /**
- * 创建卡片外壳并返回内容容器：调用方把卡片渲染进返回的容器即可。
+ * 创建卡片外壳并返回外壳与内容容器：调用方把卡片渲染进 bodyEl 即可。
  * 编辑模式下：内容区在捕获阶段截断点击，避免拖动时误触卡片内部行为。
  */
 export function createInterfaceCardShell(
     parentEl: HTMLElement,
     options: InterfaceCardShellOptions,
-): HTMLElement {
+): InterfaceCardShellElements {
     const shellEl = parentEl.createDiv({ cls: `interface-card-shell ${options.cardClass}` });
     shellEl.dataset.cardId = options.cardId;
     if (options.position) {
@@ -50,7 +56,7 @@ export function createInterfaceCardShell(
             evt.stopPropagation();
         }, true);
     }
-    return bodyEl;
+    return { shellEl, bodyEl };
 }
 
 /** 顶部拖动横条：按住拖动整张卡片，移动超过阈值才进入拖动状态 */
