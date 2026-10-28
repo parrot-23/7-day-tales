@@ -1,6 +1,6 @@
 import { Modal, type App } from 'obsidian';
 
-import { t } from '../i18n';
+import { t } from '../../i18n';
 
 /** 通用确认弹窗 */
 export class ConfirmModal extends Modal {

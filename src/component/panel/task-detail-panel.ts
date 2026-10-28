@@ -7,7 +7,7 @@ import type { BasketItem, ImprovementEntry } from '../../datatypes/domain';
 import type { PrototypeTask } from '../../datatypes/prototype-task';
 import { getLang, t } from '../../i18n';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { ConfirmModal } from '../../ob/confirm-modal';
+import { ConfirmModal } from '../ob/confirm-modal';
 import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
 import { FolderPickerPanel } from './folder-picker-panel';
 import { GoalListView } from './goal-list-view';

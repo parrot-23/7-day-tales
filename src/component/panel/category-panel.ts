@@ -1,8 +1,6 @@
 // 分类面板：基于 FloatingPanel，用于管理计划分类。
 // 内容与周计划视图的分类配置弹窗一致（分类色块 / 名称 / 删除，新增，确认 / 取消），
 // 但独立实现，不复用 CategoryConfigModal。
-import { Setting } from 'obsidian';
-
 import { t } from '../../i18n';
 import type { CategoryRepo } from '../../repos/category-repo';
 import {
@@ -77,14 +75,17 @@ export class CategoryPanel extends FloatingPanel {
         this.listEl = this.body.createDiv({ cls: 'tbcat-list' });
         this.renderList();
 
-        new Setting(this.body)
-            .addButton(btn => btn
-                .setButtonText(t('common.cancel'))
-                .onClick(() => this.close()))
-            .addButton(btn => btn
-                .setButtonText(t('common.confirm'))
-                .setCta()
-                .onClick(() => this.applyDraft()));
+        const actions = this.body.createDiv({ cls: 'category-panel-actions' });
+        const cancelBtn = actions.createEl('button', {
+            text: t('common.cancel'),
+            cls: 'category-panel-btn',
+        });
+        cancelBtn.addEventListener('click', () => this.close());
+        const confirmBtn = actions.createEl('button', {
+            text: t('common.confirm'),
+            cls: 'category-panel-btn is-primary',
+        });
+        confirmBtn.addEventListener('click', () => this.applyDraft());
     }
 
     private renderList(): void {

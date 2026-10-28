@@ -378,6 +378,37 @@
     margin-bottom: 8px;
 }
 
+/* 分类面板底部操作行：替代 Obsidian Setting，避免 .setting-item 受全局主题样式影响 */
+.category-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+.floating-panel .category-panel-actions button {
+    padding: 5px 14px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    color: var(--sdt-text-primary, var(--text-normal));
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: none;
+    cursor: pointer;
+}
+.floating-panel .category-panel-actions button:hover {
+    background: var(--sdt-interactive-hover, var(--interactive-hover));
+}
+.floating-panel .category-panel-actions button.is-primary {
+    background: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.floating-panel .category-panel-actions button.is-primary:hover {
+    background: var(--interactive-accent-hover, var(--interactive-accent));
+    border-color: var(--interactive-accent-hover, var(--interactive-accent));
+}
+
 /* ===== 收集盒面板 ===== */
 /* 仅负责内部布局；外框（padding / border / background）由各视图的 *-task-panel 统一提供，
    避免同一元素上两个类互相覆盖导致不同视图对齐不一致 */
@@ -11053,6 +11084,9 @@ button.task-record-dropdown-item.is-selected {
     border: 2px solid var(--background-modifier-border-hover);
     border-radius: 10px;
     background: var(--sdt-control-bg, var(--background-primary));
+    /* 面板根节点显式继承主题文字色：主题令牌只覆盖 CSS 变量，
+       未显式声明 color 的正文会继续继承 Obsidian 浅色主题的黑色文字 */
+    color: var(--sdt-text-primary, var(--text-normal));
 }
 
 /* 挂在非 body 容器内时使用绝对定位 */

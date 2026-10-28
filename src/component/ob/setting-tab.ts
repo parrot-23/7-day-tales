@@ -1,9 +1,9 @@
 // 插件设置页
 import { Notice, PluginSettingTab, type App, type SettingDefinitionItem } from 'obsidian';
 
-import { t } from '../i18n';
-import { DEFAULT_CACHE_DIR_NAME } from '../repos/base-repo';
-import type ParrotPlanPlugin from '../../main';
+import { t } from '../../i18n';
+import { DEFAULT_CACHE_DIR_NAME } from '../../repos/base-repo';
+import type ParrotPlanPlugin from '../../../main';
 import { ConfirmModal } from './confirm-modal';
 
 /** 插件设置页 */

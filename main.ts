@@ -19,8 +19,8 @@ import { getCurrentWeekKey } from './src/shared/plan-data';
 import { initLogger, log } from './src/shared/logger';
 import { downloadImageToCache } from './src/helper/cache-image';
 import { HelpModal } from './src/helper/help-modal';
-import { ParrotPlanSettingTab } from './src/ob/setting-tab';
-import { RunningTaskStatusBar } from './src/ob/status-bar';
+import { ParrotPlanSettingTab } from './src/component/ob/setting-tab';
+import { RunningTaskStatusBar } from './src/component/ob/status-bar';
 
 export default class ParrotPlanPlugin extends Plugin {
     /** 基础数据仓库：唯一数据源 + 唯一保存出口 */
