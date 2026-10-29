@@ -2,8 +2,8 @@
 // 结构：输入行（输入框 + 新建按钮）+ 工具栏（设置截止时间）+ 目标条目列表（名称 / 截止日期 / 删除）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskGoalEntry } from '../../datatypes/prototype-task';
-import { getLang, t } from '../../i18n';
+import type { PrototypeTask, TaskGoalEntry } from '../../../datatypes/prototype-task';
+import { getLang, t } from '../../../i18n';
 
 /** 目标清单视图配置 */
 export interface GoalListViewOptions {
@@ -59,7 +59,7 @@ export class GoalListView {
         const toolbar = this.container.createDiv({ cls: 'goal-list-toolbar' });
         const dueBtn = toolbar.createEl('button', {
             cls: 'goal-list-tool-btn',
-            text: t('panel.todoSetDue'),
+            text: t('panel.checklistSetDue'),
         });
         dueBtn.disabled = !this.selectedGoalId;
         dueBtn.addEventListener('click', () => this.openDueEditor());
@@ -146,14 +146,14 @@ export class GoalListView {
                 this.render();
             });
         };
-        const saveBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.todoDueSave') });
+        const saveBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueSave') });
         saveBtn.addEventListener('click', () => commit(input.value));
-        const clearBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.todoDueClear') });
+        const clearBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueClear') });
         clearBtn.addEventListener('click', () => {
             input.value = '';
             commit('');
         });
-        const cancelBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.todoDueCancel') });
+        const cancelBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueCancel') });
         cancelBtn.addEventListener('click', () => editor.remove());
         this.container.insertBefore(editor, this.listEl);
         input.focus();
@@ -166,6 +166,6 @@ export class GoalListView {
         const label = getLang() === 'zh'
             ? `${due.getMonth() + 1}月${due.getDate()}日`
             : `${due.getMonth() + 1}/${due.getDate()}`;
-        return t('panel.todoDueDateTag', { date: label });
+        return t('panel.checklistDueDateTag', { date: label });
     }
 }

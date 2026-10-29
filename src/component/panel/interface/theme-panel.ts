@@ -3,9 +3,9 @@
 // 预览卡片的数据来自 src/themes 下由代码定义的主题（代码绘制层 + 图片素材）。
 import type { App } from 'obsidian';
 
-import { t } from '../../i18n';
-import { THEME_DEFINITIONS } from '../../themestory/registry';
-import { FloatingPanel } from './floating-panel';
+import { t } from '../../../i18n';
+import { THEME_DEFINITIONS } from '../../../themestory/registry';
+import { FloatingPanel } from '../basic/floating-panel';
 
 /** 左侧菜单项 */
 type ThemeMenuKey = 'official' | 'local';

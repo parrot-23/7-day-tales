@@ -11,19 +11,19 @@ import { TodayTasksCard } from '../../component/cards/task/today-tasks-card';
 import { ClockCard } from '../../component/cards/clock-card';
 import type { PrototypeTask, PrototypeTaskType } from '../../datatypes/prototype-task';
 import { t } from '../../i18n';
-import { AchievementPanel } from '../../component/panel/achievement-panel';
-import { CardPickerPanel } from '../../component/panel/card-picker-panel';
-import { CheckPanel } from '../../component/panel/check-panel';
-import { CollectPanel } from '../../component/panel/collect-panel';
-import { DataPanel } from '../../component/panel/data-panel';
-import { GalleryPanel } from '../../component/panel/gallery-panel';
-import { PlanPanel } from '../../component/panel/plan-panel';
-import { TaskSectionsPanel } from '../../component/panel/task-sections-panel';
-import { TaskDetailPanel } from '../../component/panel/task-detail-panel';
-import { TaskPanel } from '../../component/panel/task-panel';
-import { TimeBoxPanel } from '../../component/panel/time-box-panel';
-import { WeekCalendarPanel } from '../../component/panel/week-calendar-panel';
-import { ThemePanel } from '../../component/panel/theme-panel';
+import { AchievementPanel } from '../../component/panel/achievement/achievement-panel';
+import { CardPickerPanel } from '../../component/panel/interface/card-picker-panel';
+import { CheckPanel } from '../../component/panel/check/check-panel';
+import { CollectPanel } from '../../component/panel/collect/collect-panel';
+import { DataPanel } from '../../component/panel/check/data-panel';
+import { GalleryPanel } from '../../component/panel/gallery/gallery-panel';
+import { PlanPanel } from '../../component/panel/plan/plan-panel';
+import { TaskSectionsPanel } from '../../component/panel/task/task-sections-panel';
+import { TaskDetailPanel } from '../../component/panel/task/task-detail-panel';
+import { TaskPanel } from '../../component/panel/task/task-panel';
+import { TimeBoxPanel } from '../../component/panel/timebox/time-box-panel';
+import { WeekCalendarPanel } from '../../component/panel/calendar/week-calendar-panel';
+import { ThemePanel } from '../../component/panel/interface/theme-panel';
 import type { BaseRepo } from '../../repos/base-repo';
 import type { CategoryRepo } from '../../repos/category-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
@@ -242,6 +242,11 @@ export class InterfaceView {
                     this.clockCard?.refresh();
                     this.datePanel?.refresh();
                 },
+                onOpenTaskDetail: (taskId) => {
+                    const task = this.prototypeTaskRepo.tasks.find((item) => item.id === taskId);
+                    if (!task) return;
+                    this.openTaskDetail(task);
+                },
             });
         }
         this.planPanel.open();
@@ -297,8 +302,8 @@ export class InterfaceView {
         this.dataPanel.open();
     }
 
-    /** 打开任务详情面板（同一任务复用实例） */
-    private openTaskDetail(task: PrototypeTask): void {
+    /** 打开任务详情面板（同一任务复用实例，已打开时置顶） */
+    private openTaskDetail(task: PrototypeTask): TaskDetailPanel {
         let panel = this.detailPanels.get(task.id);
         if (!panel) {
             panel = new TaskDetailPanel({
@@ -326,6 +331,7 @@ export class InterfaceView {
             panel.setTasks(this.prototypeTaskRepo.tasks);
         }
         panel.open();
+        return panel;
     }
 
     /** 根原型任务（不含子任务） */
@@ -723,6 +729,13 @@ export class InterfaceView {
             getTask: (id) => this.prototypeTaskRepo.tasks.find((item) => item.id === id),
             categories: this.categoryData.categories,
             save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
+            onOpenTaskDetail: (taskId) => {
+                const task = this.prototypeTaskRepo.tasks.find((item) => item.id === taskId);
+                if (!task) return;
+                const panel = this.openTaskDetail(task);
+                // 详情面板由板块面板打开：在详情面板内操作时不让板块面板失焦关闭
+                this.taskSectionsPanel?.addIgnoreElement(panel.element);
+            },
         });
         this.taskSectionsPanel.openForTask(taskId);
     }

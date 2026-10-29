@@ -5,17 +5,17 @@
 import type { App } from 'obsidian';
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import type { CardInstance } from '../../datatypes/card';
-import type { CardTemplate } from '../../datatypes/form';
-import type { ExecutionRecord, InboxItem } from '../../datatypes/domain';
-import { renderCardContent } from '../../cardmake/card-component';
-import { createDataProvider } from '../../cardmake/engine/provider';
-import { t, getWeekDays } from '../../i18n';
-import type { TimeBoxRepo } from '../../repos/timebox-repo';
-import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
-import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { UNCATEGORIZED_CATEGORY_ID } from '../../shared/plan-category-manager';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import type { CardInstance } from '../../../datatypes/card';
+import type { CardTemplate } from '../../../datatypes/form';
+import type { ExecutionRecord, InboxItem } from '../../../datatypes/domain';
+import { renderCardContent } from '../../../cardmake/card-component';
+import { createDataProvider } from '../../../cardmake/engine/provider';
+import { t, getWeekDays } from '../../../i18n';
+import type { TimeBoxRepo } from '../../../repos/timebox-repo';
+import type { TaskExecutionRepo } from '../../../repos/task-execution-repo';
+import type { PlanCategoryData } from '../../../shared/plan-category-manager';
+import { UNCATEGORIZED_CATEGORY_ID } from '../../../shared/plan-category-manager';
 import {
     getCurrentWeekKey,
     getISOWeek,
@@ -23,8 +23,8 @@ import {
     makeWeekKey,
     parseWeekKey,
     shiftWeekKey,
-} from '../../shared/plan-data';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+} from '../../../shared/plan-data';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 检查面板配置 */
 export interface CheckPanelOptions extends Omit<FloatingPanelOptions, 'title'> {

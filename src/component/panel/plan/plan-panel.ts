@@ -3,13 +3,13 @@
 // 排布：选中左侧任务条目后，点击周视图的某一天列，即可把该任务排布到该列（写入 PlanAssignmentRepo）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask, TaskGoalEntry, TaskHabit, WeekGoalRef } from '../../datatypes/prototype-task';
-import type { TaskStatus } from '../../datatypes/domain';
-import { t } from '../../i18n';
-import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
-import type { PlanCategory } from '../../shared/plan-category-manager';
-import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../../shared/plan-data';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import type { PrototypeTask, TaskGoalEntry, TaskHabit, WeekGoalRef } from '../../../datatypes/prototype-task';
+import type { TaskStatus } from '../../../datatypes/domain';
+import { t } from '../../../i18n';
+import type { PlanAssignmentRepo } from '../../../repos/plan-assignment-repo';
+import type { PlanCategory } from '../../../shared/plan-category-manager';
+import { getCurrentWeekKey, makeDayKeyFromWeek, makeWeekKey, parseWeekKey, shiftWeekKey } from '../../../shared/plan-data';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 import { GoalAssignmentPanel, type GoalCandidateGroup } from './goal-assignment-panel';
 
 /** 计划面板配置 */
@@ -26,6 +26,8 @@ export interface PlanPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
     save: () => Promise<void>;
     /** 排布变更回调（界面视图「今天任务」方框据此刷新） */
     onChanged?: () => void;
+    /** 点击标题栏跳转图标：在任务详情面板中打开左侧选中的任务 */
+    onOpenTaskDetail?: (taskId: string) => void;
     /** 初始周键，默认本周 */
     initialWeekKey?: string;
 }
@@ -99,6 +101,8 @@ export class PlanPanel extends FloatingPanel {
     private rootTaskId: string | undefined;
     /** 任务树中选中的任务 id（选中后可点击右侧周视图列进行排布） */
     private selectedTaskId: string | undefined;
+    /** 标题栏「跳转到任务详情」按钮（仅在提供回调时创建） */
+    private detailButtonEl: HTMLElement | null = null;
 
     constructor(private readonly panelOptions: PlanPanelOptions) {
         super({
@@ -109,6 +113,18 @@ export class PlanPanel extends FloatingPanel {
         this.body.addClass('plan-panel');
         this.weekKey = panelOptions.initialWeekKey ?? getCurrentWeekKey();
         this.year = parseWeekKey(this.weekKey).year;
+        // 标题栏钉住按钮左侧：跳转到任务详情面板（未提供回调时不显示）
+        if (panelOptions.onOpenTaskDetail) {
+            this.detailButtonEl = this.addHeaderAction(
+                'square-arrow-up-right',
+                t('panel.openTaskDetail'),
+                () => {
+                    if (this.selectedTaskId) this.panelOptions.onOpenTaskDetail?.(this.selectedTaskId);
+                },
+                'start',
+            );
+            this.updateDetailButton();
+        }
         this.renderLayout();
     }
 
@@ -301,6 +317,7 @@ export class PlanPanel extends FloatingPanel {
         this.renderHabitPanel();
         this.renderGoalPanel();
         this.refreshYearChipHighlight();
+        this.updateDetailButton();
     }
 
     /** 取消选中任务条目（清除高亮与周格子可排布状态） */
@@ -316,6 +333,12 @@ export class PlanPanel extends FloatingPanel {
         this.renderHabitPanel();
         this.renderGoalPanel();
         this.refreshYearChipHighlight();
+        this.updateDetailButton();
+    }
+
+    /** 同步标题栏「跳转到任务详情」按钮的显隐：未选中任务时隐藏 */
+    private updateDetailButton(): void {
+        this.detailButtonEl?.toggleClass('is-hidden', !this.selectedTaskId);
     }
 
     /** 切换「任务信息」激活状态 */
@@ -823,9 +846,10 @@ export class PlanPanel extends FloatingPanel {
         const grid = this.paneEl.createDiv({ cls: 'plan-week-grid' });
         const headerRow = grid.createDiv({ cls: 'plan-week-header' });
         const columnsRow = grid.createDiv({ cls: 'plan-week-columns' });
-        // 任务卡片跨列合并：先算出同一任务连续排布的区段与所在行（泳道）
+        // 卡片跨列合并：任务卡片按排布日、习惯卡片按生效星期，各自算出连续区段与所在行（泳道）
         const segments = this.habitActive ? [] : this.buildWeekSegments();
-        const laneCount = segments.reduce((max, item) => Math.max(max, item.lane + 1), 0);
+        const habitSegments = this.habitActive ? this.buildHabitSegments() : [];
+        const laneCount = [...segments, ...habitSegments].reduce((max, item) => Math.max(max, item.lane + 1), 0);
         columnsRow.style.gridTemplateRows = laneCount > 0
             ? `repeat(${laneCount}, min-content) 1fr`
             : '1fr';
@@ -849,10 +873,10 @@ export class PlanPanel extends FloatingPanel {
             column.dataset.weekday = String(col + 1);
             column.toggleClass('is-assignable', this.selectedTaskId !== undefined);
             column.addEventListener('click', () => this.assignSelectedTask(col + 1));
-            if (this.habitActive) this.renderHabitWeekColumn(column, col + 1);
         }
         // 卡片层：与日列共用同一网格，按区段跨列显示
         for (const segment of segments) this.renderWeekSegment(columnsRow, segment);
+        for (const segment of habitSegments) this.renderHabitSegment(columnsRow, segment);
     }
 
     /** 取指定日期前一天的月份（用于判断当天是否跨入新月份） */
@@ -975,26 +999,60 @@ export class PlanPanel extends FloatingPanel {
         return names.join(' > ');
     }
 
-    /** 渲染某一天列内生效的习惯（按时间升序，点击卡片选中左侧对应任务） */
-    private renderHabitWeekColumn(column: HTMLElement, weekday: number): void {
-        const habits: { task: PrototypeTask; habit: TaskHabit }[] = [];
-        for (const task of this.panelOptions.getTasks()) {
-            if (task.habit?.enabled && task.habit.weekdays.includes(weekday)) {
-                habits.push({ task, habit: task.habit });
+    /** 周视图中跨列合并的一段习惯卡片：按时间排序固定行，同一习惯的连续星期合并为一段 */
+    private buildHabitSegments(): {
+        task: PrototypeTask;
+        habit: TaskHabit;
+        start: number;
+        end: number;
+        lane: number;
+    }[] {
+        const habits = this.panelOptions.getTasks()
+            .filter((task): task is PrototypeTask & { habit: TaskHabit } => task.habit?.enabled === true)
+            .sort((a, b) => a.habit.time.localeCompare(b.habit.time)
+                || a.name.localeCompare(b.name));
+        const segments: { task: PrototypeTask; habit: TaskHabit; start: number; end: number; lane: number }[] = [];
+        habits.forEach((task, lane) => {
+            const { habit } = task;
+            const days = Array.from(new Set(habit.weekdays))
+                .filter((day) => day >= 1 && day <= 7)
+                .sort((a, b) => a - b);
+            if (days.length === 0) return;
+            // 连续星期合并为一段，不连续的拆成多段
+            let start = days[0];
+            let prev = days[0];
+            for (let i = 1; i < days.length; i += 1) {
+                const day = days[i];
+                if (day === prev + 1) {
+                    prev = day;
+                    continue;
+                }
+                segments.push({ task, habit, start, end: prev, lane });
+                start = day;
+                prev = day;
             }
-        }
-        habits.sort((a, b) => a.habit.time.localeCompare(b.habit.time)
-            || a.task.name.localeCompare(b.task.name));
-        for (const { task, habit } of habits) {
-            const chip = column.createDiv({ cls: 'plan-week-task-chip plan-week-habit-chip' });
-            chip.title = `${habit.time} ${task.name}`;
-            chip.createSpan({ cls: 'plan-week-habit-time', text: habit.time });
-            chip.createSpan({ cls: 'plan-week-task-chip-name', text: task.name });
-            chip.addEventListener('click', (evt) => {
-                evt.stopPropagation();
-                this.selectTask(task.id);
-            });
-        }
+            segments.push({ task, habit, start, end: prev, lane });
+        });
+        return segments;
+    }
+
+    /** 渲染一段跨列习惯卡片（时间 + 任务名，点击选中左侧对应任务） */
+    private renderHabitSegment(
+        parentEl: HTMLElement,
+        segment: { task: PrototypeTask; habit: TaskHabit; start: number; end: number; lane: number },
+    ): void {
+        const { task, habit, start, end, lane } = segment;
+        const span = end - start + 1;
+        const chip = parentEl.createDiv({ cls: 'plan-week-task-chip plan-week-habit-chip' });
+        chip.style.gridColumn = `${start} / span ${span}`;
+        chip.style.gridRow = String(lane + 1);
+        chip.title = `${habit.time} ${task.name}`;
+        chip.createSpan({ cls: 'plan-week-habit-time', text: habit.time });
+        chip.createSpan({ cls: 'plan-week-task-chip-name', text: task.name });
+        chip.addEventListener('click', (evt) => {
+            evt.stopPropagation();
+            this.selectTask(task.id);
+        });
     }
 
     /** 把左侧选中的任务排布到点击的列（同一列重复排布同一任务会被仓库忽略） */

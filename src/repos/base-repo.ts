@@ -7,7 +7,7 @@ import type { PlanSchemeData } from '../shared/plan-data';
 import { ensureDefaultScheme } from '../shared/plan-data';
 import type { PlanCategoryData } from '../shared/plan-category-manager';
 import { ensureUncategorizedCategory, UNCATEGORIZED_CATEGORY_ID } from '../shared/plan-category-manager';
-import type { BasketItem, DayTemplateData, EventBlock, ExecutionRecord, ImprovementEntry, InboxData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
+import type { ChecklistItem, DayTemplateData, EventBlock, ExecutionRecord, InboxData, RunningTask, OkrRecordEntry } from '../datatypes/domain';
 import { DEFAULT_INBOX_DATA, migrateOkrConditions, migrateOkrEntries, migrateOkrRecordCards } from '../datatypes/domain';
 import type { WorkbenchData } from '../datatypes/card';
 import { defaultWorkbenchData } from '../datatypes/card';
@@ -335,8 +335,7 @@ function parsePrototypeTasks(raw: unknown): PrototypeTask[] {
                 ? { status: r.status }
                 : {}),
             ...(parseTaskHabit(r.habit) ? { habit: parseTaskHabit(r.habit)! } : {}),
-            ...(parseTaskBasket(r.basket) ? { basket: parseTaskBasket(r.basket)! } : {}),
-            ...(parseTaskImprovements(r.improvements) ? { improvements: parseTaskImprovements(r.improvements)! } : {}),
+            ...(parseTaskChecklist(r.checklist) ? { checklist: parseTaskChecklist(r.checklist)! } : {}),
             ...(typeof r.fileDir === 'string' && r.fileDir ? { fileDir: r.fileDir } : {}),
             ...(r.fileTimestamp === true ? { fileTimestamp: true } : {}),
             ...(parseTaskWeekGoals(r.weekGoals) ? { weekGoals: parseTaskWeekGoals(r.weekGoals)! } : {}),
@@ -389,27 +388,10 @@ function parseTaskGoals(raw: unknown): TaskGoalEntry[] | null {
     return goals.length > 0 ? goals : null;
 }
 
-/** 解析任务收集篮子条目（无有效条目时返回 null） */
-function parseTaskBasket(raw: unknown): BasketItem[] | null {
+/** 解析任务清单条目（无有效条目时返回 null） */
+function parseTaskChecklist(raw: unknown): ChecklistItem[] | null {
     if (!Array.isArray(raw)) return null;
-    const items: BasketItem[] = [];
-    for (const entry of raw) {
-        if (!entry || typeof entry !== 'object') continue;
-        const r = entry as Record<string, unknown>;
-        if (typeof r.id !== 'string' || typeof r.text !== 'string') continue;
-        items.push({
-            id: r.id,
-            text: r.text,
-            createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
-        });
-    }
-    return items.length > 0 ? items : null;
-}
-
-/** 解析任务待办 / 改进条目（无有效条目时返回 null） */
-function parseTaskImprovements(raw: unknown): ImprovementEntry[] | null {
-    if (!Array.isArray(raw)) return null;
-    const items: ImprovementEntry[] = [];
+    const items: ChecklistItem[] = [];
     for (const entry of raw) {
         if (!entry || typeof entry !== 'object') continue;
         const r = entry as Record<string, unknown>;
@@ -418,6 +400,7 @@ function parseTaskImprovements(raw: unknown): ImprovementEntry[] | null {
             id: r.id,
             text: r.text,
             ...(r.done === true ? { done: true } : {}),
+            ...(typeof r.completedAt === 'number' ? { completedAt: r.completedAt } : {}),
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
             ...(typeof r.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.dueDate) ? { dueDate: r.dueDate } : {}),
         });

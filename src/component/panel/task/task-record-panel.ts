@@ -1,8 +1,8 @@
 // 任务记录面板：基于 FloatingPanel，用于手动填写一次任务的执行记录。
 // 结构：开始时间（小时/分钟双输入框 + 下拉候选） + 结束时间 + 时长（可输入并联动结束时间） + 确认按钮。
 import { setIcon } from 'obsidian';
-import { t } from '../../i18n';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import { t } from '../../../i18n';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 任务记录面板配置 */
 export interface TaskRecordPanelOptions extends Omit<FloatingPanelOptions, 'title'> {

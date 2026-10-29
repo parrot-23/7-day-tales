@@ -3,21 +3,21 @@
 import { Notice, setIcon } from 'obsidian';
 import type { App, TFile } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { t } from '../../i18n';
-import { buildTaskFileName, listTaskFiles } from '../../shared/task-file';
-import { FileEditorPanel } from './file-editor-panel';
-import type { FloatingPanelOptions } from './floating-panel';
-import { FloatingPanel } from './floating-panel';
-import { FolderPickerPanel } from './folder-picker-panel';
+import type { ChecklistItem } from '../../../datatypes/domain';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { t } from '../../../i18n';
+import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { FileEditorPanel } from '../basic/file-editor-panel';
+import type { FloatingPanelOptions } from '../basic/floating-panel';
+import { FloatingPanel } from '../basic/floating-panel';
+import { FolderPickerPanel } from '../basic/folder-picker-panel';
 
 /** 板块 key */
-type TaskSectionKey = 'basket' | 'todo' | 'file';
+type TaskSectionKey = 'checklist' | 'file';
 
 /** 板块：顺序与文案 */
 const TASK_SECTIONS: { key: TaskSectionKey; labelKey: Parameters<typeof t>[0] }[] = [
-    { key: 'basket', labelKey: 'interface.bottomTabBasket' },
-    { key: 'todo', labelKey: 'interface.bottomTabTodo' },
+    { key: 'checklist', labelKey: 'interface.bottomTabChecklist' },
     { key: 'file', labelKey: 'interface.bottomTabFile' },
 ];
 
@@ -30,6 +30,8 @@ export interface TaskSectionsPanelOptions extends Omit<FloatingPanelOptions, 'ti
     categories: { id: string; label: string; color?: string }[];
     /** 持久化出口（文件目录 / 时间戳开关修改后保存） */
     save: () => Promise<void>;
+    /** 点击第一行跳转图标：在任务详情面板中打开该任务 */
+    onOpenTaskDetail?: (taskId: string) => void;
 }
 
 export class TaskSectionsPanel extends FloatingPanel {
@@ -37,44 +39,40 @@ export class TaskSectionsPanel extends FloatingPanel {
     /** 当前展示的任务 id */
     private taskId: string | null = null;
     /** 当前板块 */
-    private section: TaskSectionKey = 'basket';
+    private section: TaskSectionKey = 'checklist';
     /** 文件目录是否处于新建文件输入状态 */
     private fileCreateMode = false;
     /** 文件编辑面板（切换文件时销毁重建） */
     private fileEditorPanel: FileEditorPanel | null = null;
-    /** 是否已钉住（钉住后点击面板外不再自动关闭） */
-    private pinned = false;
-    /** 标题栏钉住按钮 */
-    private pinButtonEl: HTMLElement | null = null;
 
     constructor(options: TaskSectionsPanelOptions) {
         super({
             title: t('panel.taskBoardTitle'),
             width: 460,
             closeOnBlur: true,
+            // 任务板块面板需要钉住能力：钉住后点击面板外不关闭
+            pinnable: true,
             container: options.container,
             onClose: options.onClose,
         });
         this.sectionsOptions = options;
-        this.pinButtonEl = this.addHeaderAction('pin', t('panel.pin'), () => this.togglePin());
-    }
-
-    /** 切换钉住状态：钉住后点击面板外不再关闭 */
-    private togglePin(): void {
-        this.pinned = !this.pinned;
-        this.setCloseOnBlur(!this.pinned);
-        this.pinButtonEl?.toggleClass('is-active', this.pinned);
-        if (this.pinButtonEl) {
-            const label = t(this.pinned ? 'panel.unpin' : 'panel.pin');
-            this.pinButtonEl.title = label;
-            this.pinButtonEl.setAttribute('aria-label', label);
+        // 标题栏钉住按钮左侧：跳转到任务详情面板（未提供回调时不显示）
+        if (options.onOpenTaskDetail) {
+            this.addHeaderAction(
+                'square-arrow-up-right',
+                t('panel.openTaskDetail'),
+                () => {
+                    if (this.taskId) this.sectionsOptions.onOpenTaskDetail?.(this.taskId);
+                },
+                'start',
+            );
         }
     }
 
     /** 打开并展示指定任务 */
     openForTask(taskId: string): void {
         this.taskId = taskId;
-        this.section = 'basket';
+        this.section = 'checklist';
         this.fileCreateMode = false;
         this.render();
         this.open();
@@ -133,26 +131,18 @@ export class TaskSectionsPanel extends FloatingPanel {
     private renderContent(body: HTMLElement, task: PrototypeTask): void {
         const content = body.createDiv({ cls: 'task-sections-body' });
 
-        if (this.section === 'basket') {
-            const items = task.basket ?? [];
+        if (this.section === 'checklist') {
+            const items = task.checklist ?? [];
             if (items.length === 0) {
                 content.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
                 return;
             }
-            for (const item of items) this.createItemRow(content, 'inbox', item.text);
-            return;
-        }
-
-        if (this.section === 'todo') {
-            const items = task.improvements ?? [];
-            if (items.length === 0) {
-                content.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomEmpty') });
-                return;
-            }
-            for (const item of items) {
-                const row = this.createItemRow(content, item.done ? 'check-circle' : 'circle', item.text);
-                if (item.done) row.addClass('is-done');
-            }
+            // 未完成在前、已完成沉底
+            const ordered = [
+                ...items.filter((item) => !item.done),
+                ...items.filter((item) => item.done),
+            ];
+            for (const item of ordered) this.renderChecklistRow(content, item);
             return;
         }
 
@@ -298,4 +288,37 @@ export class TaskSectionsPanel extends FloatingPanel {
         row.createSpan({ cls: 'interface-bottom-item-text', text });
         return row;
     }
+
+    /** 清单条目行：勾选框 + 文本，已完成时显示完成时间 */
+    private renderChecklistRow(parentEl: HTMLElement, item: ChecklistItem): void {
+        const row = parentEl.createDiv({ cls: 'interface-bottom-item task-sections-todo-row' });
+        if (item.done) row.addClass('is-done');
+        const checkbox = row.createEl('input', { cls: 'task-sections-todo-checkbox' });
+        checkbox.type = 'checkbox';
+        checkbox.checked = item.done === true;
+        checkbox.addEventListener('change', () => {
+            item.done = checkbox.checked;
+            // 完成时记录时间戳，取消完成时清除
+            if (checkbox.checked) item.completedAt = Date.now();
+            else delete item.completedAt;
+            void this.sectionsOptions.save().then(() => this.render());
+        });
+        row.createSpan({ cls: 'interface-bottom-item-text', text: item.text });
+        if (item.done && item.completedAt) {
+            row.createSpan({
+                cls: 'interface-bottom-item-time',
+                text: t('panel.checklistCompletedAt', { time: formatCompletedTime(item.completedAt) }),
+            });
+        }
+    }
+}
+
+/** 完成时间格式化为 MM-DD HH:MM（清单条目上展示） */
+function formatCompletedTime(ts: number): string {
+    const d = new Date(ts);
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mo}-${da} ${h}:${mi}`;
 }

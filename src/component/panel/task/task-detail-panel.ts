@@ -1,17 +1,17 @@
 // 任务详情面板：基于 FloatingPanel，展示单个原型任务的详情。
 // 左侧：类型标题行（主线任务 / 支线任务）+ 添加按钮，下方为后代任务树；
 // 右侧：任务名称 / 分类 / 描述 + 归属分区选项卡。
-import { FuzzySuggestModal, Notice, setIcon, type App, type TFile } from 'obsidian';
+import { Notice, setIcon, type App, type TFile } from 'obsidian';
 
-import type { BasketItem, ImprovementEntry } from '../../datatypes/domain';
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { getLang, t } from '../../i18n';
-import type { PlanCategoryData } from '../../shared/plan-category-manager';
-import { buildTaskFileName, listTaskFiles } from '../../shared/task-file';
-import { ConfirmModal } from '../ob/confirm-modal';
-import { FileEditorPanel } from './file-editor-panel';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
-import { FolderPickerPanel } from './folder-picker-panel';
+import type { ChecklistItem } from '../../../datatypes/domain';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { getLang, t } from '../../../i18n';
+import type { PlanCategoryData } from '../../../shared/plan-category-manager';
+import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { ConfirmModal } from '../../ob/confirm-modal';
+import { FileEditorPanel } from '../basic/file-editor-panel';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
+import { FolderPickerPanel } from '../basic/folder-picker-panel';
 import { GoalListView } from './goal-list-view';
 
 /** 任务详情面板配置 */
@@ -43,8 +43,7 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
 /** 右侧分区选项卡：showCount 为 true 时在标签后显示条目数量占位 */
 const SECTIONS: { labelKey: Parameters<typeof t>[0]; showCount?: boolean }[] = [
     { labelKey: 'panel.goalTab' },
-    { labelKey: 'panel.targetTodo', showCount: true },
-    { labelKey: 'panel.targetInbox', showCount: true },
+    { labelKey: 'panel.targetChecklist', showCount: true },
     { labelKey: 'panel.targetFile', showCount: true },
 ];
 
@@ -69,22 +68,14 @@ export class TaskDetailPanel extends FloatingPanel {
     private wheelLocked = false;
     /** 当前选中的任务 id（决定 + 按钮在哪个任务下新增子任务），默认根任务 */
     private selectedTaskId: string;
-    /** 收集篮子内容容器 */
-    private basketBodyEl: HTMLElement | null = null;
-    /** 收集篮子选项卡的条目数量标签 */
-    private basketCountEl: HTMLElement | null = null;
-    /** 收集篮子是否处于多选（梳理）状态 */
-    private basketSelectMode = false;
-    /** 收集篮子中选中的条目 id */
-    private selectedBasketIds = new Set<string>();
-    /** 待办 / 改进清单内容容器 */
-    private todoBodyEl: HTMLElement | null = null;
-    /** 待办 / 改进清单选项卡的未完成数量标签 */
-    private todoCountEl: HTMLElement | null = null;
-    /** 待办清单排序方式：创建顺序 / 截止时间 */
-    private todoSort: 'created' | 'due' = 'created';
-    /** 待办清单中当前选中的条目 id（用于设置截止时间） */
-    private selectedTodoId: string | null = null;
+    /** 清单内容容器 */
+    private checklistBodyEl: HTMLElement | null = null;
+    /** 清单选项卡的未完成数量标签 */
+    private checklistCountEl: HTMLElement | null = null;
+    /** 清单排序方式：创建顺序 / 截止时间 */
+    private checklistSort: 'created' | 'due' = 'created';
+    /** 清单中当前选中的条目 id（用于设置截止时间） */
+    private selectedChecklistId: string | null = null;
     /** 任务文件内容容器 */
     private filesBodyEl: HTMLElement | null = null;
     /** 任务文件选项卡的文件数量标签 */
@@ -115,7 +106,7 @@ export class TaskDetailPanel extends FloatingPanel {
     constructor(options: TaskDetailPanelOptions) {
         super({
             width: 860,
-            title: options.task.name,
+            title: t('panel.taskDetailTitle'),
             container: options.container,
             draggable: options.draggable,
             onClose: options.onClose,
@@ -128,10 +119,9 @@ export class TaskDetailPanel extends FloatingPanel {
         this.renderContent();
     }
 
-    /** 每次打开时刷新收集篮子 / 待办清单 / 任务文件（数据可能被其它入口改动） */
+    /** 每次打开时刷新清单 / 任务文件（数据可能被其它入口改动） */
     override open(): void {
-        if (this.basketBodyEl?.isConnected) this.renderBasket(this.basketBodyEl);
-        if (this.todoBodyEl?.isConnected) this.renderTodo(this.todoBodyEl);
+        if (this.checklistBodyEl?.isConnected) this.renderChecklist(this.checklistBodyEl);
         if (this.filesBodyEl?.isConnected) this.renderFiles(this.filesBodyEl);
         this.renderSettingPanel();
         super.open();
@@ -267,7 +257,6 @@ export class TaskDetailPanel extends FloatingPanel {
                     const target = this.tasks.find((item) => item.id === this.task.id);
                     if (target) target.name = value;
                     nameEl.setText(value);
-                    this.setTitle(value);
                     this.panelOptions.onUpdateTask?.(this.task.id, { name: value });
                 },
             });
@@ -330,8 +319,7 @@ export class TaskDetailPanel extends FloatingPanel {
                     cls: 'task-detail-tab-count',
                     text: `(${this.sectionCount(index)})`,
                 });
-                if (section.labelKey === 'panel.targetInbox') this.basketCountEl = countEl;
-                if (section.labelKey === 'panel.targetTodo') this.todoCountEl = countEl;
+                if (section.labelKey === 'panel.targetChecklist') this.checklistCountEl = countEl;
                 if (section.labelKey === 'panel.targetFile') this.fileCountEl = countEl;
             }
             tab.addEventListener('click', () => this.switchSection(index));
@@ -340,8 +328,7 @@ export class TaskDetailPanel extends FloatingPanel {
             const sectionEl = this.sectionsEl.createDiv({ cls: 'task-detail-section' });
             const sectionBody = sectionEl.createDiv({ cls: 'task-detail-section-body' });
             if (section.labelKey === 'panel.goalTab') this.renderGoalSection(sectionBody);
-            if (section.labelKey === 'panel.targetInbox') this.renderBasket(sectionBody);
-            if (section.labelKey === 'panel.targetTodo') this.renderTodo(sectionBody);
+            if (section.labelKey === 'panel.targetChecklist') this.renderChecklist(sectionBody);
             if (section.labelKey === 'panel.targetFile') this.renderFiles(sectionBody);
         }
 
@@ -538,150 +525,19 @@ export class TaskDetailPanel extends FloatingPanel {
         this.activeInlineEditAbort = () => finish(false);
     }
 
-    /** 各分区条目数量（收集篮子为总数，待办清单为未完成数） */
+    /** 各分区条目数量（清单为未完成数） */
     private sectionCount(index: number): number {
         const key = SECTIONS[index]?.labelKey;
-        if (key === 'panel.targetInbox') return this.task.basket?.length ?? 0;
-        if (key === 'panel.targetTodo') {
-            return (this.task.improvements ?? []).filter((item) => !item.done).length;
+        if (key === 'panel.targetChecklist') {
+            return (this.task.checklist ?? []).filter((item) => !item.done).length;
         }
         if (key === 'panel.targetFile') return listTaskFiles(this.panelOptions.app, this.task.fileDir).length;
         return 0;
     }
 
-    /** 收集篮子：输入行（输入框 / 添加 / 梳理）+ 下方条目列表 */
-    private renderBasket(container: HTMLElement): void {
-        this.basketBodyEl = container;
-        container.empty();
-        const wrap = container.createDiv({ cls: 'task-detail-basket' });
-
-        // 第一行：输入框 + 添加 + 梳理
-        const row = wrap.createDiv({ cls: 'gtd-collect-input-row' });
-        const input = row.createEl('input', { cls: 'gtd-collect-input' });
-        input.type = 'text';
-        input.placeholder = t('basket.addPlaceholder');
-        const addBtn = row.createEl('button', { cls: 'gtd-collect-add-btn', text: t('basket.add') });
-        const organizeBtn = row.createEl('button', {
-            cls: 'task-detail-basket-organize',
-            text: t('basket.clarify'),
-        });
-        organizeBtn.toggleClass('is-active', this.basketSelectMode);
-
-        const submit = (): void => {
-            const text = input.value.trim();
-            if (!text) return;
-            const entry: BasketItem = {
-                id: `basket_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-                text,
-                createdAt: Date.now(),
-            };
-            this.task.basket = [...(this.task.basket ?? []), entry];
-            this.syncBasketToTasks();
-            input.value = '';
-            void this.panelOptions.save().then(() => this.renderBasket(container));
-        };
-        addBtn.onclick = submit;
-        input.onkeydown = (evt) => {
-            if (evt.key === 'Enter') submit();
-        };
-
-        organizeBtn.onclick = () => {
-            this.basketSelectMode = !this.basketSelectMode;
-            this.selectedBasketIds.clear();
-            this.renderBasket(container);
-        };
-
-        // 条目列表（与收集面板卡片一致：时间 + 状态 + 内容 + 删除）
-        const listWrap = wrap.createDiv({ cls: 'gtd-collect-list task-detail-basket-list' });
-        const listInner = listWrap.createDiv({ cls: 'gtd-collect-list-inner' });
-        const entries = this.task.basket ?? [];
-        this.basketCountEl?.setText(`(${entries.length})`);
-
-        if (entries.length === 0) {
-            listInner.createDiv({ cls: 'gtd-collect-empty', text: t('basket.empty') });
-        } else {
-            for (const entry of entries) {
-                const card = listInner.createDiv({ cls: 'gtd-collect-card' });
-                if (this.basketSelectMode) {
-                    card.toggleClass('is-selected', this.selectedBasketIds.has(entry.id));
-                    card.addEventListener('click', () => {
-                        if (this.selectedBasketIds.has(entry.id)) this.selectedBasketIds.delete(entry.id);
-                        else this.selectedBasketIds.add(entry.id);
-                        this.renderBasket(container);
-                    });
-                }
-                const meta = card.createDiv({ cls: 'gtd-collect-card-meta' });
-                meta.createSpan({ cls: 'gtd-collect-card-time', text: formatDateTime(entry.createdAt) });
-                meta.createSpan({ cls: 'gtd-collect-card-status', text: t('gtd.statusInbox') });
-                card.createDiv({ cls: 'gtd-collect-card-content', text: entry.text });
-
-                const delBtn = card.createEl('button', { cls: 'gtd-collect-card-delete', text: '×' });
-                delBtn.onclick = (evt) => {
-                    evt.stopPropagation();
-                    this.task.basket = (this.task.basket ?? []).filter((item) => item.id !== entry.id);
-                    this.selectedBasketIds.delete(entry.id);
-                    this.syncBasketToTasks();
-                    void this.panelOptions.save().then(() => this.renderBasket(container));
-                };
-            }
-        }
-
-        // 梳理态底部：提示 + 整理到文件 + 取消
-        if (this.basketSelectMode) {
-            const footer = wrap.createDiv({ cls: 'task-detail-basket-footer' });
-            footer.createSpan({ cls: 'task-detail-basket-hint', text: t('basket.multiSelectHint') });
-            const confirmBtn = footer.createEl('button', {
-                cls: 'task-detail-basket-organize-confirm',
-                text: t('basket.organizeSelected'),
-            });
-            confirmBtn.disabled = this.selectedBasketIds.size === 0;
-            confirmBtn.addEventListener('click', () => this.openBasketFilePicker());
-            const cancelBtn = footer.createEl('button', { text: t('common.cancel') });
-            cancelBtn.addEventListener('click', () => {
-                this.basketSelectMode = false;
-                this.selectedBasketIds.clear();
-                this.renderBasket(container);
-            });
-        }
-    }
-
-    /** 同步篮子到全量任务列表中的同一任务，保证其它视图读到最新数据 */
-    private syncBasketToTasks(): void {
-        const target = this.tasks.find((item) => item.id === this.task.id);
-        if (target) target.basket = this.task.basket;
-    }
-
-    /** 打开文件选择器，把选中的篮子条目追加到目标文件末尾 */
-    private openBasketFilePicker(): void {
-        if (this.selectedBasketIds.size === 0) return;
-        new BasketFilePickerModal(this.panelOptions.app, (file) => {
-            void this.organizeBasketToFile(file);
-        }).open();
-    }
-
-    /** 选中条目逐条追加到文件末尾，并从篮子移除 */
-    private async organizeBasketToFile(file: TFile): Promise<void> {
-        const selectedIds = this.selectedBasketIds;
-        const entries = (this.task.basket ?? []).filter((entry) => selectedIds.has(entry.id));
-        if (entries.length === 0) return;
-        try {
-            await this.panelOptions.app.vault.append(file, `\n${entries.map((entry) => entry.text).join('\n')}\n`);
-        } catch {
-            new Notice(t('basket.organizeFailed'));
-            return;
-        }
-        this.task.basket = (this.task.basket ?? []).filter((entry) => !selectedIds.has(entry.id));
-        this.syncBasketToTasks();
-        this.selectedBasketIds.clear();
-        this.basketSelectMode = false;
-        await this.panelOptions.save();
-        if (this.basketBodyEl) this.renderBasket(this.basketBodyEl);
-        new Notice(t('basket.organizeDone'));
-    }
-
-    /** 待办 / 改进清单：顶部按钮组 + 输入行 + 可选中条目的卡片列表（已完成沉底） */
-    private renderTodo(container: HTMLElement): void {
-        this.todoBodyEl = container;
+    /** 清单：顶部按钮组 + 输入行 + 可选中条目的卡片列表（已完成沉底） */
+    private renderChecklist(container: HTMLElement): void {
+        this.checklistBodyEl = container;
         container.empty();
         const wrap = container.createDiv({ cls: 'task-detail-basket task-detail-todo' });
 
@@ -689,37 +545,37 @@ export class TaskDetailPanel extends FloatingPanel {
         const toolbar = wrap.createDiv({ cls: 'task-detail-todo-toolbar' });
         const sortBtn = toolbar.createEl('button', {
             cls: 'task-detail-todo-tool-btn',
-            text: this.todoSort === 'due' ? t('panel.todoSortDue') : t('panel.todoSortCreated'),
+            text: this.checklistSort === 'due' ? t('panel.checklistSortDue') : t('panel.checklistSortCreated'),
         });
         sortBtn.onclick = () => {
-            this.todoSort = this.todoSort === 'due' ? 'created' : 'due';
-            this.renderTodo(container);
+            this.checklistSort = this.checklistSort === 'due' ? 'created' : 'due';
+            this.renderChecklist(container);
         };
         const dueBtn = toolbar.createEl('button', {
             cls: 'task-detail-todo-tool-btn',
-            text: t('panel.todoSetDue'),
+            text: t('panel.checklistSetDue'),
         });
-        dueBtn.disabled = !this.selectedTodoId;
-        dueBtn.onclick = () => this.openTodoDueEditor(wrap, container);
+        dueBtn.disabled = !this.selectedChecklistId;
+        dueBtn.onclick = () => this.openChecklistDueEditor(wrap, container);
 
         const row = wrap.createDiv({ cls: 'gtd-collect-input-row' });
         const input = row.createEl('input', { cls: 'gtd-collect-input' });
         input.type = 'text';
-        input.placeholder = t('panel.todoAddPlaceholder');
-        const addBtn = row.createEl('button', { cls: 'gtd-collect-add-btn', text: t('basket.add') });
+        input.placeholder = t('panel.checklistAddPlaceholder');
+        const addBtn = row.createEl('button', { cls: 'gtd-collect-add-btn', text: t('common.add') });
 
         const submit = (): void => {
             const text = input.value.trim();
             if (!text) return;
-            const entry: ImprovementEntry = {
-                id: `todo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            const entry: ChecklistItem = {
+                id: `checklist_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
                 text,
                 createdAt: Date.now(),
             };
-            this.task.improvements = [...(this.task.improvements ?? []), entry];
-            this.syncTodoToTasks();
+            this.task.checklist = [...(this.task.checklist ?? []), entry];
+            this.syncChecklistToTasks();
             input.value = '';
-            void this.panelOptions.save().then(() => this.renderTodo(container));
+            void this.panelOptions.save().then(() => this.renderChecklist(container));
         };
         addBtn.onclick = submit;
         input.onkeydown = (evt) => {
@@ -728,17 +584,17 @@ export class TaskDetailPanel extends FloatingPanel {
 
         const listWrap = wrap.createDiv({ cls: 'gtd-collect-list task-detail-basket-list' });
         const listInner = listWrap.createDiv({ cls: 'gtd-collect-list-inner' });
-        const entries = this.task.improvements ?? [];
-        this.todoCountEl?.setText(`(${entries.filter((item) => !item.done).length})`);
+        const entries = this.task.checklist ?? [];
+        this.checklistCountEl?.setText(`(${entries.filter((item) => !item.done).length})`);
 
         if (entries.length === 0) {
-            listInner.createDiv({ cls: 'gtd-collect-empty', text: t('panel.todoEmpty') });
+            listInner.createDiv({ cls: 'gtd-collect-empty', text: t('panel.checklistEmpty') });
             return;
         }
 
         // 未完成在前、已完成沉底；未完成可按截止时间排序（无截止时间排最后）
         const pending = entries.filter((entry) => !entry.done);
-        if (this.todoSort === 'due') {
+        if (this.checklistSort === 'due') {
             pending.sort((a, b) => {
                 const aDue = a.dueDate ? new Date(`${a.dueDate}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
                 const bDue = b.dueDate ? new Date(`${b.dueDate}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
@@ -751,20 +607,27 @@ export class TaskDetailPanel extends FloatingPanel {
         for (const entry of ordered) {
             const card = listInner.createDiv({ cls: 'gtd-collect-card task-detail-todo-card' });
             card.toggleClass('is-done', entry.done === true);
-            card.toggleClass('is-selected', this.selectedTodoId === entry.id);
+            card.toggleClass('is-selected', this.selectedChecklistId === entry.id);
             // 点击条目切换选中态（供「设置截止时间」使用）
             card.addEventListener('click', () => {
-                this.selectedTodoId = this.selectedTodoId === entry.id ? null : entry.id;
-                this.renderTodo(container);
+                this.selectedChecklistId = this.selectedChecklistId === entry.id ? null : entry.id;
+                this.renderChecklist(container);
             });
 
             // 第一行：状态标签 + 截止日期相关标签（不再显示创建时间）
             const meta = card.createDiv({ cls: 'gtd-collect-card-meta' });
             meta.createSpan({
                 cls: 'gtd-collect-card-status',
-                text: t(entry.done ? 'panel.todoDone' : 'panel.todoPending'),
+                text: t(entry.done ? 'panel.checklistDone' : 'panel.checklistPending'),
             });
-            if (entry.dueDate) this.appendTodoDueTags(meta, entry.dueDate);
+            // 已完成条目显示完成时间
+            if (entry.done && entry.completedAt) {
+                meta.createSpan({
+                    cls: 'task-detail-todo-due-tag task-detail-todo-done-tag',
+                    text: t('panel.checklistCompletedAt', { time: formatCompletedTime(entry.completedAt) }),
+                });
+            }
+            if (entry.dueDate) this.appendChecklistDueTags(meta, entry.dueDate);
 
             const main = card.createDiv({ cls: 'task-detail-todo-main' });
             const checkbox = main.createEl('input', { cls: 'task-detail-todo-checkbox' });
@@ -773,24 +636,27 @@ export class TaskDetailPanel extends FloatingPanel {
             checkbox.addEventListener('click', (evt) => evt.stopPropagation());
             checkbox.addEventListener('change', () => {
                 entry.done = checkbox.checked;
-                this.syncTodoToTasks();
-                void this.panelOptions.save().then(() => this.renderTodo(container));
+                // 完成时记录时间戳，取消完成时清除
+                if (checkbox.checked) entry.completedAt = Date.now();
+                else delete entry.completedAt;
+                this.syncChecklistToTasks();
+                void this.panelOptions.save().then(() => this.renderChecklist(container));
             });
             main.createSpan({ cls: 'gtd-collect-card-content task-detail-todo-text', text: entry.text });
 
             const delBtn = card.createEl('button', { cls: 'gtd-collect-card-delete', text: '×' });
             delBtn.onclick = (evt) => {
                 evt.stopPropagation();
-                this.task.improvements = (this.task.improvements ?? []).filter((item) => item.id !== entry.id);
-                if (this.selectedTodoId === entry.id) this.selectedTodoId = null;
-                this.syncTodoToTasks();
-                void this.panelOptions.save().then(() => this.renderTodo(container));
+                this.task.checklist = (this.task.checklist ?? []).filter((item) => item.id !== entry.id);
+                if (this.selectedChecklistId === entry.id) this.selectedChecklistId = null;
+                this.syncChecklistToTasks();
+                void this.panelOptions.save().then(() => this.renderChecklist(container));
             };
         }
     }
 
     /** 在状态标签后追加截止日期 / 剩余天数 / 已过期标签 */
-    private appendTodoDueTags(meta: HTMLElement, dueDate: string): void {
+    private appendChecklistDueTags(meta: HTMLElement, dueDate: string): void {
         const due = new Date(`${dueDate}T00:00:00`);
         if (Number.isNaN(due.getTime())) return;
         const label = getLang() === 'zh'
@@ -801,19 +667,19 @@ export class TaskDetailPanel extends FloatingPanel {
         const days = Math.round((due.getTime() - today.getTime()) / 86400000);
         // 「几天后 / 已过期」标签在截止日期标签之前
         if (days < 0) {
-            meta.createSpan({ cls: 'task-detail-todo-due-tag is-overdue', text: t('panel.todoOverdue') });
+            meta.createSpan({ cls: 'task-detail-todo-due-tag is-overdue', text: t('panel.checklistOverdue') });
         } else {
             meta.createSpan({
                 cls: 'task-detail-todo-due-tag',
-                text: days === 0 ? t('panel.todoDueToday') : t('panel.todoDueInDays', { days }),
+                text: days === 0 ? t('panel.checklistDueToday') : t('panel.checklistDueInDays', { days }),
             });
         }
-        meta.createSpan({ cls: 'task-detail-todo-due-tag', text: t('panel.todoDueDateTag', { date: label }) });
+        meta.createSpan({ cls: 'task-detail-todo-due-tag', text: t('panel.checklistDueDateTag', { date: label }) });
     }
 
     /** 选中条目的截止日期编辑行：日期输入框 + 确定 / 清除 / 取消 */
-    private openTodoDueEditor(wrap: HTMLElement, container: HTMLElement): void {
-        const entry = (this.task.improvements ?? []).find((item) => item.id === this.selectedTodoId);
+    private openChecklistDueEditor(wrap: HTMLElement, container: HTMLElement): void {
+        const entry = (this.task.checklist ?? []).find((item) => item.id === this.selectedChecklistId);
         if (!entry) return;
         wrap.querySelector('.task-detail-todo-due-editor')?.remove();
         const editor = wrap.createDiv({ cls: 'task-detail-todo-due-editor' });
@@ -823,26 +689,26 @@ export class TaskDetailPanel extends FloatingPanel {
         const saveEntry = (): void => {
             if (input.value) entry.dueDate = input.value;
             else delete entry.dueDate;
-            this.syncTodoToTasks();
-            void this.panelOptions.save().then(() => this.renderTodo(container));
+            this.syncChecklistToTasks();
+            void this.panelOptions.save().then(() => this.renderChecklist(container));
         };
-        const save = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueSave') });
+        const save = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.checklistDueSave') });
         save.onclick = saveEntry;
-        const clear = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueClear') });
+        const clear = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.checklistDueClear') });
         clear.onclick = () => {
             input.value = '';
             saveEntry();
         };
-        const cancel = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.todoDueCancel') });
+        const cancel = editor.createEl('button', { cls: 'task-detail-todo-tool-btn', text: t('panel.checklistDueCancel') });
         cancel.onclick = () => editor.remove();
         wrap.insertBefore(editor, wrap.querySelector('.gtd-collect-input-row'));
         input.focus();
     }
 
-    /** 同步待办清单到全量任务列表中的同一任务 */
-    private syncTodoToTasks(): void {
+    /** 同步清单到全量任务列表中的同一任务 */
+    private syncChecklistToTasks(): void {
         const target = this.tasks.find((item) => item.id === this.task.id);
-        if (target) target.improvements = this.task.improvements;
+        if (target) target.checklist = this.task.checklist;
     }
 
     /** 任务文件：操作卡片（时间戳开关 / 文件目录 / 添加）+ 文件列表卡片 */
@@ -1246,10 +1112,7 @@ export class TaskDetailPanel extends FloatingPanel {
             // 右侧整体切换为选中任务：名称 / 分类 / 描述 / 归属分区，未提交的内联编辑先行放弃
             this.activeInlineEditAbort?.();
             this.task = next;
-            this.setTitle(next.name);
-            this.basketSelectMode = false;
-            this.selectedBasketIds.clear();
-            this.selectedTodoId = null;
+            this.selectedChecklistId = null;
             this.fileCreateMode = false;
             this.renderRightPane();
             return;
@@ -1296,25 +1159,12 @@ function formatDateTime(ts: number): string {
     return `${y}-${mo}-${da} ${h}:${mi}`;
 }
 
-/** 收集篮子「整理到文件」：选择一个 Markdown 文件作为追加目标 */
-class BasketFilePickerModal extends FuzzySuggestModal<TFile> {
-    private onPick: (file: TFile) => void;
-
-    constructor(app: App, onPick: (file: TFile) => void) {
-        super(app);
-        this.onPick = onPick;
-        this.setPlaceholder(t('basket.organizeToFile'));
-    }
-
-    getItems(): TFile[] {
-        return this.app.vault.getMarkdownFiles();
-    }
-
-    getItemText(file: TFile): string {
-        return file.path;
-    }
-
-    onChooseItem(file: TFile): void {
-        this.onPick(file);
-    }
+/** 完成时间格式化为 MM-DD HH:MM（清单条目上展示） */
+function formatCompletedTime(ts: number): string {
+    const d = new Date(ts);
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mo}-${da} ${h}:${mi}`;
 }

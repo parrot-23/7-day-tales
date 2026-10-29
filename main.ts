@@ -201,7 +201,7 @@ export default class ParrotPlanPlugin extends Plugin {
 
     /**
      * vault 内文件/文件夹被移动或重命名后，更新任务中引用的路径：
-     * 文件板块的 path、收集篮子的 path（文件夹移动时同步更新其下所有文件路径）。
+     * 文件板块的 path（文件夹移动时同步更新其下所有文件路径）。
      * 有变更时保存数据并刷新已打开的主视图。
      */
     private async handleVaultRename(oldPath: string, newPath: string): Promise<void> {
@@ -226,13 +226,6 @@ export default class ParrotPlanPlugin extends Plugin {
                         fileItem.path = next;
                         changed = true;
                     }
-                }
-            }
-            for (const entry of item.basket ?? []) {
-                const next = remap(entry.path);
-                if (next !== entry.path) {
-                    entry.path = next;
-                    changed = true;
                 }
             }
         }

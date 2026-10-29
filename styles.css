@@ -7764,9 +7764,23 @@ button.swimlane-section-card-settings {
 }
 
 .interface-bottom-item-text {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+
+/* 任务板块面板：待办条目勾选框 + 完成时间 */
+.task-sections-todo-checkbox {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.interface-bottom-item-time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 /* 今日任务（折叠列表）卡片内容：定位 / 边框 / 背景由外壳提供 */
@@ -9025,7 +9039,7 @@ button.swimlane-section-card-settings {
     color: var(--text-accent);
 }
 
-/* 收集篮子：输入行 + 列表 + 梳理底栏 */
+/* 清单：输入行 + 列表 */
 .task-detail-basket {
     display: flex;
     flex-direction: column;
@@ -9043,30 +9057,6 @@ button.swimlane-section-card-settings {
 .task-detail-basket .gtd-collect-card.is-selected {
     border-color: var(--interactive-accent);
     box-shadow: inset 0 0 0 1px var(--interactive-accent);
-}
-
-.task-detail-basket-organize.is-active {
-    border-color: var(--interactive-accent);
-    color: var(--text-accent);
-}
-
-.task-detail-basket-footer {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-}
-
-.task-detail-basket-hint {
-    margin-right: auto;
-    font-size: 12px;
-    color: var(--text-faint);
-}
-
-.task-detail-basket-organize-confirm[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .task-detail-section-body {
@@ -11207,6 +11197,8 @@ button.task-record-dropdown-item.is-selected {
     min-width: 0;
     padding: 3px 18px 3px 6px;
     border-radius: 4px;
+    /* 深空等深色主题下卡片背景与面板背景接近，需要完整描边才能看出卡片形状 */
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
     border-left: 3px solid var(--interactive-accent);
     background: var(--sdt-card-bg, var(--background-secondary));
     font-size: 11px;
@@ -11271,9 +11263,11 @@ button.task-record-dropdown-item.is-selected {
     opacity: 1;
 }
 
-/* 习惯模式：周日历里的习惯卡片（时间 + 任务名，无删除按钮） */
+/* 习惯模式：周日历里的习惯卡片（时间 + 任务名，无删除按钮；连续星期跨列合并） */
 .plan-week-habit-chip {
+    align-self: start;
     gap: 6px;
+    margin: 4px 2px;
     padding-right: 6px;
     border-left-color: var(--text-accent);
     cursor: pointer;
@@ -11374,9 +11368,20 @@ button.task-record-dropdown-item.is-selected {
     background: var(--sdt-interactive-hover, var(--background-modifier-hover));
 }
 
+/* 操作按钮隐藏态（如计划面板未选中任务时的跳转按钮） */
+.floating-panel-action.is-hidden {
+    display: none;
+}
+
+/* 标题栏图标尺寸：关闭按钮的 × 略大，钉住按钮的图标略小（按钮整体仍为 24×24） */
 .floating-panel-action svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
+}
+
+.floating-panel-close svg {
+    width: 20px;
+    height: 20px;
 }
 
 .floating-panel-close {
@@ -11387,11 +11392,8 @@ button.task-record-dropdown-item.is-selected {
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    font-size: 36px;
-    line-height: 1;
     color: var(--sdt-text-secondary, var(--text-muted));
     cursor: pointer;
-    overflow: visible;
 }
 
 .floating-panel-close:hover {

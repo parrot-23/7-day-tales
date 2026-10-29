@@ -1,7 +1,7 @@
 // 数据面板：基于 FloatingPanel，顶部选项卡切换「记录卡 / 执行记录」两张表。
 // 当前内容为纯文字占位，暂不接入真实数据。
-import { t } from '../../i18n';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import { t } from '../../../i18n';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 数据面板配置 */
 export interface DataPanelOptions extends Omit<FloatingPanelOptions, 'title'> {

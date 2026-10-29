@@ -2,8 +2,9 @@
 // 与视图解耦，可挂在任意容器（默认 document.body）上复用。
 import { setIcon } from 'obsidian';
 
-import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../../themestory/theme-colors';
-import type { ThemeColors } from '../../themestory/theme-definition';
+import { t } from '../../../i18n';
+import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../../../themestory/theme-colors';
+import type { ThemeColors } from '../../../themestory/theme-definition';
 
 /** 悬浮面板配置 */
 export interface FloatingPanelOptions {
@@ -17,6 +18,8 @@ export interface FloatingPanelOptions {
     draggable?: boolean;
     /** 是否在失去焦点时自动关闭（点击面板外任意位置），默认 false */
     closeOnBlur?: boolean;
+    /** 标题栏是否显示钉住按钮（钉住后点击面板外不再关闭），默认 false */
+    pinnable?: boolean;
     /** 关闭回调 */
     onClose?: () => void;
 }
@@ -49,6 +52,10 @@ export class FloatingPanel {
     private bodyEl: HTMLElement;
     private options: FloatingPanelOptions;
     private opened = false;
+    /** 是否已钉住（钉住后点击面板外不再关闭） */
+    private pinned = false;
+    /** 标题栏钉住按钮（仅在 pinnable 时创建） */
+    private pinButtonEl: HTMLElement | null = null;
     /** 当前左上角位置（相对挂载容器），null 表示尚未定位 */
     private left: number | null = null;
     private top: number | null = null;
@@ -60,6 +67,9 @@ export class FloatingPanel {
     private dragStartLeft = 0;
     private dragStartTop = 0;
 
+    /** 额外视为「面板内部」的元素（如由本面板打开的子面板），点击时不触发失焦关闭 */
+    private ignoreEls: HTMLElement[] = [];
+
     private onKeyDown = (evt: KeyboardEvent) => {
         if (evt.key === 'Escape') this.close();
     };
@@ -69,6 +79,7 @@ export class FloatingPanel {
         if (!this.opened) return;
         const target = evt.target as Node | null;
         if (target && this.root.contains(target)) return;
+        if (target && this.ignoreEls.some((el) => el.contains(target))) return;
         this.close();
     };
 
@@ -96,8 +107,13 @@ export class FloatingPanel {
         const rightEl = this.headerEl.createDiv({ cls: 'floating-panel-header-right' });
         this.actionsEl = rightEl.createDiv({ cls: 'floating-panel-actions' });
 
-        const closeBtn = rightEl.createDiv({ cls: 'floating-panel-close', text: '×' });
-        closeBtn.setAttribute('aria-label', 'Close');
+        // 钉住按钮：默认不启用，由 pinnable 开启
+        if (options.pinnable) {
+            this.pinButtonEl = this.addHeaderAction('pin', t('panel.pin'), () => this.togglePin());
+        }
+
+        const closeBtn = rightEl.createDiv({ cls: 'floating-panel-close', attr: { 'aria-label': 'Close' } });
+        setIcon(closeBtn, 'x');
         closeBtn.addEventListener('click', () => this.close());
 
         this.bodyEl = this.root.createDiv({ cls: 'floating-panel-body' });
@@ -126,25 +142,50 @@ export class FloatingPanel {
         return this.opened;
     }
 
+    /** 面板根元素（供其它面板登记为「内部元素」） */
+    get element(): HTMLElement {
+        return this.root;
+    }
+
     /** 设置标题 */
     setTitle(title: string): void {
         this.titleEl.setText(title);
     }
 
-    /** 在标题栏右侧添加一个图标按钮（关闭按钮左侧），返回按钮元素 */
-    addHeaderAction(icon: string, label: string, onClick: () => void): HTMLElement {
+    /**
+     * 登记额外元素：该元素内的点击不触发本面板的失焦关闭。
+     * 用于「由本面板打开的子面板」，避免操作子面板时把父面板一并关掉。
+     */
+    addIgnoreElement(el: HTMLElement): void {
+        if (!this.ignoreEls.includes(el)) this.ignoreEls.push(el);
+    }
+
+    /** 在标题栏右侧添加一个图标按钮，返回按钮元素；position 为 start 时插到最左侧 */
+    addHeaderAction(icon: string, label: string, onClick: () => void, position: 'start' | 'end' = 'end'): HTMLElement {
         const button = this.actionsEl.createDiv({
             cls: 'floating-panel-action',
             attr: { 'aria-label': label, role: 'button' },
         });
+        if (position === 'start') this.actionsEl.prepend(button);
         button.title = label;
         setIcon(button, icon);
         button.addEventListener('click', onClick);
         return button;
     }
 
+    /** 切换钉住状态：钉住后点击面板外不再关闭 */
+    private togglePin(): void {
+        this.pinned = !this.pinned;
+        this.setCloseOnBlur(!this.pinned);
+        if (!this.pinButtonEl) return;
+        this.pinButtonEl.toggleClass('is-active', this.pinned);
+        const label = t(this.pinned ? 'panel.unpin' : 'panel.pin');
+        this.pinButtonEl.title = label;
+        this.pinButtonEl.setAttribute('aria-label', label);
+    }
+
     /** 切换「点击面板外自动关闭」：面板内按钮用于钉住 / 取消钉住 */
-    setCloseOnBlur(enabled: boolean): void {
+    private setCloseOnBlur(enabled: boolean): void {
         this.options.closeOnBlur = enabled;
         if (!this.opened) return;
         if (enabled) {
@@ -164,9 +205,12 @@ export class FloatingPanel {
         }
     }
 
-    /** 打开面板（首次打开时居中，之后保留上次拖动位置） */
+    /** 打开面板（首次打开时居中，之后保留上次拖动位置；已打开时调用视为置顶） */
     open(): void {
-        if (this.opened) return;
+        if (this.opened) {
+            this.bringToFront();
+            return;
+        }
         this.opened = true;
         this.root.style.display = 'flex';
         if (this.left === null || this.top === null) {

@@ -5,8 +5,8 @@ import type { App, Plugin } from 'obsidian';
 
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
 import { t } from '../../../i18n';
-import { TaskPickerPanel } from '../../panel/task-picker-panel';
-import { TaskRecordPanel } from '../../panel/task-record-panel';
+import { TaskPickerPanel } from '../../panel/task/task-picker-panel';
+import { TaskRecordPanel } from '../../panel/task/task-record-panel';
 import type { PdcaRepo } from '../../../repos/pdca-repo';
 import type { PlanAssignmentRepo } from '../../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../../repos/prototype-task-repo';

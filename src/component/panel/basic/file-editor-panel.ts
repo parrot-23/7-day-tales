@@ -5,8 +5,8 @@
 import { MarkdownView, Notice } from 'obsidian';
 import type { App, TFile, WorkspaceLeaf } from 'obsidian';
 
-import { t } from '../../i18n';
-import { log } from '../../shared/logger';
+import { t } from '../../../i18n';
+import { log } from '../../../shared/logger';
 import { FloatingPanel } from './floating-panel';
 
 export interface FileEditorPanelOptions {

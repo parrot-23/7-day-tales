@@ -2,8 +2,8 @@
 // 方块样式复用工作台添加卡片菜单。
 import { setIcon } from 'obsidian';
 
-import { t } from '../../i18n';
-import { FloatingPanel } from './floating-panel';
+import { t } from '../../../i18n';
+import { FloatingPanel } from '../basic/floating-panel';
 
 /** 可添加的卡片：id + 图标 + 文案 key */
 const CARD_ITEMS: { id: string; icon: string; labelKey: Parameters<typeof t>[0] }[] = [

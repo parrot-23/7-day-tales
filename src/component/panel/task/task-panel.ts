@@ -3,9 +3,9 @@
 // 最下方为已有任务的单行列表（主线 / 支线用左侧颜色竖条区分）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { t } from '../../i18n';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { t } from '../../../i18n';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 任务类型：主线 / 支线 */
 export type TaskPanelTaskType = 'main' | 'side';
@@ -32,8 +32,7 @@ export interface TaskPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
 
 /** 归属方块定义（仅展示，不参与选择） */
 const TARGETS: { icon: string; labelKey: Parameters<typeof t>[0] }[] = [
-    { icon: 'inbox', labelKey: 'panel.targetInbox' },
-    { icon: 'list-checks', labelKey: 'panel.targetTodo' },
+    { icon: 'list-checks', labelKey: 'panel.targetChecklist' },
     { icon: 'check-square', labelKey: 'panel.targetFormCheck' },
     { icon: 'target', labelKey: 'panel.targetOkr' },
     { icon: 'file-text', labelKey: 'panel.targetFile' },

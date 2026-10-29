@@ -121,34 +121,23 @@ export interface InboxItem {
     habitTimeEnabled?: boolean;
     /** 预估执行时长（分钟，可选，旧任务无此字段，未填写时为空） */
     estimatedMinutes?: number;
-    /** 收集篮子：待归入本任务的笔记/条目（可选，旧任务无此字段，供 GTD 梳理阶段放置） */
-    basket?: BasketItem[];
-    /** 改进项：本任务的改进条目（可选，旧任务无此字段，可勾选完成） */
-    improvements?: ImprovementEntry[];
+    /** 清单条目：本任务的清单内容（可选，旧任务无此字段，可勾选完成） */
+    checklist?: ChecklistItem[];
 }
 
-/** 改进项条目（任务改进方框内可勾选的条目） */
-export interface ImprovementEntry {
+/** 清单条目（任务清单中可勾选的条目） */
+export interface ChecklistItem {
     id: string;
-    /** 改进内容文本 */
+    /** 条目内容文本 */
     text: string;
     /** 是否已完成（可选，旧数据无此字段默认未完成） */
     done?: boolean;
+    /** 完成时间（时间戳，可选；取消完成时清除） */
+    completedAt?: number;
     /** 创建时间（时间戳） */
     createdAt: number;
     /** 截止日期（YYYY-MM-DD，可选） */
     dueDate?: string;
-}
-
-/** 收集篮子条目（GTD 梳理阶段放置到某任务的笔记/条目） */
-export interface BasketItem {
-    id: string;
-    /** 条目文本（笔记内容或标题） */
-    text: string;
-    /** 关联的 vault 文件路径（可选，如 'notes/foo.md'） */
-    path?: string;
-    /** 放入时间（时间戳） */
-    createdAt: number;
 }
 
 /** 任务 OKR 信息（计划值，手填） */
@@ -467,8 +456,8 @@ export const SECTION_TYPE_META: Record<SectionType, { icon: string; labelKey: st
     file: { icon: 'file-text', labelKey: 'section.typeFile' },
 };
 
-/** 清单项（可勾选） */
-export interface ChecklistItem {
+/** 清单项（可勾选，任务板块 Section 数据使用） */
+export interface SectionChecklistItem {
     id: string;
     text: string;
     done: boolean;
@@ -501,7 +490,7 @@ export interface FileItem {
 
 /** 清单板块数据 */
 export interface ChecklistData {
-    items: ChecklistItem[];
+    items: SectionChecklistItem[];
 }
 
 /** 步骤板块数据 */

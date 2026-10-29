@@ -1,15 +1,15 @@
 // 分类面板：基于 FloatingPanel，用于管理计划分类。
 // 内容与周计划视图的分类配置弹窗一致（分类色块 / 名称 / 删除，新增，确认 / 取消），
 // 但独立实现，不复用 CategoryConfigModal。
-import { t } from '../../i18n';
-import type { CategoryRepo } from '../../repos/category-repo';
+import { t } from '../../../i18n';
+import type { CategoryRepo } from '../../../repos/category-repo';
 import {
     ensureUncategorizedCategory,
     UNCATEGORIZED_CATEGORY_ID,
     type PlanCategory,
     type PlanCategoryData,
-} from '../../shared/plan-category-manager';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+} from '../../../shared/plan-category-manager';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 分类面板配置 */
 export interface CategoryPanelOptions extends Omit<FloatingPanelOptions, 'title'> {

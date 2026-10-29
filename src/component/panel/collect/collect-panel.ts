@@ -2,10 +2,10 @@
 // 标题旁提供「梳理」按钮：点击后面板变宽，右侧展开梳理区（顶部「任务」选项卡 + 任务树 + 确认按钮）。
 import { setIcon } from 'obsidian';
 
-import type { PrototypeTask } from '../../datatypes/prototype-task';
-import { t } from '../../i18n';
-import type { GtdRepo } from '../../repos/gtd-repo';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import type { PrototypeTask } from '../../../datatypes/prototype-task';
+import { t } from '../../../i18n';
+import type { GtdRepo } from '../../../repos/gtd-repo';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 时间戳格式化为 YYYY-MM-DD HH:MM */
 function formatTime(ts: number): string {

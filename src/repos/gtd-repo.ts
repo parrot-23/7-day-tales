@@ -1,7 +1,7 @@
 // GTD 领域仓库：封装收集箱条目与源的增删改业务逻辑。
 // 视图不再直接 push/filter 数据，改调本仓库方法；底层仍操作 base-repo 持有的同一 gtdData 引用。
 import type { GtdData, GtdItem, GtdSource, GtdSourceType } from '../datatypes/gtd';
-import type { BasketItem } from '../datatypes/domain';
+import type { ChecklistItem } from '../datatypes/domain';
 import type { BaseRepo } from './base-repo';
 
 /**
@@ -66,21 +66,21 @@ export class GtdRepo {
     }
 
     /**
-     * 梳理：把收集条目内容放入目标任务的收集篮子，并标记该条目为已处理。
+     * 梳理：把收集条目内容放入目标任务的清单，并标记该条目为已处理。
      * @param itemId 收集条目 id
-     * @param task 目标任务（含 basket 字段）
+     * @param task 目标任务（含 checklist 字段）
      * @returns 是否成功（条目或任务不存在时返回 false）
      */
-    clarify(itemId: string, task: { basket?: BasketItem[] } | undefined): boolean {
+    clarify(itemId: string, task: { checklist?: ChecklistItem[] } | undefined): boolean {
         const item = this.data.items.find((it) => it.id === itemId);
         if (!item || !task) return false;
 
-        const entry: BasketItem = {
-            id: `basket_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        const entry: ChecklistItem = {
+            id: `checklist_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             text: item.content,
             createdAt: Date.now(),
         };
-        task.basket = [...(task.basket ?? []), entry];
+        task.checklist = [...(task.checklist ?? []), entry];
 
         item.status = 'processed';
         return true;

@@ -2,8 +2,8 @@
 // 左侧菜单最底部为「管理源」按钮，激活后在右侧显示源列表与添加源按钮。
 import { setIcon } from 'obsidian';
 
-import { t } from '../../i18n';
-import { FloatingPanel, type FloatingPanelOptions } from './floating-panel';
+import { t } from '../../../i18n';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 画廊面板配置 */
 export interface GalleryPanelOptions extends Omit<FloatingPanelOptions, 'title'> {
