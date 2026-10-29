@@ -1,1 +1,2 @@
-# 7-day-tales
+# Universe No.2
+
