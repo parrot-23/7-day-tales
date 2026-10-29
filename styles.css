@@ -11579,6 +11579,43 @@ button.task-record-dropdown-item.is-selected {
     color: var(--sdt-text-secondary, var(--text-muted));
 }
 
+/* 离屏容器：仅用于临时嵌入视图取编辑器原型，有尺寸但不可见 */
+.file-editor-offscreen-host {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 760px;
+    height: 600px;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 面板内的编辑器：撑满编辑器区域（CM6 需要 .cm-editor 有确定高度，光标层才会绘制） */
+.file-editor-panel-host .cm-editor {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.file-editor-panel-host .cm-scroller {
+    overflow: auto;
+}
+
+/* 光标层：确保光标可见（部分主题 / 全局样式会把 caret 隐藏或透明） */
+/* 关键：CM6 默认用 visibility: hidden 在「非 .cm-focused」时隐藏光标；
+   而悬浮面板里的编辑器常拿不到真实 DOM 焦点（焦点被 workspace 抢回），
+   导致 collapsed 光标永不绘制 —— 选区的背景层不受焦点控制，所以「选中可见、未选中不可见」。
+   这里直接强制可见，摆脱对 .cm-focused 的依赖。 */
+.file-editor-panel-host .cm-editor .cm-cursor,
+.file-editor-panel-host .cm-editor .cm-dropCursor {
+    display: block;
+    border-left-color: var(--text-normal);
+    opacity: 1;
+    visibility: visible;
+}
+
 /* 原生编辑器宿主：leaf 的 view 容器被重新挂载到这里，需要补齐工作区里的布局尺寸 */
 .file-editor-panel-host {
     flex: 1;
