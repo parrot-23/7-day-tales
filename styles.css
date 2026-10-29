@@ -11603,17 +11603,52 @@ button.task-record-dropdown-item.is-selected {
     overflow: auto;
 }
 
-/* 光标层：确保光标可见（部分主题 / 全局样式会把 caret 隐藏或透明） */
-/* 关键：CM6 默认用 visibility: hidden 在「非 .cm-focused」时隐藏光标；
-   而悬浮面板里的编辑器常拿不到真实 DOM 焦点（焦点被 workspace 抢回），
-   导致 collapsed 光标永不绘制 —— 选区的背景层不受焦点控制，所以「选中可见、未选中不可见」。
-   这里直接强制可见，摆脱对 .cm-focused 的依赖。 */
+/* 强制使用主题正文色：部分主题给标题（.cm-header）等硬编码了固定颜色（如黑色），
+   在深色背景下不可读。这里在面板作用域内统一覆盖为 --text-normal，保证可读性。 */
+.file-editor-panel-host .cm-content,
+.file-editor-panel-host .cm-line,
+.file-editor-panel-host .cm-header,
+.file-editor-panel-host .cm-strong,
+.file-editor-panel-host .cm-em,
+.file-editor-panel-host .cm-link,
+.file-editor-panel-host .cm-url,
+.file-editor-panel-host .cm-quote,
+.file-editor-panel-host .cm-inline-code,
+.file-editor-panel-host .cm-hashtag,
+.file-editor-panel-host .cm-formatting,
+.file-editor-panel-host .cm-formatting-header {
+    color: var(--text-normal) !important;
+}
+
+/* 屏蔽 CM6 原生光标：该面板内由 JS 手动绘制 .sdt-manual-caret，
+   原生光标在脱离 MarkdownView 后行为不可控（选中后残留、输入后消失），直接隐藏避免打架 */
 .file-editor-panel-host .cm-editor .cm-cursor,
 .file-editor-panel-host .cm-editor .cm-dropCursor {
-    display: block;
-    border-left-color: var(--text-normal);
-    opacity: 1;
-    visibility: visible;
+    display: none !important;
+}
+
+/* 手动绘制的光标：CM6 在该面板内不生成 .cm-cursor，由 JS 插入此元素并定位。
+   插到 .cm-scroller（而非 .cm-cursorLayer，后者 contain:size 尺寸为 0 会裁剪子元素） */
+.file-editor-panel-host .cm-scroller .sdt-manual-caret {
+    position: absolute;
+    width: 2px;
+    background: var(--text-normal);
+    pointer-events: none;
+    animation: sdt-caret-blink 1.2s steps(1) infinite;
+    z-index: 200;
+}
+
+/* 与 CM6 原生 cm-blink 一致：0% 不透明，50% 透明，100% 回到不透明 */
+@keyframes sdt-caret-blink {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 /* 原生编辑器宿主：leaf 的 view 容器被重新挂载到这里，需要补齐工作区里的布局尺寸 */

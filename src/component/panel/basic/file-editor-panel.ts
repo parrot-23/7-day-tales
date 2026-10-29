@@ -3,8 +3,9 @@
 // 关键点：
 // 1. 临时嵌入视图只用来取编辑器原型，取完立即 unload，不保留、不搬 DOM；
 // 2. 包装类在构造后 mock owner（owner.editMode / owner.editor），让编辑器以为自己挂在 MarkdownView 上；
-// 3. 内容变化用 CodeMirror 6 的 updateListener 监听，写回文件带防抖；
-// 4. 全程不创建 leaf、不开标签页、不激活 workspace，因此不会闪烁。
+// 3. 内容变化用 DOM input 事件监听，写回文件带防抖；
+// 4. 全程不创建 leaf、不开标签页、不激活 workspace，因此不会闪烁；
+// 5. 光标由 JS 手动绘制（CM6 的 cursorLayer 在该场景下不生成 .cm-cursor）。
 import { Component, Notice } from 'obsidian';
 import type { App, TFile } from 'obsidian';
 
@@ -21,7 +22,6 @@ export interface FileEditorPanelOptions {
 
 /** 内部 CodeMirror 6 视图的最小结构 */
 interface CodeMirrorLike {
-    refresh?: () => void;
     requestMeasure?: () => void;
     focus?: () => void;
     contentDOM?: HTMLElement;
@@ -92,6 +92,10 @@ export class FileEditorPanel extends FloatingPanel {
     private saveTimer: number | undefined;
     /** 输入监听的清理函数 */
     private inputCleanup: (() => void) | null = null;
+    /** 手动绘制的光标元素 */
+    private caretEl: HTMLElement | null = null;
+    /** 光标重绘的动画帧句柄 */
+    private paintFrame: number | undefined;
     /** 是否已完成清理，避免 close / destroy 重复执行 */
     private disposed = false;
 
@@ -131,7 +135,7 @@ export class FileEditorPanel extends FloatingPanel {
             const Ctor = this.resolveEditorCtor();
             if (!Ctor) throw new Error('editor constructor unavailable');
 
-            // 等面板完成布局（有非零宽高）后再构造编辑器，否则 CM6 会按不可见测量，光标层不绘制
+            // 等面板完成布局（有非零宽高）后再构造编辑器，否则 CM6 会按不可见测量
             await this.waitForLayout(host);
             if (this.disposed) return;
 
@@ -153,7 +157,7 @@ export class FileEditorPanel extends FloatingPanel {
             }
             editor.set?.(initial);
 
-            // 内容变化写回文件（CodeMirror 6 updateListener）
+            // 内容变化写回文件（DOM input 事件 + 防抖）
             this.bindChange(editor);
 
             // 等两帧让 CodeMirror 完成布局后再聚焦（聚焦后光标才会显示）
@@ -206,12 +210,10 @@ export class FileEditorPanel extends FloatingPanel {
     private focusEditor(editor: MarkdownEditorLike): void {
         const cm = this.codeMirrorOf(editor);
         try {
-            // 先让 CM6 重新测量布局，再聚焦，否则光标层不会绘制
             cm?.requestMeasure?.();
             cm?.focus?.();
-            // 把光标放到文档末尾，触发一次选区重绘
-            const length = cm?.state?.doc?.length ?? 0;
-            cm?.dispatch?.({ selection: { anchor: length, head: length } });
+            // 光标放到文档开头（位置 0 必然在视口内）
+            cm?.dispatch?.({ selection: { anchor: 0, head: 0 } });
         } catch {
             // CodeMirror 未就绪时忽略
         }
@@ -232,7 +234,7 @@ export class FileEditorPanel extends FloatingPanel {
         } catch {
             // 忽略
         }
-        // 再补一次测量：聚焦后布局可能变化，光标层需要重新绘制
+        // 再补一次测量：聚焦后布局可能变化，光标需要重新绘制
         window.requestAnimationFrame(() => {
             if (this.disposed) return;
             try {
@@ -240,35 +242,107 @@ export class FileEditorPanel extends FloatingPanel {
             } catch {
                 // 忽略
             }
-            this.forceCaretVisible(editor);
+            this.paintCaret(editor);
         });
     }
 
     /**
-     * 让 CodeMirror 认为自身处于聚焦态。
-     * 原生编辑器依赖 view.hasFocus 决定是否绘制光标；脱离 MarkdownView 后该状态可能一直为 false，
-     * 只有选中文本（选区高亮）时才可见。这里通过内部 focus 状态标记 + 重新测量强制绘制光标。
+     * 手动绘制光标。
+     * 该编辑器脱离 MarkdownView 后，CM6 的 cursorLayer 拿不到 coordsAtPos，不会生成 .cm-cursor 元素，
+     * 因此这里自己往 .cm-scroller 里插一个光标 div（不能插 .cm-cursorLayer，它有 contain:size 会裁剪子元素）。
      */
-    private forceCaretVisible(editor: MarkdownEditorLike): void {
+    private paintCaret(editor: MarkdownEditorLike): void {
         const cm = this.codeMirrorOf(editor) as unknown as {
-            hasFocus?: boolean;
-            inputState?: { focusChange?: (focused: boolean) => void };
+            coordsAtPos?: (pos: number, side?: number) => { left: number; top: number; bottom: number } | null;
+            state?: { selection?: { main?: { head?: number; empty?: boolean } } };
+            scrollDOM?: HTMLElement;
             requestMeasure?: () => void;
-            focus?: () => void;
-            dom?: HTMLElement;
         };
+        const scrollDOM = cm?.scrollDOM;
+        const head = cm?.state?.selection?.main?.head;
+        if (!scrollDOM || typeof head !== 'number') return;
+
+        // 有选区时不画（选区本身可见），只处理 collapsed 光标
+        const empty = cm?.state?.selection?.main?.empty !== false;
+        if (!empty) {
+            this.removeCaret();
+            return;
+        }
+
+        const coords = cm?.coordsAtPos?.(head, 1);
+        // 坐标拿不到（位置尚未渲染）：强制重新测量，延后一帧重试
+        if (!coords) {
+            cm?.requestMeasure?.();
+            this.schedulePaintCaret(editor);
+            return;
+        }
+
+        // coordsAtPos 返回的是视口坐标，需要换算成相对 scrollDOM 内容区的坐标
+        const base = scrollDOM.getBoundingClientRect();
+        const left = coords.left - base.left + scrollDOM.scrollLeft;
+        const top = coords.top - base.top + scrollDOM.scrollTop;
+        const height = coords.bottom - coords.top;
+
+        if (!this.caretEl || !this.caretEl.isConnected) {
+            this.caretEl = document.createElement('div');
+            this.caretEl.addClass('sdt-manual-caret');
+            scrollDOM.appendChild(this.caretEl);
+        }
+        // 只改位置，不重建元素：重建会让 CSS 动画从头开始，导致闪烁节奏错乱
+        this.caretEl.style.left = `${left}px`;
+        this.caretEl.style.top = `${top}px`;
+        this.caretEl.style.height = `${height}px`;
+    }
+
+    /** 延后一帧重绘：等 CM6 把选区 / 文档更新写进 state 后再读，避免读到旧状态 */
+    private schedulePaintCaret(editor: MarkdownEditorLike): void {
+        if (this.paintFrame !== undefined) window.cancelAnimationFrame(this.paintFrame);
+        this.paintFrame = window.requestAnimationFrame(() => {
+            this.paintFrame = undefined;
+            if (this.disposed) return;
+            this.paintCaret(editor);
+        });
+    }
+
+    /**
+     * 点击后持续重算光标位置，直到坐标稳定。
+     * Live Preview 点击标题（##）/ 列表等会异步展开标记符号，DOM 重排分多帧完成，
+     * 单次或双帧取坐标都会偏。这里连续采样若干帧，坐标连续不变即停止。
+     */
+    private repaintUntilStable(editor: MarkdownEditorLike): void {
+        const cm = this.codeMirrorOf(editor) as unknown as { requestMeasure?: () => void };
         try {
-            if (cm && cm.hasFocus === false) {
-                // 内部 API：通知 CM 焦点变化，触发光标层重绘
-                cm.inputState?.focusChange?.(true);
-            }
-            cm?.focus?.();
-            // 兜底：CM6 的 CSS 依赖 .cm-focused 类显示光标，直接补上
-            cm?.dom?.classList.add('cm-focused');
             cm?.requestMeasure?.();
         } catch {
-            // 内部 API 不可用时忽略
+            // 忽略
         }
+        let last = '';
+        let stableCount = 0;
+        let frames = 0;
+        const tick = (): void => {
+            if (this.disposed) return;
+            frames += 1;
+            this.paintCaret(editor);
+            const current = this.caretEl
+                ? `${this.caretEl.style.left}|${this.caretEl.style.top}|${this.caretEl.style.height}`
+                : '';
+            if (current !== '' && current === last) {
+                stableCount += 1;
+            } else {
+                stableCount = 0;
+            }
+            last = current;
+            // 连续 3 帧不变视为稳定；最多采样 20 帧兜底
+            if (stableCount >= 3 || frames >= 20) return;
+            window.requestAnimationFrame(tick);
+        };
+        window.requestAnimationFrame(tick);
+    }
+
+    /** 清理手动光标 */
+    private removeCaret(): void {
+        this.caretEl?.remove();
+        this.caretEl = null;
     }
 
     /** 借临时嵌入视图取编辑器构造函数（取完立即 unload，不保留视图） */
@@ -315,19 +389,48 @@ export class FileEditorPanel extends FloatingPanel {
         }
     }
 
-    /** 绑定内容变化：CodeMirror 6 的 updateListener（CM6 没有 cm.on('change')） */
+    /** 绑定内容变化：监听编辑器容器的 input 事件，防抖写回文件 */
     private bindChange(editor: MarkdownEditorLike): void {
         const cm = this.codeMirrorOf(editor) as unknown as {
             dom?: HTMLElement;
             contentDOM?: HTMLElement;
+            scrollDOM?: HTMLElement;
         };
         const target = cm?.contentDOM ?? cm?.dom;
         if (!target) return;
-        // 用 DOM 事件兜底监听输入：CM6 的 updateListener 需要在构造时注入扩展，
-        // 这里改为监听编辑器容器的 input 事件，再读取文档内容写回
         const handler = (): void => this.scheduleSave(editor);
         target.addEventListener('input', handler);
-        this.inputCleanup = () => target.removeEventListener('input', handler);
+
+        // 光标跟随：输入 / 键盘移动 / 滚动时重绘手动光标
+        // 统一延后一帧，等 CM6 把选区写进 state 后再读，避免读到旧状态
+        const repaint = (): void => this.schedulePaintCaret(editor);
+        target.addEventListener('input', repaint);
+        target.addEventListener('keyup', repaint);
+        const scroller = cm?.scrollDOM;
+        scroller?.addEventListener('scroll', repaint);
+
+        // 点击：Live Preview 会异步展开标题（##）/ 列表等标记符号，DOM 重排分多帧完成，
+        // 单次取坐标会偏。这里持续重算直到坐标稳定。
+        const onClickRepaint = (): void => this.repaintUntilStable(editor);
+        target.addEventListener('mouseup', onClickRepaint);
+        target.addEventListener('click', onClickRepaint);
+
+        // 选区变化（拖选、双击选词、Ctrl+A）时重绘，让光标在有选区时隐藏、取消选区时恢复
+        const onSelectionChange = (): void => {
+            if (this.disposed) return;
+            repaint();
+        };
+        document.addEventListener('selectionchange', onSelectionChange);
+
+        this.inputCleanup = () => {
+            target.removeEventListener('input', handler);
+            target.removeEventListener('input', repaint);
+            target.removeEventListener('keyup', repaint);
+            target.removeEventListener('mouseup', onClickRepaint);
+            target.removeEventListener('click', onClickRepaint);
+            scroller?.removeEventListener('scroll', repaint);
+            document.removeEventListener('selectionchange', onSelectionChange);
+        };
     }
 
     /** 防抖写回文件 */
@@ -368,6 +471,11 @@ export class FileEditorPanel extends FloatingPanel {
         }
         this.inputCleanup?.();
         this.inputCleanup = null;
+        if (this.paintFrame !== undefined) {
+            window.cancelAnimationFrame(this.paintFrame);
+            this.paintFrame = undefined;
+        }
+        this.removeCaret();
 
         const editor = this.editor;
         this.editor = null;
