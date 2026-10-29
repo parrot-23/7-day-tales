@@ -1,4 +1,4 @@
-// 顶部工具栏：整行布局，日期切换 < 月/日 > 与周历按钮居中，右侧操作区由调用方填充。
+// 顶部工具栏：整行布局，左侧操作区由调用方填充，日期切换 < 月/日 > 与周历按钮居中，右侧操作区由调用方填充。
 import { setIcon } from 'obsidian';
 
 import { t } from '../../i18n';
@@ -25,6 +25,16 @@ export interface TopBarOptions {
     onOpenCalendar?: (date: Date) => void;
     /** 点击设置按钮 */
     onOpenSettings?: () => void;
+    /** 点击帮助按钮（位于设置按钮紧贴右侧） */
+    onOpenHelp?: () => void;
+}
+
+/** 顶部工具栏渲染结果 */
+export interface TopBarRenderResult {
+    /** 左侧操作区容器（供调用方填充） */
+    left: HTMLElement;
+    /** 右侧操作区容器 */
+    actions: HTMLElement;
 }
 
 /** 顶部工具栏 */
@@ -44,11 +54,15 @@ export class TopBar {
         this.selectedDate = options.initialDate ? startOfDay(options.initialDate) : startOfToday();
     }
 
-    /** 在指定容器内渲染整行工具栏，返回右侧操作区容器供调用方填充 */
-    render(parentEl: HTMLElement): HTMLElement {
+    /** 在指定容器内渲染整行工具栏，返回左侧与右侧操作区容器供调用方填充 */
+    render(parentEl: HTMLElement): TopBarRenderResult {
         const bar = parentEl.createDiv({ cls: 'parrot-plan-topbar' });
+        // 左侧占位：保证日期区（含功能按钮组）落在 grid 中间列，整组居中
         bar.createDiv({ cls: 'parrot-plan-topbar-spacer' });
         const dateBar = bar.createDiv({ cls: 'parrot-plan-topbar-date' });
+
+        // 左侧操作区：紧贴周历按钮左侧（由调用方填充）
+        const left = dateBar.createDiv({ cls: 'parrot-plan-topbar-left' });
 
         // 周历按钮：位于日期切换左侧
         const calendarBtn = dateBar.createEl('button', {
@@ -89,9 +103,17 @@ export class TopBar {
         setIcon(settingsBtn, 'settings');
         settingsBtn.onclick = () => this.options.onOpenSettings?.();
 
+        // 帮助按钮：紧贴设置按钮右侧
+        const helpBtn = dateBar.createEl('button', {
+            text: '?',
+            cls: 'parrot-plan-nav-help-btn',
+            attr: { 'aria-label': t('help.title') },
+        });
+        helpBtn.onclick = () => this.options.onOpenHelp?.();
+
         const actions = bar.createDiv({ cls: 'parrot-plan-topbar-actions' });
         this.update();
-        return actions;
+        return { left, actions };
     }
 
     /** 当前选中日期（外部读取用） */

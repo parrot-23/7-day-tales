@@ -6847,89 +6847,72 @@ button.swimlane-section-card-settings {
     background-position: 0 0;
 }
 
-/* 左下角悬浮的编辑 / 完成按钮 */
-.interface-edit-btn {
-    position: absolute;
-    left: 16px;
-    bottom: 16px;
-    z-index: 10;
-    display: inline-flex;
+/* 顶部工具栏左侧：界面功能按钮组（添加 / 主题 / 布局），紧贴周历按钮左侧 */
+.parrot-plan-topbar-left {
+    flex-shrink: 0;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
-    border-radius: 16px;
-    background: var(--sdt-control-bg, var(--background-primary));
-    box-shadow: var(--shadow-s);
-    color: var(--sdt-text-secondary, var(--text-muted));
-    font-size: 12px;
-    cursor: pointer;
+    margin-right: 2px;
 }
 
-/* 编辑按钮上方的「添加卡片」按钮（仅编辑模式显示） */
-.interface-add-card-btn {
-    position: absolute;
-    left: 16px;
-    bottom: 58px;
-    z-index: 10;
+.interface-tool-group {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
-    border-radius: 16px;
-    background: var(--sdt-control-bg, var(--background-primary));
-    box-shadow: var(--shadow-s);
-    color: var(--sdt-text-secondary, var(--text-muted));
-    font-size: 12px;
-    cursor: pointer;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
 }
 
-.interface-add-card-btn:hover {
+/* 编辑模式：整组加边框，按钮之间显示短竖线 */
+.interface-tool-group.is-editing {
+    padding: 1px 2px;
+    border-color: var(--sdt-card-border, var(--background-modifier-border));
+}
+
+.interface-tool-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--sdt-text-primary, var(--text-normal));
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.interface-tool-btn:hover {
     background: var(--sdt-hover-bg, var(--background-modifier-hover));
     color: var(--sdt-text-primary, var(--text-normal));
 }
 
-.interface-add-card-btn.is-hidden {
+.interface-tool-btn.is-active {
+    color: var(--interactive-accent);
+}
+
+.interface-tool-btn.is-hidden {
     display: none;
 }
 
-.interface-add-card-btn .svg-icon {
-    width: 14px;
-    height: 14px;
+.interface-tool-btn .svg-icon {
+    width: 15px;
+    height: 15px;
 }
 
-/* 「添加卡片」按钮上方的「主题」按钮（仅编辑模式显示） */
-.interface-theme-btn {
-    position: absolute;
-    left: 16px;
-    bottom: 100px;
-    z-index: 10;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
-    border-radius: 16px;
-    background: var(--sdt-control-bg, var(--background-primary));
-    box-shadow: var(--shadow-s);
-    color: var(--sdt-text-secondary, var(--text-muted));
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.interface-theme-btn:hover {
-    background: var(--sdt-hover-bg, var(--background-modifier-hover));
-    color: var(--sdt-text-primary, var(--text-normal));
-}
-
-.interface-theme-btn.is-hidden {
+/* 按钮之间的短竖线（仅编辑模式显示） */
+.interface-tool-divider {
     display: none;
+    width: 1px;
+    height: 12px;
+    margin: 0 2px;
+    background: var(--sdt-card-border, var(--background-modifier-border));
 }
 
-.interface-theme-btn .svg-icon {
-    width: 14px;
-    height: 14px;
+.interface-tool-group.is-editing .interface-tool-divider {
+    display: block;
 }
 
 /* 编辑模式下卡片右上角的移除按钮 */
@@ -6956,21 +6939,6 @@ button.swimlane-section-card-settings {
 .interface-card-remove:hover {
     background: var(--sdt-hover-bg, var(--background-modifier-hover));
     color: var(--text-error);
-}
-
-.interface-edit-btn:hover {
-    background: var(--sdt-hover-bg, var(--background-modifier-hover));
-    color: var(--sdt-text-primary, var(--text-normal));
-}
-
-.interface-edit-btn.is-active {
-    color: var(--interactive-accent);
-    border-color: var(--interactive-accent);
-}
-
-.interface-edit-btn .svg-icon {
-    width: 14px;
-    height: 14px;
 }
 
 /* 上方区域：左侧卡片组贴左、右侧卡片组贴右，中间留白 */
@@ -8670,6 +8638,93 @@ button.swimlane-section-card-settings {
     color: var(--color-purple);
 }
 
+/* 任务配置面板：表单字段 */
+.task-config-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.task-config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-config-label {
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.task-config-input,
+.task-config-textarea {
+    width: 100%;
+}
+
+.task-config-textarea {
+    min-height: 72px;
+    resize: vertical;
+}
+
+.task-config-type-capsule {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.task-config-type-capsule:hover {
+    filter: brightness(1.18);
+}
+
+.task-config-type-capsule.is-main {
+    background: rgba(59, 130, 246, 0.16);
+    color: var(--color-blue);
+}
+
+.task-config-type-capsule.is-side {
+    background: rgba(168, 85, 247, 0.14);
+    color: var(--color-purple);
+}
+
+.task-config-type-caret {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.task-config-type-caret svg {
+    width: 11px;
+    height: 11px;
+}
+
+.task-config-dir {
+    padding: 6px 8px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-control-bg, var(--background-primary));
+    font-size: 12px;
+    color: var(--sdt-text-primary, var(--text-normal));
+    word-break: break-all;
+}
+
+.task-config-dir.is-empty {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+.task-config-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 /* 第一行：任务名称 + 类型下拉 + 添加按钮 */
 .task-panel-name-row {
     display: flex;
@@ -8763,6 +8818,43 @@ button.swimlane-section-card-settings {
     gap: 12px;
     padding-right: 16px;
     border-right: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+}
+
+/* 顶部：根任务下拉 + 配置按钮 */
+.task-detail-root-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-detail-root-row .task-detail-root-select {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+
+.task-detail-config-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.task-detail-config-btn:hover {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.task-detail-config-btn svg {
+    width: 15px;
+    height: 15px;
 }
 
 /* 标题行：类型 + 添加按钮 */
@@ -11698,12 +11790,10 @@ button.task-record-dropdown-item.is-selected {
    样式表加载顺序在后而胜出；悬停态仍由各自的 :hover 规则 (0,2,0) 生效。
    ============================================================ */
 
-/* 悬浮功能按钮：编辑 / 添加卡片 / 主题 */
-button.interface-edit-btn,
-button.interface-add-card-btn,
-button.interface-theme-btn {
-    background: var(--sdt-control-bg, var(--background-primary));
-    color: var(--sdt-text-secondary, var(--text-muted));
+/* 顶部工具栏功能按钮：透明背景，仅悬停时高亮 */
+button.interface-tool-btn {
+    background: transparent;
+    color: var(--sdt-text-primary, var(--text-normal));
 }
 
 /* 卡片右上角移除按钮 */

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
 import type { Plugin } from 'obsidian';
 
 import type { PlanCategoryData } from './shared/plan-category-manager';
@@ -50,6 +50,14 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
     private runningCardTimer?: number;
     /** 顶部工具栏（日期切换 + 周历按钮，右侧操作区） */
     private topBar: TopBar;
+    /** 顶部工具栏左侧：界面功能按钮组（添加 / 主题 / 布局） */
+    private interfaceToolGroupEl?: HTMLElement;
+    /** 「添加卡片」按钮（仅编辑模式显示） */
+    private addCardToolBtn?: HTMLButtonElement;
+    /** 「主题」按钮（仅编辑模式显示） */
+    private themeToolBtn?: HTMLButtonElement;
+    /** 「布局」按钮（切换编辑模式） */
+    private layoutToolBtn?: HTMLButtonElement;
     /** 设置面板（顶部工具栏「设置」按钮打开，复用同一实例） */
     private settingsPanel: SettingsPanel | null = null;
     /** 主视图根节点：主题颜色令牌注入到这里，供顶部工具栏与内容区统一继承 */
@@ -81,6 +89,7 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
             onDateChange: (date) => this.interfaceView.setSelectedDate(date),
             onOpenCalendar: (date) => this.interfaceView.openDatePanel(date),
             onOpenSettings: () => this.openSettingsPanel(),
+            onOpenHelp: () => this.openHelpModal(),
         });
         this.interfaceView = new InterfaceView(this.app, this.plugin, this.planCategoryData, {
             getSelectedDate: () => this.topBar.getSelectedDate(),
@@ -162,6 +171,71 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         this.settingsPanel.open();
     }
 
+    /** 打开帮助弹窗（顶部工具栏「帮助」按钮，紧贴设置按钮右侧） */
+    private openHelpModal(): void {
+        const plugin = this.plugin as Plugin & {
+            saveHelpDismissed?: (dismissed: boolean) => Promise<void>;
+        };
+        new HelpModal(this.app, this.cacheDirName, (dismissed) => {
+            void plugin.saveHelpDismissed?.(dismissed);
+        }).open();
+    }
+
+    /** 渲染顶部工具栏左侧的界面功能按钮组：添加 / 主题 / 布局（编辑模式下整组加边框并显示竖线分隔） */
+    private renderInterfaceTools(container: HTMLElement): void {
+        const group = container.createDiv({ cls: 'interface-tool-group' });
+
+        const addBtn = group.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
+        setIcon(addBtn, 'plus');
+        addBtn.onclick = () => this.interfaceView.openCardPicker();
+
+        group.createDiv({ cls: 'interface-tool-divider' });
+
+        const themeBtn = group.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
+        setIcon(themeBtn, 'palette');
+        themeBtn.onclick = () => this.interfaceView.openThemePanel();
+
+        group.createDiv({ cls: 'interface-tool-divider' });
+
+        const layoutBtn = group.createEl('button', { cls: 'interface-tool-btn interface-layout-btn', attr: { type: 'button' } });
+        setIcon(layoutBtn, 'layout-panel-top');
+        layoutBtn.onclick = () => {
+            this.interfaceView.toggleEditMode();
+            this.updateInterfaceTools();
+        };
+
+        this.interfaceToolGroupEl = group;
+        this.addCardToolBtn = addBtn;
+        this.themeToolBtn = themeBtn;
+        this.layoutToolBtn = layoutBtn;
+        this.updateInterfaceTools();
+    }
+
+    /** 同步界面功能按钮组的显隐与激活态（非编辑模式只显示布局按钮且无边框） */
+    private updateInterfaceTools(): void {
+        const editMode = this.interfaceView.isEditMode;
+        this.interfaceToolGroupEl?.toggleClass('is-editing', editMode);
+        this.addCardToolBtn?.toggleClass('is-hidden', !editMode);
+        this.themeToolBtn?.toggleClass('is-hidden', !editMode);
+        this.layoutToolBtn?.toggleClass('is-active', editMode);
+
+        const addLabel = t('interface.addCard');
+        if (this.addCardToolBtn) {
+            this.addCardToolBtn.title = addLabel;
+            this.addCardToolBtn.setAttribute('aria-label', addLabel);
+        }
+        const themeLabel = t('interface.theme');
+        if (this.themeToolBtn) {
+            this.themeToolBtn.title = themeLabel;
+            this.themeToolBtn.setAttribute('aria-label', themeLabel);
+        }
+        const layoutLabel = editMode ? t('interface.editModeDone') : t('interface.editMode');
+        if (this.layoutToolBtn) {
+            this.layoutToolBtn.title = layoutLabel;
+            this.layoutToolBtn.setAttribute('aria-label', layoutLabel);
+        }
+    }
+
     async onOpen() {
         const root = this.containerEl.children[1] as HTMLElement;
         root.empty();
@@ -170,28 +244,16 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         // 注册主题颜色消费者：主题切换时把令牌同步到根节点，顶部工具栏与内容区共用
         registerThemeColorsConsumer(this);
 
-        // 顶部工具栏：独占一行，日期与周历居中，进行中任务与帮助按钮靠右
+        // 顶部工具栏：独占一行，左侧为界面功能按钮组，日期与周历居中，进行中任务靠右
         const nav = root.createDiv({ cls: 'parrot-plan-nav' });
-        const actions = this.topBar.render(nav);
+        const { left, actions } = this.topBar.render(nav);
+
+        // 左侧：界面功能按钮组（添加 / 主题 / 布局）
+        this.renderInterfaceTools(left);
 
         // 进行中任务卡片（右侧操作区，无进行中任务时隐藏）
         this.runningCardEl = actions.createDiv({ cls: 'parrot-plan-running-card-wrap' });
         this.renderRunningTaskCard();
-
-        // 帮助按钮（右侧操作区最右侧）
-        const helpBtn = actions.createEl('button', {
-            text: '?',
-            cls: 'parrot-plan-nav-help-btn',
-            attr: { 'aria-label': t('help.title') },
-        });
-        helpBtn.onclick = () => {
-            const plugin = this.plugin as Plugin & {
-                saveHelpDismissed?: (dismissed: boolean) => Promise<void>;
-            };
-            new HelpModal(this.app, this.cacheDirName, (dismissed) => {
-                void plugin.saveHelpDismissed?.(dismissed);
-            }).open();
-        };
 
         // 内容区
         this.contentRoot = root.createDiv({ cls: 'parrot-plan-content' });

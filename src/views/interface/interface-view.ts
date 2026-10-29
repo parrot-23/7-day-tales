@@ -1,6 +1,5 @@
 // 界面视图：新一级视图「界面」下的二级落地页。
 // 布局：日期 / 今日时钟 / 今日任务 / 时钟等浮动卡片，右侧垂直功能栏；任务板块内容改为面板（点击任务条目打开）。
-import { setIcon } from 'obsidian';
 import type { App, Plugin } from 'obsidian';
 
 import { DateCard } from '../../component/cards/date-card';
@@ -20,6 +19,7 @@ import { GalleryPanel } from '../../component/panel/gallery/gallery-panel';
 import { PlanPanel } from '../../component/panel/plan/plan-panel';
 import { TaskSectionsPanel } from '../../component/panel/task/task-sections-panel';
 import { TaskDetailPanel } from '../../component/panel/task/task-detail-panel';
+import { TaskConfigPanel, type TaskConfigSavePayload } from '../../component/panel/task/task-config-panel';
 import { TaskPanel } from '../../component/panel/task/task-panel';
 import { TimeBoxPanel } from '../../component/panel/timebox/time-box-panel';
 import { WeekCalendarPanel } from '../../component/panel/calendar/week-calendar-panel';
@@ -33,7 +33,7 @@ import { THEME_DEFINITIONS, getThemeDefinition } from '../../themestory/registry
 import { applyThemeColors, setCurrentThemeColors } from '../../themestory/theme-colors';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 import { getCurrentWeekKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
-import { renameTaskDir } from '../../shared/task-library';
+import { renameTaskDir, sanitizeFolderName } from '../../shared/task-library';
 
 /** 界面视图配置 */
 export interface InterfaceViewOptions {
@@ -88,12 +88,6 @@ export class InterfaceView {
     private viewEl: HTMLElement | null = null;
     /** 是否处于编辑模式（仅背景提示，暂不提供拖拽） */
     private editMode = false;
-    /** 左下角编辑 / 完成按钮 */
-    private editButtonEl: HTMLButtonElement | null = null;
-    /** 左下角「添加卡片」按钮（仅编辑模式显示） */
-    private addCardButtonEl: HTMLButtonElement | null = null;
-    /** 左下角「主题」按钮（仅编辑模式显示，位于添加按钮上方） */
-    private themeButtonEl: HTMLButtonElement | null = null;
     /** 卡片选择面板 */
     private cardPickerPanel: CardPickerPanel | null = null;
     /** 主题管理面板 */
@@ -316,6 +310,7 @@ export class InterfaceView {
                 onArchiveTask: (taskId) => this.archivePrototypeTask(taskId),
                 onDeleteTask: (taskId) => this.deletePrototypeTask(taskId),
                 onReorderTasks: (ordered) => this.reorderPrototypeTasks(ordered),
+                onOpenConfig: (task) => this.openTaskConfig(task),
                 onTasksChanged: () => {
                     this.taskPanel?.setTasks(this.rootPrototypeTasks());
                     this.detailPanels.forEach((item) => item.setTasks(this.prototypeTaskRepo.tasks));
@@ -410,6 +405,36 @@ export class InterfaceView {
             });
     }
 
+    /** 打开任务配置面板（名称 / 描述 / 类型 / 任务目录），关闭后销毁 */
+    private openTaskConfig(task: PrototypeTask): void {
+        const panel: TaskConfigPanel = new TaskConfigPanel({
+            task,
+            getTaskDir: () => this.taskDirOf(task),
+            onSave: (payload) => this.saveTaskConfig(task, payload),
+            onClose: () => panel.destroy(),
+        });
+        panel.open();
+    }
+
+    /** 保存任务配置：名称 / 描述走通用更新（含目录重命名），类型变化单独写回 */
+    private saveTaskConfig(task: PrototypeTask, payload: TaskConfigSavePayload): void {
+        this.updatePrototypeTask(task.id, { name: payload.name, description: payload.description });
+        if (payload.type !== task.type) this.changePrototypeTaskType(task, payload.type);
+        else this.refreshTaskConsumers();
+        // 已打开的任务详情面板同步刷新（名称 / 描述 / 类型徽标）
+        this.detailPanels.forEach((panel) => panel.refreshTaskView());
+    }
+
+    /** 任务所在目录：优先取任务文件目录的父级，尚未生成时按任务树规则给出预计路径 */
+    private taskDirOf(task: PrototypeTask): string {
+        if (task.fileDir) {
+            const index = task.fileDir.lastIndexOf('/');
+            return index >= 0 ? task.fileDir.slice(0, index) : task.fileDir;
+        }
+        const root = this.baseRepo.taskLibraryRoot;
+        return root ? `${root}/${sanitizeFolderName(task.name)}` : '';
+    }
+
     async renderInto(container: HTMLElement): Promise<void> {
         // 先停止上一轮主题的动画，避免重绘后仍残留 RAF 循环
         this.themeDispose?.();
@@ -502,26 +527,6 @@ export class InterfaceView {
 
         // 卡片挂载完成后监听主区域尺寸：窗口变窄时把越界卡片夹回可视区
         this.observeMainResize(main);
-
-        // 左下角悬浮：编辑 / 完成（编辑态仅显示网点背景，暂不提供拖拽）
-        this.editButtonEl = container.createEl('button', { cls: 'interface-edit-btn' });
-        setIcon(this.editButtonEl.createSpan({ cls: 'interface-edit-icon' }), 'pencil');
-        this.editButtonEl.createSpan({ cls: 'interface-edit-text' });
-        this.editButtonEl.addEventListener('click', () => this.toggleEditMode());
-
-        // 编辑按钮上方的「添加卡片」按钮：点击打开卡片选择面板（仅编辑模式显示）
-        this.addCardButtonEl = container.createEl('button', { cls: 'interface-add-card-btn' });
-        setIcon(this.addCardButtonEl.createSpan({ cls: 'interface-add-card-icon' }), 'plus');
-        this.addCardButtonEl.createSpan({ cls: 'interface-add-card-text', text: t('interface.addCard') });
-        this.addCardButtonEl.addEventListener('click', () => this.openCardPicker());
-
-        // 「添加卡片」按钮上方的「主题」按钮：点击打开主题管理面板（仅编辑模式显示）
-        this.themeButtonEl = container.createEl('button', { cls: 'interface-theme-btn' });
-        setIcon(this.themeButtonEl.createSpan({ cls: 'interface-theme-icon' }), 'palette');
-        this.themeButtonEl.createSpan({ cls: 'interface-theme-text', text: t('interface.theme') });
-        this.themeButtonEl.addEventListener('click', () => this.openThemePanel());
-
-        this.updateEditButton();
     }
 
     /** 应用当前主题：注入颜色令牌并同步到卡片与所有浮动面板 */
@@ -542,13 +547,13 @@ export class InterfaceView {
     }
 
     /** 打开卡片选择面板 */
-    private openCardPicker(): void {
+    openCardPicker(): void {
         this.cardPickerPanel ??= new CardPickerPanel((cardId) => this.showPickedCard(cardId));
         this.cardPickerPanel.open();
     }
 
     /** 打开主题管理面板 */
-    private openThemePanel(): void {
+    openThemePanel(): void {
         if (!this.themePanel) {
             this.themePanel = new ThemePanel({
                 app: this.app,
@@ -710,23 +715,16 @@ export class InterfaceView {
         if (this.viewEl) void this.renderInto(this.viewEl);
     }
 
-    /** 切换编辑模式：重绘视图以同步网点背景、按钮文案与卡片 X 按钮 */
-    private toggleEditMode(): void {
+    /** 是否处于编辑模式（顶部工具栏的按钮据此同步显隐与激活态） */
+    get isEditMode(): boolean {
+        return this.editMode;
+    }
+
+    /** 切换编辑模式：重绘视图以同步网点背景与卡片 X 按钮 */
+    toggleEditMode(): void {
         this.editMode = !this.editMode;
         if (!this.editMode) this.cardPickerPanel?.close();
         if (this.viewEl) void this.renderInto(this.viewEl);
-    }
-
-    /** 刷新左下角按钮的文案、激活态与添加按钮显隐 */
-    private updateEditButton(): void {
-        if (!this.editButtonEl) return;
-        this.editButtonEl.toggleClass('is-active', this.editMode);
-        const textEl = this.editButtonEl.querySelector('.interface-edit-text');
-        if (textEl) {
-            textEl.textContent = this.editMode ? t('interface.editModeDone') : t('interface.editMode');
-        }
-        this.addCardButtonEl?.toggleClass('is-hidden', !this.editMode);
-        this.themeButtonEl?.toggleClass('is-hidden', !this.editMode);
     }
 
     /** 打开任务板块信息面板：展示指定任务的收集篮子 / 待办改进 / 文件目录 */

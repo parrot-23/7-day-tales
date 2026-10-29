@@ -40,6 +40,8 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
     onDeleteTask?: (taskId: string) => void;
     /** 任务树拖拽排序回调（父面板按新顺序写回仓库） */
     onReorderTasks?: (ordered: PrototypeTask[]) => void;
+    /** 打开任务配置面板回调（左侧顶部下拉右侧的配置按钮，作用于任务树根任务） */
+    onOpenConfig?: (task: PrototypeTask) => void;
 }
 
 /** 右侧分区选项卡：showCount 为 true 时在标签后显示条目数量占位 */
@@ -136,6 +138,15 @@ export class TaskDetailPanel extends FloatingPanel {
         this.renderTree();
     }
 
+    /** 任务被外部（如配置面板）修改后，刷新类型徽标与右侧内容 */
+    refreshTaskView(): void {
+        const current = this.tasks.find((item) => item.id === this.task.id);
+        if (current) this.task = current;
+        const badge = this.body.querySelector<HTMLElement>('.task-detail-type');
+        badge?.setText(t(this.task.type === 'main' ? 'panel.mainTaskBadge' : 'panel.sideTaskBadge'));
+        this.renderRightPane();
+    }
+
     /** 重建根任务下拉（顶层任务 = 无父任务的根任务） */
     private refreshRootSelect(): void {
         const roots = this.tasks.filter((task) => !task.parentId);
@@ -161,8 +172,9 @@ export class TaskDetailPanel extends FloatingPanel {
         // 左侧
         const left = body.createDiv({ cls: 'task-detail-left' });
 
-        // 根任务下拉：切换任务树的根（位于类型标题行上方）
-        this.rootSelectEl = left.createEl('select', { cls: 'dropdown plan-root-select task-detail-root-select' });
+        // 根任务下拉：切换任务树的根（位于类型标题行上方），右侧为配置按钮
+        const rootRow = left.createDiv({ cls: 'task-detail-root-row' });
+        this.rootSelectEl = rootRow.createEl('select', { cls: 'dropdown plan-root-select task-detail-root-select' });
         this.rootSelectEl.addEventListener('change', () => {
             const taskId = this.rootSelectEl.value;
             if (!taskId || taskId === this.rootTaskId) return;
@@ -170,6 +182,20 @@ export class TaskDetailPanel extends FloatingPanel {
             this.renderTree();
             this.selectTask(taskId);
         });
+
+        if (this.panelOptions.onOpenConfig) {
+            const configBtn = rootRow.createDiv({
+                cls: 'task-detail-config-btn',
+                attr: { 'aria-label': t('panel.taskConfigTitle'), role: 'button' },
+            });
+            configBtn.title = t('panel.taskConfigTitle');
+            setIcon(configBtn, 'settings');
+            configBtn.addEventListener('click', () => {
+                // 作用于任务树的根任务（下拉当前选中项）
+                const rootTask = this.tasks.find((item) => item.id === this.rootTaskId) ?? this.task;
+                this.panelOptions.onOpenConfig?.(rootTask);
+            });
+        }
 
         const header = left.createDiv({ cls: 'task-detail-header' });
         header.createSpan({
