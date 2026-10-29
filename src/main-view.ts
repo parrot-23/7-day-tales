@@ -6,6 +6,7 @@ import type { InboxData } from './datatypes/domain';
 import type { EventBlock, ExecutionRecord } from './datatypes/domain';
 import { InterfaceView } from './views/interface/interface-view';
 import { TopBar } from './component/topbar/top-bar';
+import { SettingsPanel } from './component/panel/interface/settings-panel';
 import type { PdcaRepo } from './repos/pdca-repo';
 import type { InboxRepo } from './repos/inbox-repo';
 import type { CategoryRepo } from './repos/category-repo';
@@ -49,6 +50,8 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
     private runningCardTimer?: number;
     /** 顶部工具栏（日期切换 + 周历按钮，右侧操作区） */
     private topBar: TopBar;
+    /** 设置面板（顶部工具栏「设置」按钮打开，复用同一实例） */
+    private settingsPanel: SettingsPanel | null = null;
     /** 主视图根节点：主题颜色令牌注入到这里，供顶部工具栏与内容区统一继承 */
     private rootEl?: HTMLElement;
 
@@ -77,6 +80,7 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         this.topBar = new TopBar({
             onDateChange: (date) => this.interfaceView.setSelectedDate(date),
             onOpenCalendar: (date) => this.interfaceView.openDatePanel(date),
+            onOpenSettings: () => this.openSettingsPanel(),
         });
         this.interfaceView = new InterfaceView(this.app, this.plugin, this.planCategoryData, {
             getSelectedDate: () => this.topBar.getSelectedDate(),
@@ -140,6 +144,22 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         this.pdcaRepo().clearExecutions();
         this.inboxRepo().clear();
         await this.renderContent();
+    }
+
+    /** 打开设置面板（懒创建，复用同一实例） */
+    private openSettingsPanel(): void {
+        if (!this.settingsPanel) {
+            const plugin = this.plugin as Plugin & {
+                taskLibraryRoot: string;
+                saveTaskLibraryRoot: (path: string) => Promise<void>;
+            };
+            this.settingsPanel = new SettingsPanel({
+                app: this.app,
+                getTaskLibraryRoot: () => plugin.taskLibraryRoot,
+                saveTaskLibraryRoot: (path) => plugin.saveTaskLibraryRoot(path),
+            });
+        }
+        this.settingsPanel.open();
     }
 
     async onOpen() {

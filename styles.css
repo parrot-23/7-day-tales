@@ -1003,6 +1003,32 @@ button.parrot-plan-topbar-calendar-btn {
     height: 16px;
 }
 
+/* 设置按钮：位于「今天」胶囊右侧 */
+button.parrot-plan-topbar-settings-btn {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    margin-left: 4px;
+    padding: 0;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    color: var(--sdt-text-primary, var(--text-normal));
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.parrot-plan-topbar-settings-btn:hover {
+    background: var(--sdt-interactive-hover, var(--interactive-hover));
+}
+
+.parrot-plan-topbar-settings-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
 /* 帮助按钮 */
 button.parrot-plan-nav-help-btn {
     flex-shrink: 0;
@@ -8229,6 +8255,74 @@ button.swimlane-section-card-settings {
     padding: 4px 14px;
 }
 
+/* ======================== 设置面板（panel/interface/settings-panel） ======================== */
+.floating-panel-body.settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 第一行：项目库标签 + 目录绑定 */
+.settings-panel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-panel-label {
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.settings-panel-folder {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-control-bg, var(--background-primary));
+    font-size: 12px;
+    color: var(--sdt-text-primary, var(--text-normal));
+    cursor: pointer;
+}
+
+.settings-panel-folder:hover {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+}
+
+.settings-panel-folder-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.settings-panel-folder-icon .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.settings-panel-folder-path {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-panel-folder-path.is-empty {
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.settings-panel-desc {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
 /* ======================== 周历面板（panel/week-calendar-panel） ======================== */
 .week-calendar-panel {
     padding: 10px;
@@ -9077,6 +9171,10 @@ button.task-detail-todo-tool-btn:disabled {
     gap: 6px;
     font-size: 12px;
     color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.task-detail-files-checkbox {
+    margin: 0;
 }
 
 .task-detail-files-btn {
@@ -11140,7 +11238,7 @@ button.task-record-dropdown-item.is-selected {
     min-width: 0;
     padding: 3px 18px 3px 6px;
     border-radius: 4px;
-    /* 深空等深色主题下卡片背景与面板背景接近，需要完整描边才能看出卡片形状 */
+    /* 时空之旅等深色主题下卡片背景与面板背景接近，需要完整描边才能看出卡片形状 */
     border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
     border-left: 3px solid var(--interactive-accent);
     background: var(--sdt-card-bg, var(--background-secondary));
@@ -11555,20 +11653,20 @@ button.task-record-dropdown-item.is-selected {
     border-color: var(--interactive-accent);
 }
 
-/* ======================== 深空主题（仅界面视图背景） ======================== */
+/* ======================== 时空之旅主题（仅界面视图背景） ======================== */
 /* 视图底色：纯黑，星点全部由代码绘制 */
-.interface-view.is-theme-deepsky {
+.interface-view.is-theme-timespace {
     background-color: #000000;
     background-image: none;
 }
 
 /* 兜底：即使 view-content 仍带有内边距，整块标签页区域也保持黑色 */
-.parrot-plan-main.view-content:has(.interface-view.is-theme-deepsky) {
+.parrot-plan-main.view-content:has(.interface-view.is-theme-timespace) {
     background-color: #000000;
 }
 
 /* 编辑模式：网点叠加在星点之上 */
-.interface-view.is-editing.is-theme-deepsky {
+.interface-view.is-editing.is-theme-timespace {
     background-image: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.35) 1.4px, transparent 1.4px);
     background-size: 30px 30px;
     background-repeat: repeat;

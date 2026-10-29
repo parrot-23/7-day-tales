@@ -4,8 +4,8 @@
 /** 主题来源：官方内置 / 本地自定义 */
 export type ThemeSource = 'official' | 'local';
 
-/** 默认主题 id（深空） */
-export const DEFAULT_THEME_ID = 'deepsky';
+/** 默认主题 id（时空之旅） */
+export const DEFAULT_THEME_ID = 'timespace';
 
 /** 界面主题（id / name / source 骨架） */
 export interface Theme {
@@ -27,7 +27,7 @@ export interface ThemeData {
     localThemes: Theme[];
 }
 
-/** 默认主题数据（默认应用深空，列表为空占位） */
+/** 默认主题数据（默认应用时空之旅，列表为空占位） */
 export function defaultThemeData(): ThemeData {
     return { currentThemeId: DEFAULT_THEME_ID, officialThemes: [], localThemes: [] };
 }

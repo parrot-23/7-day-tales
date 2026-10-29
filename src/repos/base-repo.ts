@@ -81,6 +81,9 @@ export class BaseRepo {
     /** 是否启用剧本模式（随主数据一起持久化，默认关闭） */
     scriptModeEnabled = false;
 
+    /** 任务库根目录（vault 相对路径，空表示未绑定，随主数据一起持久化） */
+    taskLibraryRoot = '';
+
     constructor(plugin: Plugin) {
         this.plugin = plugin;
     }
@@ -117,6 +120,7 @@ export class BaseRepo {
             cacheEnabled: this.cacheEnabled,
             helpDismissed: this.helpDismissed,
             scriptModeEnabled: this.scriptModeEnabled,
+            taskLibraryRoot: this.taskLibraryRoot,
         });
     }
 
@@ -141,6 +145,12 @@ export class BaseRepo {
     /** 保存是否启用剧本模式 */
     async saveScriptModeEnabled(enabled: boolean): Promise<void> {
         this.scriptModeEnabled = enabled;
+        await this.saveAll();
+    }
+
+    /** 保存任务库根目录 */
+    async saveTaskLibraryRoot(path: string): Promise<void> {
+        this.taskLibraryRoot = path;
         await this.saveAll();
     }
 
@@ -176,6 +186,11 @@ export class BaseRepo {
         this.scriptModeEnabled = typeof savedData.scriptModeEnabled === 'boolean'
             ? savedData.scriptModeEnabled
             : false;
+
+        // 读取任务库根目录（兼容旧数据：默认未绑定）
+        this.taskLibraryRoot = typeof savedData.taskLibraryRoot === 'string'
+            ? savedData.taskLibraryRoot
+            : '';
 
         const defaultCategories: PlanCategoryData = {
             categories: [

@@ -46,7 +46,7 @@ export interface PrototypeTask {
     status?: TaskStatus;
     /** 清单条目（任务详情「清单」选项卡，可勾选完成） */
     checklist?: ChecklistItem[];
-    /** 任务文件绑定的目录（vault 相对路径，空表示未绑定） */
+    /** 任务文件目录（由项目库根目录 + 任务树自动推导，值为「任务文件」目录；空表示尚未生成） */
     fileDir?: string;
     /** 任务文件新建时是否在文件名前加时间戳 */
     fileTimestamp?: boolean;

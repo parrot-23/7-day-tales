@@ -91,6 +91,11 @@ export default class ParrotPlanPlugin extends Plugin {
         return this.repo.scriptModeEnabled;
     }
 
+    /** 任务库根目录（随主数据一起持久化，空表示未绑定） */
+    get taskLibraryRoot(): string {
+        return this.repo.taskLibraryRoot;
+    }
+
     /**
      * 唯一的数据保存出口（委托给 BaseRepo）。
      * 所有视图与设置项都通过此方法保存。
@@ -117,6 +122,11 @@ export default class ParrotPlanPlugin extends Plugin {
     /** 保存是否启用剧本模式 */
     async saveScriptModeEnabled(enabled: boolean): Promise<void> {
         await this.repo.saveScriptModeEnabled(enabled);
+    }
+
+    /** 保存任务库根目录 */
+    async saveTaskLibraryRoot(path: string): Promise<void> {
+        await this.repo.saveTaskLibraryRoot(path);
     }
 
     async onload() {

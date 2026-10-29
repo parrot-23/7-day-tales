@@ -9,7 +9,7 @@ import type { I18nMessages } from '../i18n/zh';
 export interface ThemeAsset {
     /** 素材类型（目前仅图片） */
     kind: 'image';
-    /** 相对插件目录的路径（如 cache/theme/deepsky/back.png） */
+    /** 相对插件目录的路径（如 cache/themestory/timespace/back.png） */
     path: string;
 }
 

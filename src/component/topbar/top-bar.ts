@@ -23,6 +23,8 @@ export interface TopBarOptions {
     onDateChange?: (date: Date) => void;
     /** 点击周历按钮（传入当前选中日期） */
     onOpenCalendar?: (date: Date) => void;
+    /** 点击设置按钮 */
+    onOpenSettings?: () => void;
 }
 
 /** 顶部工具栏 */
@@ -78,6 +80,14 @@ export class TopBar {
             attr: { 'aria-label': t('nav.backToToday') },
         });
         this.relativePillEl.onclick = () => this.resetToToday();
+
+        // 设置按钮：位于相对日期胶囊右侧
+        const settingsBtn = dateBar.createEl('button', {
+            cls: 'parrot-plan-topbar-settings-btn',
+            attr: { 'aria-label': t('nav.openSettings') },
+        });
+        setIcon(settingsBtn, 'settings');
+        settingsBtn.onclick = () => this.options.onOpenSettings?.();
 
         const actions = bar.createDiv({ cls: 'parrot-plan-topbar-actions' });
         this.update();

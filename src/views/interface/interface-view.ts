@@ -33,6 +33,7 @@ import { THEME_DEFINITIONS, getThemeDefinition } from '../../themestory/registry
 import { applyThemeColors, setCurrentThemeColors } from '../../themestory/theme-colors';
 import type { PlanCategoryData } from '../../shared/plan-category-manager';
 import { getCurrentWeekKey, getISOWeek, makeDayKey, makeWeekKey } from '../../shared/plan-data';
+import { renameTaskDir } from '../../shared/task-library';
 
 /** 界面视图配置 */
 export interface InterfaceViewOptions {
@@ -308,6 +309,7 @@ export class InterfaceView {
                 tasks: this.prototypeTaskRepo.tasks,
                 categoryData: this.categoryData,
                 app: this.app,
+                getTaskLibraryRoot: () => this.baseRepo.taskLibraryRoot,
                 save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
                 onAddChild: (name, parentId) => this.addPrototypeTask(name, task.type, parentId),
                 onUpdateTask: (taskId, patch) => this.updatePrototypeTask(taskId, patch),
@@ -392,10 +394,20 @@ export class InterfaceView {
         this.refreshTaskConsumers();
     }
 
-    /** 更新原型任务的名称 / 描述 / 分类：写仓库 + 持久化 */
+    /** 更新原型任务的名称 / 描述 / 分类：写仓库 + 持久化（改名时同步重命名任务目录） */
     private updatePrototypeTask(taskId: string, patch: { name?: string; description?: string; categoryId?: string }): void {
         this.prototypeTaskRepo.update(taskId, patch);
         void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+        if (patch.name === undefined) return;
+        const task = this.prototypeTaskRepo.allTasks.find((item) => item.id === taskId);
+        if (!task) return;
+        // 任务目录由项目库根目录 + 任务树自动生成，改名后同步重命名目录（子任务目录随之移动）
+        void renameTaskDir(this.app, this.baseRepo.taskLibraryRoot, this.prototypeTaskRepo.allTasks, task)
+            .then((changed) => {
+                if (!changed) return;
+                void (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll();
+                this.refreshTaskConsumers();
+            });
     }
 
     async renderInto(container: HTMLElement): Promise<void> {
@@ -722,6 +734,8 @@ export class InterfaceView {
         this.taskSectionsPanel ??= new TaskSectionsPanel({
             app: this.app,
             getTask: (id) => this.prototypeTaskRepo.tasks.find((item) => item.id === id),
+            getTasks: () => this.prototypeTaskRepo.tasks,
+            getTaskLibraryRoot: () => this.baseRepo.taskLibraryRoot,
             categories: this.categoryData.categories,
             save: () => (this.plugin as Plugin & { saveAll: () => Promise<void> }).saveAll(),
             onOpenTaskDetail: (taskId) => {

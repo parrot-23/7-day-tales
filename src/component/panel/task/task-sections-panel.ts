@@ -1,16 +1,16 @@
 // 任务板块信息面板：基于 FloatingPanel 展示单个任务的收集篮子 / 待办改进 / 文件目录。
 // 第一行显示任务名称与任务分类；入口为点击「今日任务」卡片中的任务条目。
-import { Notice, setIcon } from 'obsidian';
+import { Notice, TFolder, setIcon } from 'obsidian';
 import type { App, TFile } from 'obsidian';
 
 import type { ChecklistItem } from '../../../datatypes/domain';
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
 import { t } from '../../../i18n';
 import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { ensureTaskFileDir, revealFolderInExplorer } from '../../../shared/task-library';
 import { FileEditorPanel } from '../basic/file-editor-panel';
 import type { FloatingPanelOptions } from '../basic/floating-panel';
 import { FloatingPanel } from '../basic/floating-panel';
-import { FolderPickerPanel } from '../basic/folder-picker-panel';
 
 /** 板块 key */
 type TaskSectionKey = 'checklist' | 'file';
@@ -26,6 +26,10 @@ export interface TaskSectionsPanelOptions extends Omit<FloatingPanelOptions, 'ti
     app: App;
     /** 按 id 读取任务（每次都从仓库读最新数据） */
     getTask: (taskId: string) => PrototypeTask | undefined;
+    /** 读取全量任务（按任务树推导任务文件目录） */
+    getTasks?: () => PrototypeTask[];
+    /** 读取项目库根目录（任务文件目录按任务树自动绑定，空表示未配置） */
+    getTaskLibraryRoot?: () => string;
     /** 分类列表（用于第一行显示任务分类） */
     categories: { id: string; label: string; color?: string }[];
     /** 持久化出口（文件目录 / 时间戳开关修改后保存） */
@@ -90,6 +94,12 @@ export class TaskSectionsPanel extends FloatingPanel {
             this.renderSections(body);
             this.renderContent(body, task);
         });
+        // 文件板块：按任务树惰性确保目录存在，目录有更新时重绘一次
+        if (task && this.section === 'file') {
+            void this.ensureFilesDir(task).then((changed) => {
+                if (changed && this.taskId === task.id) this.render();
+            });
+        }
     }
 
     /** 第一行：任务名称 + 任务分类 */
@@ -151,7 +161,7 @@ export class TaskSectionsPanel extends FloatingPanel {
 
         const files = listTaskFiles(this.sectionsOptions.app, task.fileDir);
         if (!task.fileDir) {
-            content.createDiv({ cls: 'interface-today-empty', text: t('interface.bottomNoFolder') });
+            content.createDiv({ cls: 'interface-today-empty', text: t('panel.taskLibraryRequired') });
             return;
         }
         if (files.length === 0) {
@@ -170,26 +180,23 @@ export class TaskSectionsPanel extends FloatingPanel {
     private renderFileToolbar(parentEl: HTMLElement, task: PrototypeTask): void {
         const toolbar = parentEl.createDiv({ cls: 'task-detail-files-toolbar' });
 
-        // 启用时间戳开关
+        // 启用时间戳勾选框
         const switchWrap = toolbar.createDiv({ cls: 'task-detail-files-switch' });
-        const switchContainer = switchWrap.createDiv({ cls: 'checkbox-container' });
-        switchContainer.toggleClass('is-enabled', task.fileTimestamp === true);
-        const checkbox = switchContainer.createEl('input');
+        const checkbox = switchWrap.createEl('input', { cls: 'task-detail-files-checkbox' });
         checkbox.type = 'checkbox';
         checkbox.checked = task.fileTimestamp === true;
         checkbox.addEventListener('change', () => {
-            switchContainer.toggleClass('is-enabled', checkbox.checked);
             task.fileTimestamp = checkbox.checked;
             void this.sectionsOptions.save();
         });
         switchWrap.createSpan({ cls: 'task-detail-files-switch-label', text: t('panel.fileTimestamp') });
 
-        // 绑定目录
+        // 文件夹：目录由任务树自动绑定，点击在 Obsidian 文件浏览器中定位
         const dirBtn = toolbar.createEl('button', { cls: 'task-detail-files-btn' });
         setIcon(dirBtn.createSpan({ cls: 'task-detail-files-btn-icon' }), 'folder');
-        dirBtn.createSpan({ cls: 'task-detail-files-btn-text', text: task.fileDir || t('panel.fileDir') });
-        dirBtn.title = task.fileDir || t('panel.fileDir');
-        dirBtn.addEventListener('click', () => this.openFileDirPicker(task));
+        dirBtn.createSpan({ cls: 'task-detail-files-btn-text', text: t('panel.fileFolder') });
+        if (task.fileDir) dirBtn.title = task.fileDir;
+        dirBtn.addEventListener('click', () => void this.openTaskFolder(task));
 
         // 新建文件
         const addBtn = toolbar.createEl('button', { cls: 'task-detail-files-btn' });
@@ -197,7 +204,7 @@ export class TaskSectionsPanel extends FloatingPanel {
         addBtn.createSpan({ cls: 'task-detail-files-btn-text', text: t('panel.fileAdd') });
         addBtn.addEventListener('click', () => {
             if (!task.fileDir) {
-                new Notice(t('panel.fileNoDir'));
+                new Notice(t('panel.taskLibraryRequired'));
                 return;
             }
             this.fileCreateMode = true;
@@ -233,25 +240,38 @@ export class TaskSectionsPanel extends FloatingPanel {
         nameInput.focus();
     }
 
-    /** 打开目录选择面板：确认后写回任务并保存（选择时本面板会失焦关闭，确认后重新打开） */
-    private openFileDirPicker(task: PrototypeTask): void {
-        const picker = new FolderPickerPanel(this.sectionsOptions.app, {
-            onConfirm: (result) => {
-                task.fileDir = result.path;
-                this.fileCreateMode = false;
-                void this.sectionsOptions.save().then(() => {
-                    this.render();
-                    this.open();
-                });
-            },
-        });
-        picker.open();
+    /** 按项目库根目录 + 任务树确保任务文件目录（未配置项目库时返回 false） */
+    private async ensureFilesDir(task: PrototypeTask): Promise<boolean> {
+        const root = this.sectionsOptions.getTaskLibraryRoot?.() ?? '';
+        if (!root) return false;
+        const tasks = this.sectionsOptions.getTasks?.() ?? [task];
+        const result = await ensureTaskFileDir(this.sectionsOptions.app, root, tasks, task);
+        if (result.changed) await this.sectionsOptions.save();
+        return result.changed;
     }
 
-    /** 在绑定目录下新建 Markdown 文件（启用时间戳时加前缀），并打开内置编辑面板 */
+    /** 点击「文件夹」：未配置项目库时提示；已配置时确保目录存在并在 Obsidian 文件浏览器中定位 */
+    private async openTaskFolder(task: PrototypeTask): Promise<void> {
+        const root = this.sectionsOptions.getTaskLibraryRoot?.() ?? '';
+        if (!root) {
+            new Notice(t('panel.taskLibraryRequired'));
+            return;
+        }
+        await this.ensureFilesDir(task);
+        if (!task.fileDir) return;
+        const folder = this.sectionsOptions.app.vault.getAbstractFileByPath(task.fileDir);
+        if (folder instanceof TFolder) revealFolderInExplorer(this.sectionsOptions.app, folder);
+        this.render();
+    }
+
+    /** 在自动绑定的任务文件目录下新建 Markdown 文件（启用时间戳时加前缀），并打开内置编辑面板 */
     private async createTaskFile(task: PrototypeTask, name: string): Promise<void> {
+        await this.ensureFilesDir(task);
         const dir = task.fileDir;
-        if (!dir) return;
+        if (!dir) {
+            new Notice(t('panel.taskLibraryRequired'));
+            return;
+        }
         const fileName = buildTaskFileName(name, task.fileTimestamp === true);
         if (!fileName) return;
         try {

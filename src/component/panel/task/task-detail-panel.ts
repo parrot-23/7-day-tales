@@ -1,17 +1,17 @@
 // 任务详情面板：基于 FloatingPanel，展示单个原型任务的详情。
 // 左侧：类型标题行（主线任务 / 支线任务）+ 添加按钮，下方为后代任务树；
 // 右侧：任务名称 / 分类 / 描述 + 归属分区选项卡。
-import { Notice, setIcon, type App, type TFile } from 'obsidian';
+import { Notice, TFolder, setIcon, type App, type TFile } from 'obsidian';
 
 import type { ChecklistItem } from '../../../datatypes/domain';
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
 import { getLang, t } from '../../../i18n';
 import type { PlanCategoryData } from '../../../shared/plan-category-manager';
 import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { ensureTaskFileDir, revealFolderInExplorer } from '../../../shared/task-library';
 import { ConfirmModal } from '../../ob/confirm-modal';
 import { FileEditorPanel } from '../basic/file-editor-panel';
 import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
-import { FolderPickerPanel } from '../basic/folder-picker-panel';
 import { GoalListView } from './goal-list-view';
 
 /** 任务详情面板配置 */
@@ -28,6 +28,8 @@ export interface TaskDetailPanelOptions extends Omit<FloatingPanelOptions, 'titl
     onUpdateTask?: (taskId: string, patch: { name?: string; description?: string; categoryId?: string }) => void;
     /** Obsidian App（收集篮子「整理到文件」使用） */
     app: App;
+    /** 读取项目库根目录（任务文件目录按任务树自动绑定，空表示未配置） */
+    getTaskLibraryRoot?: () => string;
     /** 数据保存回调（收集篮子增删后持久化） */
     save: () => Promise<void>;
     /** 任务树拖动排序 / 调整层级后的回调（父面板刷新任务列表等） */
@@ -712,9 +714,31 @@ export class TaskDetailPanel extends FloatingPanel {
         if (target) target.checklist = this.task.checklist;
     }
 
-    /** 任务文件：操作卡片（时间戳开关 / 文件目录 / 添加）+ 文件列表卡片 */
+    /** 任务文件：先按任务树确保目录存在，再渲染操作卡片（时间戳开关 / 文件夹 / 添加）+ 文件列表卡片 */
     private renderFiles(container: HTMLElement): void {
         this.filesBodyEl = container;
+        void this.ensureFilesDir().then(() => {
+            // 异步期间可能已切换任务 / 重绘，仅渲染当前容器
+            if (this.filesBodyEl === container && container.isConnected) {
+                this.renderFilesContent(container);
+            }
+        });
+    }
+
+    /** 按项目库根目录 + 任务树确保任务文件目录（未配置项目库时返回 null） */
+    private async ensureFilesDir(): Promise<string | null> {
+        const root = this.panelOptions.getTaskLibraryRoot?.() ?? '';
+        if (!root) return null;
+        const result = await ensureTaskFileDir(this.panelOptions.app, root, this.tasks, this.task);
+        if (result.changed) {
+            this.syncFilesToTasks();
+            void this.panelOptions.save();
+        }
+        return result.dir;
+    }
+
+    /** 渲染任务文件内容 */
+    private renderFilesContent(container: HTMLElement): void {
         container.empty();
         const wrap = container.createDiv({ cls: 'task-detail-files' });
 
@@ -722,30 +746,24 @@ export class TaskDetailPanel extends FloatingPanel {
         const card = wrap.createDiv({ cls: 'task-detail-files-card' });
         const toolbar = card.createDiv({ cls: 'task-detail-files-toolbar' });
 
-        // 启用时间戳开关
+        // 启用时间戳勾选框
         const switchWrap = toolbar.createDiv({ cls: 'task-detail-files-switch' });
-        const switchContainer = switchWrap.createDiv({ cls: 'checkbox-container' });
-        switchContainer.toggleClass('is-enabled', this.task.fileTimestamp === true);
-        const checkbox = switchContainer.createEl('input');
+        const checkbox = switchWrap.createEl('input', { cls: 'task-detail-files-checkbox' });
         checkbox.type = 'checkbox';
         checkbox.checked = this.task.fileTimestamp === true;
         checkbox.addEventListener('change', () => {
-            switchContainer.toggleClass('is-enabled', checkbox.checked);
             this.task.fileTimestamp = checkbox.checked;
             this.syncFilesToTasks();
             void this.panelOptions.save();
         });
         switchWrap.createSpan({ cls: 'task-detail-files-switch-label', text: t('panel.fileTimestamp') });
 
-        // 绑定目录
+        // 文件夹：目录由任务树自动绑定，点击在 Obsidian 文件浏览器中定位
         const dirBtn = toolbar.createEl('button', { cls: 'task-detail-files-btn' });
         setIcon(dirBtn.createSpan({ cls: 'task-detail-files-btn-icon' }), 'folder');
-        dirBtn.createSpan({
-            cls: 'task-detail-files-btn-text',
-            text: this.task.fileDir || t('panel.fileDir'),
-        });
-        dirBtn.title = this.task.fileDir || t('panel.fileDir');
-        dirBtn.addEventListener('click', () => this.openFileDirPicker(container));
+        dirBtn.createSpan({ cls: 'task-detail-files-btn-text', text: t('panel.fileFolder') });
+        if (this.task.fileDir) dirBtn.title = this.task.fileDir;
+        dirBtn.addEventListener('click', () => void this.openTaskFolder());
 
         // 新建文件
         const addBtn = toolbar.createEl('button', { cls: 'task-detail-files-btn' });
@@ -753,11 +771,11 @@ export class TaskDetailPanel extends FloatingPanel {
         addBtn.createSpan({ cls: 'task-detail-files-btn-text', text: t('panel.fileAdd') });
         addBtn.addEventListener('click', () => {
             if (!this.task.fileDir) {
-                new Notice(t('panel.fileNoDir'));
+                new Notice(t('panel.taskLibraryRequired'));
                 return;
             }
             this.fileCreateMode = true;
-            this.renderFiles(container);
+            this.renderFilesContent(container);
         });
 
         if (this.fileCreateMode) {
@@ -777,12 +795,12 @@ export class TaskDetailPanel extends FloatingPanel {
                 if (evt.key === 'Enter') submit();
                 if (evt.key === 'Escape') {
                     this.fileCreateMode = false;
-                    this.renderFiles(container);
+                    this.renderFilesContent(container);
                 }
             });
             cancelBtn.addEventListener('click', () => {
                 this.fileCreateMode = false;
-                this.renderFiles(container);
+                this.renderFilesContent(container);
             });
             nameInput.focus();
         }
@@ -793,7 +811,7 @@ export class TaskDetailPanel extends FloatingPanel {
         this.fileCountEl?.setText(`(${files.length})`);
 
         if (!this.task.fileDir) {
-            listCard.createDiv({ cls: 'gtd-collect-empty', text: t('panel.fileNoDir') });
+            listCard.createDiv({ cls: 'gtd-collect-empty', text: t('panel.taskLibraryRequired') });
             return;
         }
         if (files.length === 0) {
@@ -826,29 +844,33 @@ export class TaskDetailPanel extends FloatingPanel {
         this.fileEditorPanel.open();
     }
 
-    /** 打开目录选择面板，选定后作为任务文件目录 */
-    private openFileDirPicker(container: HTMLElement): void {
-        const picker = new FolderPickerPanel(this.panelOptions.app, {
-            onConfirm: (result) => {
-                this.task.fileDir = result.path;
-                this.fileCreateMode = false;
-                this.syncFilesToTasks();
-                void this.panelOptions.save().then(() => this.renderFiles(container));
-            },
-        });
-        picker.open();
+    /** 点击「文件夹」：未配置项目库时提示；已配置时确保目录存在并在 Obsidian 文件浏览器中定位 */
+    private async openTaskFolder(): Promise<void> {
+        const root = this.panelOptions.getTaskLibraryRoot?.() ?? '';
+        if (!root) {
+            new Notice(t('panel.taskLibraryRequired'));
+            return;
+        }
+        const dir = await this.ensureFilesDir();
+        if (!dir) return;
+        const folder = this.panelOptions.app.vault.getAbstractFileByPath(dir);
+        if (folder instanceof TFolder) revealFolderInExplorer(this.panelOptions.app, folder);
+        if (this.filesBodyEl?.isConnected) this.renderFilesContent(this.filesBodyEl);
     }
 
-    /** 在绑定目录下新建 Markdown 文件（启用时间戳时加前缀），并打开内置编辑面板 */
+    /** 在自动绑定的任务文件目录下新建 Markdown 文件（启用时间戳时加前缀），并打开内置编辑面板 */
     private async createTaskFile(name: string): Promise<void> {
-        const dir = this.task.fileDir;
-        if (!dir) return;
+        const dir = await this.ensureFilesDir();
+        if (!dir) {
+            new Notice(t('panel.taskLibraryRequired'));
+            return;
+        }
         const fileName = buildTaskFileName(name, this.task.fileTimestamp === true);
         if (!fileName) return;
         try {
             const file = await this.panelOptions.app.vault.create(`${dir}/${fileName}`, '');
             this.fileCreateMode = false;
-            if (this.filesBodyEl) this.renderFiles(this.filesBodyEl);
+            if (this.filesBodyEl) this.renderFilesContent(this.filesBodyEl);
             this.openTaskFile(file);
         } catch {
             new Notice(t('panel.fileCreateFailed'));
