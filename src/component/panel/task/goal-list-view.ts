@@ -1,14 +1,19 @@
 // 目标清单视图：嵌入任务详情面板「目标」选项卡。
-// 结构：输入行（输入框 + 新建按钮）+ 工具栏（设置截止时间）+ 目标条目列表（名称 / 截止日期 / 删除）。
+// 结构：输入行（输入框 + 新建按钮）+ 目标条目列表。
+// 条目两行：第一行名称 + 悬停操作图标，第二行展示绑定的子任务与截止日期。
 import { setIcon } from 'obsidian';
 
 import type { PrototypeTask, TaskGoalEntry } from '../../../datatypes/prototype-task';
 import { getLang, t } from '../../../i18n';
+import { DatePickerPopover } from '../basic/date-picker-popover';
+import { TaskPickerPanel } from './task-picker-panel';
 
 /** 目标清单视图配置 */
 export interface GoalListViewOptions {
     /** 当前任务（直接读写其 goals 字段） */
     task: PrototypeTask;
+    /** 全部任务数据源（解析已绑定子任务、提供可绑定的后代候选） */
+    getTasks: () => PrototypeTask[];
     /** 数据保存回调（增删改后持久化） */
     save: () => Promise<void>;
     /** 目标变更回调（父面板据此刷新目标方块） */
@@ -19,16 +24,16 @@ export interface GoalListViewOptions {
 export class GoalListView {
     private readonly container: HTMLElement;
     private readonly task: PrototypeTask;
+    private readonly getTasks: () => PrototypeTask[];
     private readonly save: () => Promise<void>;
     private readonly onChanged?: () => void;
-    /** 目标条目列表容器（截止日期编辑行插入到它前面） */
+    /** 目标条目列表容器 */
     private listEl!: HTMLElement;
-    /** 当前选中的目标条目 id（供「设置截止时间」使用） */
-    private selectedGoalId: string | null = null;
 
     constructor(container: HTMLElement, options: GoalListViewOptions) {
         this.container = container;
         this.task = options.task;
+        this.getTasks = options.getTasks;
         this.save = options.save;
         this.onChanged = options.onChanged;
         this.container.addClass('goal-list-view');
@@ -55,16 +60,7 @@ export class GoalListView {
             if (evt.key === 'Enter') submit();
         });
 
-        // 第二行：设置截止时间（需先选中条目）
-        const toolbar = this.container.createDiv({ cls: 'goal-list-toolbar' });
-        const dueBtn = toolbar.createEl('button', {
-            cls: 'goal-list-tool-btn',
-            text: t('panel.checklistSetDue'),
-        });
-        dueBtn.disabled = !this.selectedGoalId;
-        dueBtn.addEventListener('click', () => this.openDueEditor());
-
-        // 第三行起：目标条目
+        // 第二行起：目标条目
         this.listEl = this.container.createDiv({ cls: 'goal-list' });
         const goals = this.task.goals ?? [];
         if (goals.length === 0) {
@@ -76,29 +72,115 @@ export class GoalListView {
         }
     }
 
-    /** 渲染单个目标条目：图标 + 名称 + 截止日期 + 删除按钮 */
+    /** 渲染单个目标条目：第一行名称 + 操作图标，第二行绑定的子任务与截止日期 */
     private renderRow(goal: TaskGoalEntry): void {
         const row = this.listEl.createDiv({ cls: 'goal-list-item' });
-        row.toggleClass('is-selected', this.selectedGoalId === goal.id);
-        const iconEl = row.createSpan({ cls: 'goal-list-item-icon' });
-        setIcon(iconEl, 'target');
-        row.createSpan({ cls: 'goal-list-item-name', text: goal.text });
-        if (goal.dueDate) {
-            row.createSpan({ cls: 'goal-list-item-due', text: this.formatDue(goal.dueDate) });
+
+        const main = row.createDiv({ cls: 'goal-list-item-main' });
+        setIcon(main.createSpan({ cls: 'goal-list-item-icon' }), 'target');
+        main.createSpan({ cls: 'goal-list-item-name', text: goal.text });
+
+        const boundTasks = this.boundTasks(goal);
+
+        // 截止日期标签：紧贴操作图标左侧，位于日历图标左边
+        if (goal.dueDate) this.renderDueTag(main, goal);
+
+        // 悬停时显示：设置截止时间 / 绑定子任务 / 删除
+        const actions = main.createDiv({ cls: 'goal-list-item-actions' });
+        this.createAction(actions, 'calendar', t('panel.checklistSetDue'), false, (button) => {
+            this.openDuePicker(goal, button);
+        });
+        this.createAction(actions, 'link-2', t('panel.goalBindSubtask'), boundTasks.length > 0, () => {
+            this.openSubtaskPicker(goal);
+        });
+        this.createAction(actions, 'x', t('common.delete'), false, () => void this.removeGoal(goal.id));
+
+        // 第二行：绑定的子任务标签（没有绑定时不占位）
+        if (boundTasks.length === 0) return;
+        const meta = row.createDiv({ cls: 'goal-list-item-meta' });
+        for (const task of boundTasks) {
+            const tag = meta.createSpan({ cls: 'goal-list-item-subtask', attr: { title: task.name } });
+            setIcon(tag.createSpan({ cls: 'goal-list-item-subtask-icon' }), 'git-branch');
+            tag.createSpan({ cls: 'goal-list-item-subtask-name', text: task.name });
         }
-        const delBtn = row.createEl('button', {
-            cls: 'goal-list-item-delete',
+    }
+
+    /** 截止日期标签：悬浮时末尾出现清除按钮 */
+    private renderDueTag(parentEl: HTMLElement, goal: TaskGoalEntry): void {
+        const due = parentEl.createSpan({ cls: 'goal-list-item-due' });
+        due.createSpan({ text: this.formatDue(goal.dueDate ?? '') });
+        const clearBtn = due.createSpan({
+            cls: 'goal-list-item-due-clear',
             text: '×',
-            attr: { type: 'button' },
+            attr: { role: 'button', 'aria-label': t('panel.checklistDueClear') },
         });
-        delBtn.addEventListener('click', (evt) => {
+        clearBtn.addEventListener('click', (evt) => {
             evt.stopPropagation();
-            void this.removeGoal(goal.id);
+            delete goal.dueDate;
+            void this.save().then(() => {
+                this.onChanged?.();
+                this.render();
+            });
         });
-        row.addEventListener('click', () => {
-            this.selectedGoalId = this.selectedGoalId === goal.id ? null : goal.id;
-            this.render();
+    }
+
+    /** 条目末尾的操作图标按钮 */
+    private createAction(
+        parentEl: HTMLElement,
+        icon: string,
+        label: string,
+        active: boolean,
+        onClick: (button: HTMLButtonElement) => void,
+    ): HTMLButtonElement {
+        const button = parentEl.createEl('button', {
+            cls: 'goal-list-item-action',
+            attr: { type: 'button', 'aria-label': label, title: label },
         });
+        button.toggleClass('is-active', active);
+        setIcon(button, icon);
+        button.addEventListener('click', (evt) => {
+            evt.stopPropagation();
+            onClick(button);
+        });
+        return button;
+    }
+
+    /** 绑定子任务：复用任务选择面板（多选，限定在当前任务的后代里） */
+    private openSubtaskPicker(goal: TaskGoalEntry): void {
+        const picker: TaskPickerPanel = new TaskPickerPanel({
+            title: t('panel.goalBindSubtask'),
+            getTasks: this.getTasks,
+            scopeTaskId: this.task.id,
+            multiple: true,
+            initialSelectedIds: (goal.subtaskIds ?? []).filter((id) => this.findTask(id)),
+            onClose: () => picker.destroy(),
+            onSelect: (taskIds) => {
+                if (taskIds.length > 0) goal.subtaskIds = taskIds;
+                else delete goal.subtaskIds;
+                void this.save().then(() => {
+                    this.onChanged?.();
+                    this.render();
+                });
+            },
+        });
+        picker.open();
+    }
+
+    /** 设置截止时间：在图标下方弹出自绘日历，不额外占一行 */
+    private openDuePicker(goal: TaskGoalEntry, anchor: HTMLElement): void {
+        const popover: DatePickerPopover = new DatePickerPopover({
+            anchor,
+            value: goal.dueDate,
+            onSelect: (value) => {
+                goal.dueDate = value;
+                void this.save().then(() => {
+                    this.onChanged?.();
+                    this.render();
+                });
+            },
+            onClose: () => popover.destroy(),
+        });
+        popover.open();
     }
 
     /** 新增目标条目 */
@@ -120,43 +202,23 @@ export class GoalListView {
     /** 删除目标条目 */
     private async removeGoal(goalId: string): Promise<void> {
         this.task.goals = (this.task.goals ?? []).filter((goal) => goal.id !== goalId);
-        if (this.selectedGoalId === goalId) this.selectedGoalId = null;
         await this.save();
         this.onChanged?.();
         this.render();
     }
 
-    /** 选中条目的截止日期编辑行：日期输入框 + 确定 / 清除 / 取消 */
-    private openDueEditor(): void {
-        const goal = (this.task.goals ?? []).find((item) => item.id === this.selectedGoalId);
-        if (!goal) return;
-        this.container.querySelector('.goal-list-due-editor')?.remove();
-        const editor = this.container.createDiv({ cls: 'goal-list-due-editor' });
-        const input = editor.createEl('input', { cls: 'goal-list-due-input' });
-        input.type = 'date';
-        input.value = goal.dueDate ?? '';
-        const commit = (value: string): void => {
-            if (value) {
-                goal.dueDate = value;
-            } else {
-                delete goal.dueDate;
-            }
-            void this.save().then(() => {
-                this.onChanged?.();
-                this.render();
-            });
-        };
-        const saveBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueSave') });
-        saveBtn.addEventListener('click', () => commit(input.value));
-        const clearBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueClear') });
-        clearBtn.addEventListener('click', () => {
-            input.value = '';
-            commit('');
-        });
-        const cancelBtn = editor.createEl('button', { cls: 'goal-list-tool-btn', text: t('panel.checklistDueCancel') });
-        cancelBtn.addEventListener('click', () => editor.remove());
-        this.container.insertBefore(editor, this.listEl);
-        input.focus();
+    /** 目标已绑定的子任务（指向已删除任务时自动忽略） */
+    private boundTasks(goal: TaskGoalEntry): PrototypeTask[] {
+        const byId = new Map(this.getTasks().map((task) => [task.id, task]));
+        return (goal.subtaskIds ?? [])
+            .map((id) => byId.get(id))
+            .filter((task): task is PrototypeTask => task !== undefined);
+    }
+
+    /** 按 id 查找任务 */
+    private findTask(taskId?: string): PrototypeTask | undefined {
+        if (!taskId) return undefined;
+        return this.getTasks().find((item) => item.id === taskId);
     }
 
     /** 截止日期展示文案（如「截止日期：10月30日」） */

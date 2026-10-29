@@ -456,7 +456,9 @@ export class TodayTasksCard {
         if (!this.taskPickerPanel) {
             this.taskPickerPanel = new TaskPickerPanel({
                 getTasks: () => this.prototypeTaskRepo.tasks,
-                onSelect: (taskId) => {
+                onSelect: (taskIds) => {
+                    const taskId = taskIds[0];
+                    if (!taskId) return;
                     this.taskExecutionRepo.addExtraTask(makeDayKey(this.selectedDate), taskId);
                     void this.saveAll();
                     this.options.onTasksChanged?.();

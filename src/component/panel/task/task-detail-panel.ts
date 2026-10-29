@@ -421,10 +421,11 @@ export class TaskDetailPanel extends FloatingPanel {
         body.createDiv({ cls: 'task-detail-setting-placeholder', text: t('panel.formCheckPending') });
     }
 
-    /** 「目标」选项卡：目标清单（输入 / 截止时间 / 列表） */
+    /** 「目标」选项卡：目标清单（输入 / 绑定子任务 / 截止时间 / 列表） */
     private renderGoalSection(container: HTMLElement): void {
         new GoalListView(container, {
             task: this.task,
+            getTasks: () => this.tasks,
             save: this.panelOptions.save,
             onChanged: () => this.renderTree(),
         });

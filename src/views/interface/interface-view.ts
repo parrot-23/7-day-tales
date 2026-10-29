@@ -164,8 +164,6 @@ export class InterfaceView {
             this.datePanel = new WeekCalendarPanel({
                 startWeekKey: weekKey,
                 highlightDayKey,
-                getTasks: () => this.prototypeTaskRepo.tasks,
-                onOpenTask: (task) => this.openTaskDetail(task),
             });
         } else {
             this.datePanel.showWeek(weekKey, highlightDayKey);
@@ -240,7 +238,6 @@ export class InterfaceView {
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
                     this.clockCard?.refresh();
-                    this.datePanel?.refresh();
                 },
                 onOpenTaskDetail: (taskId) => {
                     const task = this.prototypeTaskRepo.tasks.find((item) => item.id === taskId);
@@ -323,7 +320,6 @@ export class InterfaceView {
                     this.todayCard?.refreshTasks();
                     this.todayTasksCard?.refresh();
                     this.clockCard?.refresh();
-                    this.datePanel?.refresh();
                 },
             });
             this.detailPanels.set(task.id, panel);
@@ -377,7 +373,6 @@ export class InterfaceView {
         this.todayCard?.refreshTasks();
         this.todayTasksCard?.refresh();
         this.clockCard?.refresh();
-        this.datePanel?.refresh();
     }
 
     /** 新增原型任务：写仓库 + 持久化 + 刷新面板列表与详情树 */

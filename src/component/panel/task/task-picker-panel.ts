@@ -1,4 +1,5 @@
-// 任务选择面板：基于 FloatingPanel，顶部搜索框 + 根任务下拉 + 后代任务树，单击选中后点「确定」回传任务 id。
+// 任务选择面板：基于 FloatingPanel，顶部搜索框 + 根任务下拉 + 后代任务树，选中后点「确定」回传任务 id。
+// 支持多选（multiple）与限定候选范围（scopeTaskId，用于「绑定子任务」等只在本任务后代里选的场景）。
 import { setIcon } from 'obsidian';
 
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
@@ -11,8 +12,14 @@ export interface TaskPickerPanelOptions extends Omit<FloatingPanelOptions, 'titl
     title?: string;
     /** 任务数据源（每次打开时重新读取） */
     getTasks: () => PrototypeTask[];
-    /** 点「确定」后的回调 */
-    onSelect: (taskId: string) => void;
+    /** 限定候选范围为该任务的全部后代（此时隐藏根任务下拉，列表与搜索都只在该范围内） */
+    scopeTaskId?: string;
+    /** 是否多选，默认单选 */
+    multiple?: boolean;
+    /** 打开时预选的任务 id（多选时传入已绑定项） */
+    initialSelectedIds?: string[];
+    /** 点「确定」后的回调（单选时数组长度为 1，多选且全部取消时为空数组） */
+    onSelect: (taskIds: string[]) => void;
 }
 
 /** 任务选择面板 */
@@ -24,8 +31,8 @@ export class TaskPickerPanel extends FloatingPanel {
 
     /** 下拉选中的根任务 id */
     private rootTaskId: string | undefined;
-    /** 当前选中的任务 id */
-    private selectedTaskId: string | undefined;
+    /** 当前选中的任务 id 集合 */
+    private selectedIds = new Set<string>();
 
     constructor(private readonly pickerOptions: TaskPickerPanelOptions) {
         super({
@@ -38,10 +45,10 @@ export class TaskPickerPanel extends FloatingPanel {
         this.renderLayout();
     }
 
-    /** 每次打开时重置搜索与选中，并刷新任务数据 */
+    /** 每次打开时重置搜索、恢复预选，并刷新任务数据 */
     override open(): void {
         this.searchEl.value = '';
-        this.selectedTaskId = undefined;
+        this.selectedIds = new Set(this.pickerOptions.initialSelectedIds ?? []);
         this.refreshRootSelect();
         super.open();
     }
@@ -56,10 +63,12 @@ export class TaskPickerPanel extends FloatingPanel {
         this.rootSelectEl = this.body.createEl('select', { cls: 'dropdown task-picker-root' });
         this.rootSelectEl.addEventListener('change', () => {
             this.rootTaskId = this.rootSelectEl.value || undefined;
-            this.selectedTaskId = undefined;
+            this.selectedIds.clear();
             this.updateSelectionStyles();
             this.renderTree();
         });
+        // 限定范围时不需要根任务下拉
+        if (this.pickerOptions.scopeTaskId) this.rootSelectEl.style.display = 'none';
 
         this.treeEl = this.body.createDiv({ cls: 'task-picker-tree' });
         this.treeEl.addEventListener('click', (evt) => {
@@ -78,17 +87,24 @@ export class TaskPickerPanel extends FloatingPanel {
             cls: 'task-picker-button mod-cta',
             text: t('panel.taskPickerConfirm'),
         });
-        this.confirmButton.disabled = true;
         this.confirmButton.addEventListener('click', () => {
-            const taskId = this.selectedTaskId;
-            if (!taskId) return;
+            const taskIds = Array.from(this.selectedIds);
+            if (!this.pickerOptions.multiple && taskIds.length === 0) return;
             this.close();
-            this.pickerOptions.onSelect(taskId);
+            this.pickerOptions.onSelect(taskIds);
         });
+        this.updateConfirmState();
     }
 
     /** 重建根任务下拉（顶层任务 = 无父任务的主线 / 支线） */
     private refreshRootSelect(): void {
+        const scopeTaskId = this.pickerOptions.scopeTaskId;
+        if (scopeTaskId) {
+            this.rootTaskId = scopeTaskId;
+            this.updateConfirmState();
+            this.renderTree();
+            return;
+        }
         const roots = this.pickerOptions.getTasks().filter((task) => !task.parentId);
         if (!roots.some((task) => task.id === this.rootTaskId)) {
             this.rootTaskId = roots[0]?.id;
@@ -114,10 +130,12 @@ export class TaskPickerPanel extends FloatingPanel {
         this.treeEl.empty();
         const tasks = this.pickerOptions.getTasks();
         const keyword = this.searchEl.value.trim().toLowerCase();
+        const scope = this.scopeIds();
 
         if (keyword) {
             const byId = new Map(tasks.map((task) => [task.id, task]));
-            const matches = tasks.filter((task) => task.name.toLowerCase().includes(keyword));
+            const matches = tasks.filter((task) => (!scope || scope.has(task.id))
+                && task.name.toLowerCase().includes(keyword));
             if (matches.length === 0) {
                 this.treeEl.createDiv({ cls: 'interface-today-empty', text: t('panel.taskPickerEmpty') });
                 return;
@@ -133,6 +151,31 @@ export class TaskPickerPanel extends FloatingPanel {
             return;
         }
         this.renderTreeNodes(this.treeEl, this.rootTaskId, 0);
+        if (!this.treeEl.firstChild) {
+            this.treeEl.createDiv({ cls: 'interface-today-empty', text: t('panel.taskPickerEmpty') });
+        }
+    }
+
+    /** 限定范围内的任务 id 集合（未限定范围时返回 null） */
+    private scopeIds(): Set<string> | null {
+        const scopeTaskId = this.pickerOptions.scopeTaskId;
+        if (!scopeTaskId) return null;
+        const byParent = new Map<string, PrototypeTask[]>();
+        for (const task of this.pickerOptions.getTasks()) {
+            if (!task.parentId) continue;
+            const siblings = byParent.get(task.parentId) ?? [];
+            siblings.push(task);
+            byParent.set(task.parentId, siblings);
+        }
+        const ids = new Set<string>();
+        const walk = (parentId: string): void => {
+            for (const child of byParent.get(parentId) ?? []) {
+                ids.add(child.id);
+                walk(child.id);
+            }
+        };
+        walk(scopeTaskId);
+        return ids;
     }
 
     private renderTreeNodes(parentEl: HTMLElement, parentId: string, depth: number): void {
@@ -148,7 +191,7 @@ export class TaskPickerPanel extends FloatingPanel {
     private createTaskRow(parentEl: HTMLElement, task: PrototypeTask, label?: string): HTMLElement {
         const row = parentEl.createDiv({ cls: 'task-detail-tree-row' });
         row.dataset.taskId = task.id;
-        row.toggleClass('is-selected', task.id === this.selectedTaskId);
+        row.toggleClass('is-selected', this.selectedIds.has(task.id));
         const iconEl = row.createSpan({ cls: 'task-detail-tree-icon' });
         setIcon(iconEl, 'git-branch');
         row.createSpan({ cls: 'task-detail-tree-label', text: label ?? task.name });
@@ -170,21 +213,27 @@ export class TaskPickerPanel extends FloatingPanel {
         return names.join(' / ');
     }
 
-    /** 选中任务：高亮并启用「确定」 */
+    /** 选中任务：单选时替换选中项，多选时切换 */
     private selectTask(taskId: string): void {
-        this.selectedTaskId = taskId;
+        if (this.pickerOptions.multiple) {
+            if (this.selectedIds.has(taskId)) this.selectedIds.delete(taskId);
+            else this.selectedIds.add(taskId);
+        } else {
+            this.selectedIds = new Set([taskId]);
+        }
         this.updateSelectionStyles();
     }
 
     private updateSelectionStyles(): void {
         this.treeEl.querySelectorAll('.task-detail-tree-row').forEach((el) => {
             const row = el as HTMLElement;
-            row.toggleClass('is-selected', row.dataset.taskId === this.selectedTaskId);
+            row.toggleClass('is-selected', this.selectedIds.has(row.dataset.taskId ?? ''));
         });
         this.updateConfirmState();
     }
 
     private updateConfirmState(): void {
-        this.confirmButton.disabled = !this.selectedTaskId;
+        // 多选允许一个都不选（表示清空绑定），单选必须选中才能确定
+        this.confirmButton.disabled = this.pickerOptions.multiple ? false : this.selectedIds.size === 0;
     }
 }

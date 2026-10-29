@@ -16,22 +16,6 @@ export interface TaskHabit {
     weekdays: number[];
 }
 
-/** 周目标引用：某个任务下的某个目标条目（所属任务可能是当前任务或其祖先） */
-export interface WeekGoalRef {
-    /** 目标所属任务 id */
-    taskId: string;
-    /** 目标条目 id */
-    goalId: string;
-}
-
-/** 周目标：某一周绑定到某个任务上的目标条目 */
-export interface TaskWeekGoal {
-    /** 周键，如 2026-W43 */
-    weekKey: string;
-    /** 绑定的目标引用 */
-    goalRefs: WeekGoalRef[];
-}
-
 /** 任务目标条目（任务详情「目标」清单） */
 export interface TaskGoalEntry {
     id: string;
@@ -41,6 +25,8 @@ export interface TaskGoalEntry {
     createdAt: number;
     /** 截止日期（YYYY-MM-DD，可选） */
     dueDate?: string;
+    /** 绑定的子任务 id 列表（可选，目标达成即推进对应子任务） */
+    subtaskIds?: string[];
 }
 
 /** 原型任务 */
@@ -66,8 +52,6 @@ export interface PrototypeTask {
     fileTimestamp?: boolean;
     /** 习惯设置（可选，未设置时视为未启用） */
     habit?: TaskHabit;
-    /** 周目标（按周键记录选中的待办条目 id，可选） */
-    weekGoals?: TaskWeekGoal[];
     /** 目标清单条目（任务详情「目标」面板，可选） */
     goals?: TaskGoalEntry[];
     /** 是否已归档（归档任务在界面中隐藏，数据仍保留） */
