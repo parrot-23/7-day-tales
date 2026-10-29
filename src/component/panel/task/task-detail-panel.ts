@@ -7,7 +7,7 @@ import type { ChecklistItem } from '../../../datatypes/domain';
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
 import { getLang, t } from '../../../i18n';
 import type { PlanCategoryData } from '../../../shared/plan-category-manager';
-import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { buildTaskFileName, listTaskFiles, relativeToDir } from '../../../shared/task-file';
 import { ensureTaskFileDir, revealFolderInExplorer } from '../../../shared/task-library';
 import { ConfirmModal } from '../../ob/confirm-modal';
 import { FileEditorPanel } from '../basic/file-editor-panel';
@@ -847,7 +847,9 @@ export class TaskDetailPanel extends FloatingPanel {
         for (const file of files) {
             const row = listCard.createDiv({ cls: 'task-detail-file-row' });
             setIcon(row.createSpan({ cls: 'task-detail-file-icon' }), 'file-text');
-            row.createSpan({ cls: 'task-detail-file-name', text: file.basename });
+            // 显示相对绑定目录的路径（含子目录），仅文件名不足以区分同名文件
+            const nameEl = row.createSpan({ cls: 'task-detail-file-name', text: relativeToDir(file.path, this.task.fileDir) });
+            nameEl.title = file.path;
             row.createSpan({ cls: 'task-detail-file-time', text: formatDateTime(file.stat.mtime) });
             row.addEventListener('click', () => this.openTaskFile(file));
         }

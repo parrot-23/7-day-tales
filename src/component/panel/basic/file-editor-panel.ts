@@ -400,6 +400,10 @@ export class FileEditorPanel extends FloatingPanel {
         if (!target) return;
         const handler = (): void => this.scheduleSave(editor);
         target.addEventListener('input', handler);
+        // 剪切 / 粘贴 / 拖拽移动文本不一定派发 input 事件，单独监听
+        target.addEventListener('cut', handler);
+        target.addEventListener('paste', handler);
+        target.addEventListener('drop', handler);
 
         // 光标跟随：输入 / 键盘移动 / 滚动时重绘手动光标
         // 统一延后一帧，等 CM6 把选区写进 state 后再读，避免读到旧状态
@@ -424,6 +428,9 @@ export class FileEditorPanel extends FloatingPanel {
 
         this.inputCleanup = () => {
             target.removeEventListener('input', handler);
+            target.removeEventListener('cut', handler);
+            target.removeEventListener('paste', handler);
+            target.removeEventListener('drop', handler);
             target.removeEventListener('input', repaint);
             target.removeEventListener('keyup', repaint);
             target.removeEventListener('mouseup', onClickRepaint);
@@ -439,12 +446,17 @@ export class FileEditorPanel extends FloatingPanel {
         if (this.saveTimer !== undefined) window.clearTimeout(this.saveTimer);
         this.saveTimer = window.setTimeout(() => {
             this.saveTimer = undefined;
-            const value = this.readEditorValue(editor);
-            if (value === null) return;
-            void this.editorApp.vault.process(this.file, () => value)
-                .then(() => this.setStatus(t('panel.fileSaved')))
-                .catch((error) => log('写回任务文件失败', error));
+            this.flushSave(editor);
         }, SAVE_DEBOUNCE_MS);
+    }
+
+    /** 立即写回文件（关闭面板 / 防抖到期时调用） */
+    private flushSave(editor: MarkdownEditorLike): void {
+        const value = this.readEditorValue(editor);
+        if (value === null) return;
+        void this.editorApp.vault.process(this.file, () => value)
+            .then(() => this.setStatus(t('panel.fileSaved')))
+            .catch((error) => log('写回任务文件失败', error));
     }
 
     /** 读取编辑器当前内容 */
@@ -468,6 +480,8 @@ export class FileEditorPanel extends FloatingPanel {
         if (this.saveTimer !== undefined) {
             window.clearTimeout(this.saveTimer);
             this.saveTimer = undefined;
+            // 关闭面板时防抖尚未到期：立即写回，避免最后一次编辑丢失
+            if (this.editor) this.flushSave(this.editor);
         }
         this.inputCleanup?.();
         this.inputCleanup = null;

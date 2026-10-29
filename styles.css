@@ -11620,6 +11620,24 @@ button.task-record-dropdown-item.is-selected {
     color: var(--text-normal) !important;
 }
 
+/* 行内代码 / 代码块背景：主题（如时空之旅）只覆盖了 --background-primary 等变量，
+   而 Obsidian 默认主题把代码底色写死为浅色（--code-background / --code-block-background），
+   这里在面板作用域内改用主题控件底色，保证深色主题下代码区域也是深色 */
+.file-editor-panel-host .cm-inline-code,
+.file-editor-panel-host .cm-inline-code *,
+.file-editor-panel-host .HyperMD-codeblock,
+.file-editor-panel-host .HyperMD-codeblock-bg,
+.file-editor-panel-host .HyperMD-codeblock-begin-bg,
+.file-editor-panel-host .HyperMD-codeblock-end-bg {
+    background-color: var(--sdt-interactive-bg, var(--background-secondary)) !important;
+}
+
+/* 代码块首尾行（``` 围栏）单独一层底色，避免与内容行出现色差 */
+.file-editor-panel-host .HyperMD-codeblock-begin,
+.file-editor-panel-host .HyperMD-codeblock-end {
+    /* background-color: transparent !important; */
+}
+
 /* 屏蔽 CM6 原生光标：该面板内由 JS 手动绘制 .sdt-manual-caret，
    原生光标在脱离 MarkdownView 后行为不可控（选中后残留、输入后消失），直接隐藏避免打架 */
 .file-editor-panel-host .cm-editor .cm-cursor,

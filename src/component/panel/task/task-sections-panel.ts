@@ -6,7 +6,7 @@ import type { App, TFile } from 'obsidian';
 import type { ChecklistItem } from '../../../datatypes/domain';
 import type { PrototypeTask } from '../../../datatypes/prototype-task';
 import { t } from '../../../i18n';
-import { buildTaskFileName, listTaskFiles } from '../../../shared/task-file';
+import { buildTaskFileName, listTaskFiles, relativeToDir } from '../../../shared/task-file';
 import { ensureTaskFileDir, revealFolderInExplorer } from '../../../shared/task-library';
 import { FileEditorPanel } from '../basic/file-editor-panel';
 import type { FloatingPanelOptions } from '../basic/floating-panel';
@@ -169,7 +169,8 @@ export class TaskSectionsPanel extends FloatingPanel {
             return;
         }
         for (const file of files) {
-            const row = this.createItemRow(content, 'file-text', file.name);
+            // 显示相对绑定目录的路径（含子目录），仅文件名不足以区分同名文件
+            const row = this.createItemRow(content, 'file-text', relativeToDir(file.path, task.fileDir));
             row.title = file.path;
             row.addClass('is-clickable');
             row.addEventListener('click', () => this.openTaskFile(file));
