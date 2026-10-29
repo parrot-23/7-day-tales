@@ -88,8 +88,9 @@ export interface EnsureTaskDirResult {
 }
 
 /**
- * 按任务树确保任务文件目录存在：
- * 根任务目录位于项目库下，子任务逐级嵌套，任务文件放在末级目录的「任务文件」子目录中。
+ * 确保当前任务的任务文件目录存在：
+ * 目录按任务树推导（<项目库>/<根任务>/<子任务…>/<任务文件>），但只创建当前任务这一层，
+ * 不会遍历上级任务、也不会给上级任务写入 fileDir 或创建其「任务文件」目录。
  * 已记录且位于项目库内的目录保持不变；不在项目库内（旧的手动绑定）会按规则重新绑定。
  */
 export async function ensureTaskFileDir(
@@ -101,7 +102,7 @@ export async function ensureTaskFileDir(
     if (!root) return { dir: null, changed: false };
     const byId = new Map(tasks.map((item) => [item.id, item]));
 
-    // 自根任务到当前任务的链（根任务在前）
+    // 自根任务到当前任务的链（根任务在前），仅用于推导当前任务的目录路径
     const chain: PrototypeTask[] = [];
     const visited = new Set<string>();
     let current: PrototypeTask | undefined = task;
@@ -114,6 +115,12 @@ export async function ensureTaskFileDir(
     let changed = false;
     let parentDir = root;
     for (const node of chain) {
+        // 上级任务只取已记录的目录作为父级，不创建、不写入
+        if (node.id !== task.id) {
+            const recorded = node.fileDir && isUnderRoot(node.fileDir, root) ? dirname(node.fileDir) : '';
+            parentDir = recorded || `${parentDir}/${sanitizeFolderName(node.name)}`;
+            continue;
+        }
         let taskDir = node.fileDir && isUnderRoot(node.fileDir, root) ? dirname(node.fileDir) : '';
         if (!taskDir) {
             taskDir = uniqueTaskDir(parentDir, node, root, tasks);
@@ -122,10 +129,9 @@ export async function ensureTaskFileDir(
         }
         await ensureFolder(app, taskDir);
         await ensureFolder(app, node.fileDir as string);
-        parentDir = taskDir;
     }
 
-    return { dir: chain[chain.length - 1].fileDir ?? null, changed };
+    return { dir: task.fileDir ?? null, changed };
 }
 
 /**
