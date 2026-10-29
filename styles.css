@@ -11329,9 +11329,54 @@ button.task-record-dropdown-item.is-selected {
 }
 
 .floating-panel-title {
+    flex: 1;
+    min-width: 0;
     font-size: 14px;
     font-weight: 600;
     color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 标题栏右侧：自定义操作按钮 + 关闭按钮 */
+.floating-panel-header-right {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.floating-panel-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+}
+
+.floating-panel-action {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+    cursor: pointer;
+}
+
+.floating-panel-action:hover {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 钉住激活态 */
+.floating-panel-action.is-active {
+    color: var(--sdt-text-primary, var(--text-normal));
+    background: var(--sdt-interactive-hover, var(--background-modifier-hover));
+}
+
+.floating-panel-action svg {
+    width: 16px;
+    height: 16px;
 }
 
 .floating-panel-close {
@@ -11399,36 +11444,32 @@ button.task-record-dropdown-item.is-selected {
     color: var(--sdt-text-secondary, var(--text-muted));
 }
 
-.file-editor-panel-status.is-saving {
-    color: var(--sdt-text-primary, var(--text-normal));
-}
-
-/* 编辑区：Obsidian 全局 textarea 规则（形如 .theme-dark textarea:hover）优先级高于普通类选择器，
-   会给悬停 / 聚焦态换成 --background-modifier-form-field-hover 底色。
-   这里提升选择器层级并加 !important，让所有状态保持同一底色，只保留文字与光标。 */
-.floating-panel .file-editor-panel-input,
-.floating-panel .file-editor-panel-input:hover,
-.floating-panel .file-editor-panel-input:focus,
-.floating-panel .file-editor-panel-input:focus-visible,
-.floating-panel .file-editor-panel-input:active {
+/* 原生编辑器宿主：leaf 的 view 容器被重新挂载到这里，需要补齐工作区里的布局尺寸 */
+.file-editor-panel-host {
     flex: 1;
     min-height: 0;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 12px;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    resize: none;
-    font-family: var(--font-monospace);
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--sdt-text-primary, var(--text-normal)) !important;
-    /* 悬停 / 聚焦保持同一底色，避免出现背景色变化 */
-    background: var(--sdt-control-bg, var(--background-primary)) !important;
-    background-color: var(--sdt-control-bg, var(--background-primary)) !important;
-    /* 光标颜色跟随文字色，确保编辑位置可见 */
-    caret-color: var(--sdt-text-primary, var(--text-normal));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.file-editor-panel-host .workspace-leaf-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 面板标题栏已显示文件名，隐藏原生视图头部，避免重复 */
+.file-editor-panel-host .view-header {
+    display: none;
+}
+
+.file-editor-panel-host .view-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* ======================== 主题管理面板（panel/theme-panel：左右结构） ======================== */

@@ -1,10 +1,12 @@
-// 文件编辑面板：在悬浮面板内展示并编辑任务文件内容。
-// 保存策略与 Obsidian 原生 TextFileView 一致：每次输入只调用 requestSave()（2s 防抖），
-// 停止输入 2s 后写盘；关闭 / 销毁时再强制保存一次。
-import { Notice } from 'obsidian';
-import type { App, TFile } from 'obsidian';
+// 文件编辑面板：把 Obsidian 原生 Markdown 编辑器「搬」进悬浮面板。
+// 做法与社区 Sync Embeds / Hover Editor 一致：先在 workspace 里开一个真实 leaf 并打开文件，
+// 再把该 leaf 的 view 容器 DOM 重新挂到面板内；撤销、光标、保存、多视图同步全部由原生负责。
+// 面板关闭时保存并 detach 该 leaf（同时恢复被隐藏的标签页）。
+import { MarkdownView, Notice } from 'obsidian';
+import type { App, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../../i18n';
+import { log } from '../../shared/logger';
 import { FloatingPanel } from './floating-panel';
 
 export interface FileEditorPanelOptions {
@@ -14,102 +16,153 @@ export interface FileEditorPanelOptions {
     onClose?: () => void;
 }
 
-/** 防抖保存延迟（毫秒，与原生 requestSave 一致） */
-const SAVE_DEBOUNCE_MS = 2000;
-
 export class FileEditorPanel extends FloatingPanel {
     private readonly editorApp: App;
     private readonly file: TFile;
-    /** 编辑区 */
-    private textarea: HTMLTextAreaElement | null = null;
-    /** 防抖保存定时器 */
-    private saveTimer: number | null = null;
+    /** 承载原生编辑器 DOM 的容器 */
+    private hostEl: HTMLElement | null = null;
     /** 保存状态文案 */
     private statusEl: HTMLElement | null = null;
-    /** 是否有未保存的修改 */
-    private dirty = false;
+    /** 承载原生编辑器的真实 leaf */
+    private leaf: WorkspaceLeaf | null = null;
+    /** leaf 对应的原生 Markdown 视图 */
+    private view: MarkdownView | null = null;
+    /** 为承载编辑器而隐藏的标签页元素（关闭时恢复） */
+    private tabHeaderEl: HTMLElement | null = null;
+    /** 原生事件监听（关闭时注销） */
+    private eventOffs: (() => void)[] = [];
+    /** 是否已完成清理，避免 close / destroy 重复执行 */
+    private disposed = false;
 
     constructor(options: FileEditorPanelOptions) {
         super({
             width: 760,
             title: options.file.basename,
             onClose: () => {
-                void this.save();
+                this.teardown();
                 options.onClose?.();
             },
         });
         this.editorApp = options.app;
         this.file = options.file;
         this.body.addClass('file-editor-panel');
-        void this.loadContent();
+        this.renderChrome();
+        void this.mountEditor();
     }
 
-    /** 读取文件内容并渲染编辑器 */
-    private async loadContent(): Promise<void> {
-        try {
-            const content = await this.editorApp.vault.read(this.file);
-            this.renderEditor(content);
-        } catch {
-            new Notice(t('panel.fileReadFailed'));
-            this.close();
-        }
-    }
-
-    private renderEditor(content: string): void {
-        this.body.empty();
-
+    /** 顶部路径栏 + 编辑器容器（先建好骨架，避免加载期间面板空白） */
+    private renderChrome(): void {
         const toolbar = this.body.createDiv({ cls: 'file-editor-panel-toolbar' });
         const pathEl = toolbar.createDiv({ cls: 'file-editor-panel-path' });
         pathEl.setText(this.file.path);
         pathEl.title = this.file.path;
         this.statusEl = toolbar.createDiv({ cls: 'file-editor-panel-status' });
-        this.setStatus(t('panel.fileSaved'), false);
+        this.setStatus(t('panel.fileSaved'));
 
-        this.textarea = this.body.createEl('textarea', { cls: 'file-editor-panel-input' });
-        this.textarea.value = content;
-        this.textarea.spellcheck = false;
-        this.textarea.addEventListener('input', () => {
-            this.dirty = true;
-            this.setStatus(t('panel.fileUnsaved'), false);
-            this.requestSave();
-        });
+        this.hostEl = this.body.createDiv({ cls: 'file-editor-panel-host' });
     }
 
-    private setStatus(text: string, saving: boolean): void {
-        if (!this.statusEl) return;
-        this.statusEl.setText(text);
-        this.statusEl.toggleClass('is-saving', saving);
-    }
-
-    /** 请求保存：每次输入都会重置计时，停止输入 2s 后才真正写盘 */
-    private requestSave(): void {
-        if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
-        this.saveTimer = window.setTimeout(() => {
-            this.saveTimer = null;
-            void this.save();
-        }, SAVE_DEBOUNCE_MS);
-    }
-
-    /** 立即保存：无未保存修改时直接返回，避免无谓更新修改时间 */
-    private async save(): Promise<void> {
-        if (this.saveTimer !== null) {
-            window.clearTimeout(this.saveTimer);
-            this.saveTimer = null;
-        }
-        if (!this.textarea || !this.dirty) return;
-        this.setStatus(t('panel.fileSaving'), true);
+    /** 打开真实 leaf 并把原生编辑器 DOM 挂到面板内 */
+    private async mountEditor(): Promise<void> {
+        const workspace = this.editorApp.workspace;
+        const previousLeaf = workspace.activeLeaf;
         try {
-            await this.editorApp.vault.modify(this.file, this.textarea.value);
-            this.dirty = false;
-            this.setStatus(t('panel.fileSaved'), false);
-        } catch {
-            this.setStatus(t('panel.fileUnsaved'), false);
-            new Notice(t('panel.fileSaveFailed'));
+            // 必须使用 workspace 创建的真实 leaf：游离 WorkspaceLeaf 不会走视图初始化流程
+            const leaf = workspace.getLeaf('tab');
+            this.leaf = leaf;
+            // active: false —— 不抢走当前标签页焦点，主视图保持可见
+            await leaf.openFile(this.file, { active: false });
+            if (this.disposed) {
+                // 加载期间面板已被关闭，直接释放 leaf
+                try {
+                    leaf.detach();
+                } catch {
+                    // 忽略
+                }
+                return;
+            }
+            if (!(leaf.view instanceof MarkdownView)) throw new Error('markdown view not created');
+            const view = leaf.view;
+            this.view = view;
+
+            // 该 leaf 只是为了承载编辑器，隐藏它在标签栏里的标签，避免留下空白页签
+            const tabHeader = (leaf as unknown as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
+            if (tabHeader) {
+                this.tabHeaderEl = tabHeader;
+                tabHeader.style.display = 'none';
+            }
+
+            this.hostEl?.appendChild(view.containerEl);
+            this.registerEvents();
+
+            // getLeaf('tab') 可能已把新标签页设为激活，切回原标签页避免主视图被顶掉
+            if (previousLeaf && previousLeaf !== leaf) {
+                workspace.setActiveLeaf(previousLeaf, { focus: false });
+            }
+        } catch (error) {
+            // 嵌入失败时保持可用：清理 leaf，直接在 Obsidian 中打开该文件
+            log('文件编辑面板嵌入失败', error);
+            this.teardown();
+            new Notice(t('panel.fileEmbedFailed'));
+            void workspace.getLeaf(false).openFile(this.file);
+            this.close();
         }
+    }
+
+    /** 监听原生编辑器的输入与落盘，刷新状态文案 */
+    private registerEvents(): void {
+        const workspace = this.editorApp.workspace;
+        const vault = this.editorApp.vault;
+        const changeRef = workspace.on('editor-change', (_editor, info) => {
+            if (info?.file?.path === this.file.path) this.setStatus(t('panel.fileUnsaved'));
+        });
+        this.eventOffs.push(() => workspace.offref(changeRef));
+        const modifyRef = vault.on('modify', (file) => {
+            if (file.path === this.file.path) this.setStatus(t('panel.fileSaved'));
+        });
+        this.eventOffs.push(() => vault.offref(modifyRef));
+    }
+
+    private setStatus(text: string): void {
+        this.statusEl?.setText(text);
+    }
+
+    /** 保存并释放原生视图与 leaf（close / destroy 都会调用，内部只执行一次） */
+    private teardown(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+
+        const view = this.view;
+        const leaf = this.leaf;
+        this.view = null;
+        this.leaf = null;
+
+        for (const off of this.eventOffs) off();
+        this.eventOffs = [];
+
+        if (this.tabHeaderEl) {
+            this.tabHeaderEl.style.display = '';
+            this.tabHeaderEl = null;
+        }
+
+        if (!view || !leaf) return;
+        void (async () => {
+            try {
+                await view.save();
+            } catch {
+                // 视图未完成初始化时保存可能失败，忽略即可
+            }
+            view.containerEl.remove();
+            try {
+                leaf.detach();
+            } catch {
+                // leaf 已被工作区移除时 detach 会报错，忽略即可
+            }
+        })();
     }
 
     override destroy(): void {
-        void this.save();
+        this.teardown();
         super.destroy();
     }
 }

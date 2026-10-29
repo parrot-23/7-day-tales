@@ -42,6 +42,10 @@ export class TaskSectionsPanel extends FloatingPanel {
     private fileCreateMode = false;
     /** 文件编辑面板（切换文件时销毁重建） */
     private fileEditorPanel: FileEditorPanel | null = null;
+    /** 是否已钉住（钉住后点击面板外不再自动关闭） */
+    private pinned = false;
+    /** 标题栏钉住按钮 */
+    private pinButtonEl: HTMLElement | null = null;
 
     constructor(options: TaskSectionsPanelOptions) {
         super({
@@ -52,6 +56,19 @@ export class TaskSectionsPanel extends FloatingPanel {
             onClose: options.onClose,
         });
         this.sectionsOptions = options;
+        this.pinButtonEl = this.addHeaderAction('pin', t('panel.pin'), () => this.togglePin());
+    }
+
+    /** 切换钉住状态：钉住后点击面板外不再关闭 */
+    private togglePin(): void {
+        this.pinned = !this.pinned;
+        this.setCloseOnBlur(!this.pinned);
+        this.pinButtonEl?.toggleClass('is-active', this.pinned);
+        if (this.pinButtonEl) {
+            const label = t(this.pinned ? 'panel.unpin' : 'panel.pin');
+            this.pinButtonEl.title = label;
+            this.pinButtonEl.setAttribute('aria-label', label);
+        }
     }
 
     /** 打开并展示指定任务 */

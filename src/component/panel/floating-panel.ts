@@ -1,5 +1,7 @@
 // 公共悬浮面板：页面中一张可拖动的大卡片（非弹窗），右上角 X 按钮关闭。
 // 与视图解耦，可挂在任意容器（默认 document.body）上复用。
+import { setIcon } from 'obsidian';
+
 import { applyThemeColors, getCurrentThemeColors, registerThemeColorsConsumer, unregisterThemeColorsConsumer } from '../../themestory/theme-colors';
 import type { ThemeColors } from '../../themestory/theme-definition';
 
@@ -19,6 +21,14 @@ export interface FloatingPanelOptions {
     onClose?: () => void;
 }
 
+/** 面板层级基数（与 styles.css 中 .floating-panel 的 z-index 保持一致） */
+const BASE_PANEL_Z_INDEX = 900;
+/** 面板层级上限：超过后重排，保证仍低于下拉浮层（1000+）等更高层元素 */
+const MAX_PANEL_Z_INDEX = 1090;
+
+/** 当前最高层级：每次激活面板时递增，保证最后操作的面板在最上面 */
+let topPanelZIndex = BASE_PANEL_Z_INDEX;
+
 /**
  * 悬浮面板组件：本质是一张可拖动的卡片，首次打开居中，之后保留拖动位置。
  * 用法：
@@ -34,6 +44,8 @@ export class FloatingPanel {
     private root: HTMLElement;
     private headerEl: HTMLElement;
     private titleEl: HTMLElement;
+    /** 标题栏右侧自定义操作按钮区（位于关闭按钮左侧） */
+    private actionsEl: HTMLElement;
     private bodyEl: HTMLElement;
     private options: FloatingPanelOptions;
     private opened = false;
@@ -80,11 +92,18 @@ export class FloatingPanel {
         this.titleEl = this.headerEl.createDiv({ cls: 'floating-panel-title' });
         if (options.title) this.titleEl.setText(options.title);
 
-        const closeBtn = this.headerEl.createDiv({ cls: 'floating-panel-close', text: '×' });
+        // 标题栏右侧：自定义操作按钮区 + 关闭按钮
+        const rightEl = this.headerEl.createDiv({ cls: 'floating-panel-header-right' });
+        this.actionsEl = rightEl.createDiv({ cls: 'floating-panel-actions' });
+
+        const closeBtn = rightEl.createDiv({ cls: 'floating-panel-close', text: '×' });
         closeBtn.setAttribute('aria-label', 'Close');
         closeBtn.addEventListener('click', () => this.close());
 
         this.bodyEl = this.root.createDiv({ cls: 'floating-panel-body' });
+
+        // 点击 / 拖动面板任意位置时置顶，避免多面板互相遮挡时操作到下层
+        this.root.addEventListener('pointerdown', () => this.bringToFront(), true);
 
         // 拖动：按住标题栏移动
         this.headerEl.addEventListener('pointerdown', this.handlePointerDown);
@@ -112,6 +131,29 @@ export class FloatingPanel {
         this.titleEl.setText(title);
     }
 
+    /** 在标题栏右侧添加一个图标按钮（关闭按钮左侧），返回按钮元素 */
+    addHeaderAction(icon: string, label: string, onClick: () => void): HTMLElement {
+        const button = this.actionsEl.createDiv({
+            cls: 'floating-panel-action',
+            attr: { 'aria-label': label, role: 'button' },
+        });
+        button.title = label;
+        setIcon(button, icon);
+        button.addEventListener('click', onClick);
+        return button;
+    }
+
+    /** 切换「点击面板外自动关闭」：面板内按钮用于钉住 / 取消钉住 */
+    setCloseOnBlur(enabled: boolean): void {
+        this.options.closeOnBlur = enabled;
+        if (!this.opened) return;
+        if (enabled) {
+            document.addEventListener('mousedown', this.onOutsidePointerDown, true);
+        } else {
+            document.removeEventListener('mousedown', this.onOutsidePointerDown, true);
+        }
+    }
+
     /** 设置内容：清空后由回调渲染，或直接传入元素 */
     setContent(content: HTMLElement | ((body: HTMLElement) => void)): void {
         this.bodyEl.empty();
@@ -130,6 +172,8 @@ export class FloatingPanel {
         if (this.left === null || this.top === null) {
             this.center();
         }
+        // 新打开的面板默认在最上层
+        this.bringToFront();
         document.addEventListener('keydown', this.onKeyDown);
         if (this.options.closeOnBlur) {
             // 用捕获阶段监听，避免被面板内元素的 stopPropagation 影响
@@ -163,6 +207,24 @@ export class FloatingPanel {
         applyThemeColors(this.root, colors);
     }
 
+    /** 置顶：把面板层级提到当前所有面板之上（点击 / 打开时调用） */
+    private bringToFront(): void {
+        // 层级只在小范围内递增，超过上限时重排一次，避免盖住下拉浮层等更高层元素
+        if (topPanelZIndex >= MAX_PANEL_Z_INDEX) this.renormalizeZIndex();
+        topPanelZIndex += 1;
+        this.root.style.zIndex = String(topPanelZIndex);
+    }
+
+    /** 重排所有已打开面板的层级，恢复连续递增的初始区间 */
+    private renormalizeZIndex(): void {
+        const panels = Array.from(document.querySelectorAll<HTMLElement>('.floating-panel'))
+            .filter((el) => el.style.display !== 'none')
+            .sort((a, b) => Number(a.style.zIndex || BASE_PANEL_Z_INDEX) - Number(b.style.zIndex || BASE_PANEL_Z_INDEX));
+        let zIndex = BASE_PANEL_Z_INDEX;
+        for (const el of panels) el.style.zIndex = String(++zIndex);
+        topPanelZIndex = zIndex;
+    }
+
     /** 初始居中 */
     private center(): void {
         const hostSize = this.hostSize();
@@ -192,8 +254,8 @@ export class FloatingPanel {
 
     private handlePointerDown = (evt: PointerEvent): void => {
         if (this.options.draggable === false || evt.button !== 0) return;
-        // 关闭按钮不触发拖动
-        if ((evt.target as HTMLElement).closest('.floating-panel-close')) return;
+        // 标题栏按钮（关闭 / 自定义操作）不触发拖动
+        if ((evt.target as HTMLElement).closest('.floating-panel-close, .floating-panel-action')) return;
         this.dragging = true;
         this.dragStartX = evt.clientX;
         this.dragStartY = evt.clientY;
