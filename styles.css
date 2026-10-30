@@ -1029,18 +1029,19 @@ button.parrot-plan-topbar-settings-btn {
     height: 15px;
 }
 
-/* 帮助按钮 */
+/* 帮助按钮：与配置按钮（.parrot-plan-topbar-settings-btn）保持一致的尺寸、圆角与边框 */
 button.parrot-plan-nav-help-btn {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
+    margin-left: 4px;
     padding: 0;
-    border-radius: 50%;
+    border-radius: 6px;
     border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
     background: var(--sdt-interactive-bg, var(--interactive-normal));
     color: var(--sdt-text-primary, var(--text-normal));
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1;
     display: flex;
@@ -6856,6 +6857,7 @@ button.swimlane-section-card-settings {
 }
 
 .interface-tool-group {
+    position: relative;
     display: inline-flex;
     align-items: center;
     padding: 0;
@@ -6869,13 +6871,28 @@ button.swimlane-section-card-settings {
     border-color: var(--sdt-card-border, var(--background-modifier-border));
 }
 
+/* 「添加 / 主题」容器：绝对定位在布局按钮右侧，展开时向右生长，不占布局空间 */
+.interface-tool-extra {
+    position: absolute;
+    left: calc(100% + 2px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    align-items: center;
+}
+
+.interface-tool-group.is-editing .interface-tool-extra {
+    display: flex;
+}
+
+/* 与顶部工具栏配置按钮（.parrot-plan-topbar-settings-btn）保持一致的边框与背景 */
 .interface-tool-btn {
     width: 24px;
     height: 24px;
     padding: 0;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
     box-shadow: none;
     color: var(--sdt-text-primary, var(--text-normal));
     cursor: pointer;
@@ -6885,7 +6902,7 @@ button.swimlane-section-card-settings {
 }
 
 .interface-tool-btn:hover {
-    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    background: var(--sdt-interactive-hover, var(--interactive-hover));
     color: var(--sdt-text-primary, var(--text-normal));
 }
 
@@ -8296,10 +8313,12 @@ button.swimlane-section-card-settings {
     padding: 10px;
 }
 
-/* 七列网格：第一行为顶部窄条，第二行为日期格子 */
+/* 七列网格：第一行为顶部窄条，第二行为日期格子；任务卡片层绝对定位覆盖在格子上 */
 .week-calendar-grid {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: 16px auto;
     gap: 4px;
 }
 
@@ -8322,18 +8341,50 @@ button.swimlane-section-card-settings {
     color: var(--text-on-accent);
 }
 
-/* 日期格子 */
+/* 日期格子：右上角显示日期，作为任务卡片的背景层。
+   高度由 JS 按卡片泳道数设置 min-height，保证能容纳所有卡片 */
 .week-calendar-cell {
-    aspect-ratio: 1;
     display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
     padding: 4px 6px;
     border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
     border-radius: 4px;
     background: var(--sdt-card-bg, var(--background-secondary));
     font-size: 12px;
     color: var(--sdt-text-secondary, var(--text-muted));
+    overflow: hidden;
+}
+
+.week-calendar-cell-date {
+    line-height: 1.2;
+}
+
+/* 任务卡片层：绝对定位覆盖在日期格子区域上（从第二行开始，避开顶部窄条） */
+.week-calendar-task-layer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 20px;
+    pointer-events: none;
+}
+
+/* 单条任务卡片：绝对定位，left / width / top 由 JS 按列宽与泳道计算 */
+.week-calendar-cell-task {
+    position: absolute;
+    box-sizing: border-box;
+    height: 16px;
+    padding: 0 4px;
+    border-left: 2px solid var(--week-calendar-task-color, var(--interactive-accent));
+    border-radius: 2px;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    font-size: 10px;
+    line-height: 16px;
+    color: var(--sdt-text-primary, var(--text-normal));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* 今天：边框高亮 */
@@ -8341,6 +8392,316 @@ button.swimlane-section-card-settings {
     border: 2px solid var(--interactive-accent);
     color: var(--sdt-text-primary, var(--text-normal));
     font-weight: 600;
+}
+
+/* 内容方框：本周任务 + 任务绑定的目标（纯展示） */
+.week-calendar-task-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-card-bg, var(--background-secondary));
+}
+
+.week-calendar-task-box-title {
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.week-calendar-task-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.week-calendar-task-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.week-calendar-task-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.week-calendar-task-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.week-calendar-task-goal {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 14px;
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.week-calendar-task-goal-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.week-calendar-task-goal-icon .svg-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.week-calendar-task-goal-owner {
+    flex: 0 0 auto;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.week-calendar-task-goal-owner::after {
+    content: ' · ';
+}
+
+.week-calendar-task-goal-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.week-calendar-task-empty {
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+/* ======================== 任务目标面板（panel/goal-panel） ======================== */
+.floating-panel-body.goal-panel {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    flex: 0 0 auto;
+    height: 60vh;
+    min-height: 300px;
+    max-height: calc(100vh - 150px);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 左侧：表头占位 + 任务卡片列表（与右侧行高一致，纵向滚动） */
+.goal-panel-left {
+    flex: 0 0 240px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 表头占位：与右侧周数表头等高，保证卡片与泳道行对齐 */
+.goal-panel-left-header {
+    flex: 0 0 auto;
+    height: 34px;
+    border-bottom: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+}
+
+.goal-panel-left-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 4px;
+    overflow-y: auto;
+}
+
+.goal-panel-card {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 8px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-card-bg, var(--background-secondary));
+}
+
+.goal-panel-card-path {
+    min-height: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    color: var(--text-faint);
+}
+
+.goal-panel-card-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.goal-panel-card-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.goal-panel-card-count {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.goal-panel-card-count-icon {
+    display: inline-flex;
+}
+
+.goal-panel-card-count-icon .svg-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.goal-panel-empty {
+    padding: 8px;
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+/* 右侧：泳道图（表头固定，表体横向 + 纵向滚动） */
+.goal-panel-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 表头层：只横向滚动（由表体滚动同步），纵向固定 */
+.goal-panel-right-header {
+    flex: 0 0 auto;
+    height: 34px;
+    overflow: hidden;
+}
+
+.goal-lane-header-row {
+    display: flex;
+    height: 100%;
+}
+
+/* 表体层：横向 + 纵向滚动。
+   width: 100% + min-width: 0 保证容器宽度跟随面板，不被内容宽度撑开 */
+.goal-panel-right-body {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+}
+
+/* 表体内容：宽度由 JS 设为 周数 × 列宽，超出容器即横向滚动 */
+.goal-lane-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 4px;
+    box-sizing: border-box;
+}
+
+.goal-lane-header {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 2px;
+    border-bottom: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-right: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.goal-lane-header.is-current {
+    color: var(--interactive-accent);
+    font-weight: 600;
+}
+
+.goal-lane-header-week {
+    font-weight: 600;
+}
+
+.goal-lane-header-date {
+    font-size: 10px;
+    color: var(--text-faint);
+}
+
+/* 任务行：相对定位，目标图标按列宽绝对定位；行高与左侧卡片一致 */
+.goal-lane-row {
+    position: relative;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-card-bg, var(--background-secondary));
+}
+
+.goal-lane-cell {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    border-right: 1px dashed var(--sdt-card-border, var(--background-modifier-border));
+    overflow: hidden;
+}
+
+.goal-lane-icon {
+    display: inline-flex;
+    color: var(--interactive-accent);
+}
+
+.goal-lane-icon .svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.goal-lane-text {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 /* ======================== 时间盒面板（panel/time-box-panel） ======================== */
@@ -11278,6 +11639,112 @@ button.task-record-dropdown-item.is-selected {
     border-right: none;
 }
 
+/* 导航行（与「习惯」同一行）末尾的「周任务 已排/总数」按钮：靠右对齐 */
+.plan-week-task-toggle {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    color: var(--sdt-text-secondary, var(--text-muted));
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.plan-week-task-toggle:hover {
+    background: var(--sdt-interactive-hover, var(--interactive-hover));
+}
+
+.plan-week-task-toggle.is-active {
+    border-color: var(--interactive-accent);
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 本周任务未全部排布到天：图标显示为警告色 */
+.plan-week-task-toggle .plan-toolbar-btn-icon.is-warning {
+    color: var(--text-warning, var(--color-orange));
+}
+
+/* 周任务面板：挂在 body 上，用 fixed 定位，坐标由 JS 按按钮位置计算（left / top 内联样式）。
+   不放在 .plan-pane 内，避免被其 overflow: hidden 裁掉 */
+.plan-week-task-panel {
+    position: fixed;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 160px;
+    max-width: 260px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 8px;
+    background: var(--sdt-control-bg, var(--background-primary));
+    color: var(--sdt-text-primary, var(--text-normal));
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.plan-week-task-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.plan-week-task-item:hover {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+}
+
+.plan-week-task-item.is-selected {
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+.plan-week-task-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.plan-week-task-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 已排布到本周某一天：末尾标识图标 */
+.plan-week-task-scheduled {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-accent);
+}
+
+.plan-week-task-scheduled .svg-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.plan-week-task-empty {
+    padding: 6px;
+    font-size: 12px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
 .plan-week-header-name {
     font-size: 13px;
     font-weight: bold;
@@ -11880,9 +12347,9 @@ button.task-record-dropdown-item.is-selected {
    样式表加载顺序在后而胜出；悬停态仍由各自的 :hover 规则 (0,2,0) 生效。
    ============================================================ */
 
-/* 顶部工具栏功能按钮：透明背景，仅悬停时高亮 */
+/* 顶部工具栏功能按钮：与配置按钮一致的背景，悬停时高亮 */
 button.interface-tool-btn {
-    background: transparent;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
     color: var(--sdt-text-primary, var(--text-normal));
 }
 

@@ -86,6 +86,12 @@ export class PlanPanel extends FloatingPanel {
     private weekPopoverEl: HTMLElement | null = null;
     /** 浮层当前展示的周（1-52，null 表示未显示） */
     private popoverWeek: number | null = null;
+    /** 周视图日期行末尾的「周任务」按钮 */
+    private weekTaskButtonEl: HTMLButtonElement | null = null;
+    /** 「周任务」是否处于激活状态（激活时在按钮右侧展开任务面板） */
+    private weekTaskActive = false;
+    /** 周任务面板（贴在「周任务」按钮右侧） */
+    private weekTaskPanelEl: HTMLElement | null = null;
 
     /** 当前选项卡 */
     private tab: PlanTab = 'year';
@@ -117,6 +123,16 @@ export class PlanPanel extends FloatingPanel {
     /** 面板滚动 / 窗口缩放时重新贴合周格子 */
     private readonly onWeekPopoverReposition = (): void => {
         this.placeWeekPopover();
+    };
+
+    /** 面板滚动 / 窗口缩放时重新贴合周任务面板 */
+    private readonly onWeekTaskReposition = (): void => {
+        this.placeWeekTaskPanel();
+    };
+
+    /** 拖动计划面板时重新贴合周任务面板（拖动只改面板位置，不触发 scroll / resize） */
+    private readonly onWeekTaskDragReposition = (): void => {
+        if (this.weekTaskPanelEl) this.placeWeekTaskPanel();
     };
 
     constructor(private readonly panelOptions: PlanPanelOptions) {
@@ -151,15 +167,17 @@ export class PlanPanel extends FloatingPanel {
         super.open();
     }
 
-    /** 关闭面板时一并关闭周格子信息浮层 */
+    /** 关闭面板时一并关闭周格子信息浮层与周任务面板 */
     override close(): void {
         this.closeWeekPopover();
+        this.closeWeekTaskPanel();
         super.close();
     }
 
-    /** 销毁面板时移除挂在 body 上的周格子信息浮层 */
+    /** 销毁面板时移除挂在 body 上的周格子信息浮层与周任务面板 */
     override destroy(): void {
         this.closeWeekPopover();
+        this.closeWeekTaskPanel();
         super.destroy();
     }
 
@@ -321,6 +339,7 @@ export class PlanPanel extends FloatingPanel {
         this.renderInfoPanel();
         this.renderHabitPanel();
         this.refreshYearChipHighlight();
+        this.refreshWeekTaskSelection();
         this.updateDetailButton();
     }
 
@@ -336,6 +355,7 @@ export class PlanPanel extends FloatingPanel {
         this.renderInfoPanel();
         this.renderHabitPanel();
         this.refreshYearChipHighlight();
+        this.refreshWeekTaskSelection();
         this.updateDetailButton();
     }
 
@@ -537,6 +557,10 @@ export class PlanPanel extends FloatingPanel {
 
     private renderPane(): void {
         this.paneEl.empty();
+        // 周任务面板挂在 body 上，重绘前先移除旧节点；重绘后若仍处于激活状态则重新挂回，
+        // 保证在周视图排布任务（会触发重绘）时面板保持展开
+        const keepWeekTaskPanel = this.weekTaskActive;
+        this.closeWeekTaskPanel();
         if (this.tab === 'year') {
             this.renderYearPane();
             // 周格子重建后同步浮层：任务增删后刷新内容与位置，无任务时自动关闭
@@ -544,6 +568,11 @@ export class PlanPanel extends FloatingPanel {
         } else {
             this.closeWeekPopover();
             this.renderWeekPane();
+        }
+        if (keepWeekTaskPanel && this.tab === 'week') {
+            this.weekTaskActive = true;
+            this.weekTaskButtonEl?.addClass('is-active');
+            this.openWeekTaskPanel();
         }
     }
 
@@ -782,6 +811,8 @@ export class PlanPanel extends FloatingPanel {
         });
         // 日期切换旁：「习惯」开关（仅周视图）
         this.habitButtonEl = this.createNavToggle(nav, 'repeat', t('panel.planSetHabit'), this.habitActive, () => this.toggleHabitPanel());
+        // 同一行末尾：「周任务 已排/总数」按钮，点击在按钮右侧展开周任务面板
+        this.renderWeekTaskButton(nav);
 
         // 与周计划视图一致：表头一行 7 格，表体 7 列共用分隔线
         const grid = this.paneEl.createDiv({ cls: 'plan-week-grid' });
@@ -1000,9 +1031,151 @@ export class PlanPanel extends FloatingPanel {
     private assignSelectedTask(weekday: number): void {
         if (!this.selectedTaskId) return;
         this.panelOptions.planAssignmentRepo.add(this.weekKey, weekday, this.selectedTaskId);
+        // 反向同步：周视图排布的任务若不在年视图该周格子里，自动补进去
+        this.panelOptions.planAssignmentRepo.addWeek(this.weekKey, this.selectedTaskId);
         void this.panelOptions.save();
         this.renderPane();
         this.panelOptions.onChanged?.();
+    }
+
+    /** 本周已整周排布（年视图周格子）的任务 id 列表 */
+    private weekTaskIds(): string[] {
+        const tasks = new Map(this.panelOptions.getTasks().map((task) => [task.id, task]));
+        return this.panelOptions.planAssignmentRepo.weekAssignments(this.weekKey)
+            .map((assignment) => assignment.taskId)
+            .filter((taskId) => tasks.has(taskId));
+    }
+
+    /** 本周已排布到具体某天的任务 id 集合 */
+    private scheduledTaskIds(): Set<string> {
+        const ids = new Set<string>();
+        for (let weekday = 1; weekday <= 7; weekday += 1) {
+            for (const assignment of this.panelOptions.planAssignmentRepo.dayAssignments(this.weekKey, weekday)) {
+                ids.add(assignment.taskId);
+            }
+        }
+        return ids;
+    }
+
+    /** 渲染日期行末尾的「周任务 已排/总数」按钮（始终显示，激活时展开周任务面板） */
+    private renderWeekTaskButton(headerRow: HTMLElement): void {
+        const taskIds = this.weekTaskIds();
+        const scheduledIds = this.scheduledTaskIds();
+        const total = taskIds.length;
+        const scheduled = taskIds.filter((taskId) => scheduledIds.has(taskId)).length;
+        const button = headerRow.createEl('button', {
+            cls: 'plan-week-task-toggle',
+            attr: { type: 'button' },
+        });
+        // 未全部排布到天时显示警告图标，全部排布后恢复普通图标
+        const allScheduled = total > 0 && scheduled === total;
+        const iconEl = button.createSpan({ cls: 'plan-toolbar-btn-icon' });
+        setIcon(iconEl, allScheduled ? 'list-checks' : 'alert-triangle');
+        iconEl.toggleClass('is-warning', !allScheduled);
+        button.createSpan({
+            cls: 'plan-toolbar-btn-text',
+            text: t('panel.planWeekTask', { done: String(scheduled), total: String(total) }),
+        });
+        button.toggleClass('is-active', this.weekTaskActive);
+        button.addEventListener('click', () => this.toggleWeekTaskPanel());
+        this.weekTaskButtonEl = button;
+    }
+
+    /** 切换周任务面板：仅通过再次点击按钮关闭 */
+    private toggleWeekTaskPanel(): void {
+        if (this.weekTaskActive) {
+            this.closeWeekTaskPanel();
+            return;
+        }
+        this.weekTaskActive = true;
+        this.weekTaskButtonEl?.addClass('is-active');
+        this.openWeekTaskPanel();
+    }
+
+    /** 打开（或刷新）周任务面板：挂在 body 上，按按钮位置计算坐标贴在按钮右侧 */
+    private openWeekTaskPanel(): void {
+        if (!this.weekTaskButtonEl) return;
+        if (!this.weekTaskPanelEl) {
+            this.weekTaskPanelEl = document.body.createDiv({ cls: 'plan-week-task-panel' });
+            applyThemeColors(this.weekTaskPanelEl, getCurrentThemeColors());
+        }
+        this.renderWeekTaskPanelContent();
+        this.placeWeekTaskPanel();
+        window.addEventListener('resize', this.onWeekTaskReposition);
+        window.addEventListener('scroll', this.onWeekTaskReposition, true);
+        // 拖动计划面板（标题栏 pointermove）时同步跟随
+        this.element.addEventListener('pointermove', this.onWeekTaskDragReposition);
+    }
+
+    /** 关闭周任务面板 */
+    private closeWeekTaskPanel(): void {
+        window.removeEventListener('resize', this.onWeekTaskReposition);
+        window.removeEventListener('scroll', this.onWeekTaskReposition, true);
+        this.element.removeEventListener('pointermove', this.onWeekTaskDragReposition);
+        this.weekTaskPanelEl?.remove();
+        this.weekTaskPanelEl = null;
+        this.weekTaskActive = false;
+        this.weekTaskButtonEl?.removeClass('is-active');
+    }
+
+    /** 周任务面板内容：本周（年视图周格子）任务条目，选中后点击日历列即可排布 */
+    private renderWeekTaskPanelContent(): void {
+        const container = this.weekTaskPanelEl;
+        if (!container) return;
+        container.empty();
+        const tasks = new Map(this.panelOptions.getTasks().map((task) => [task.id, task]));
+        const categories = this.panelOptions.getCategories();
+        const scheduled = this.scheduledTaskIds();
+        const taskIds = this.weekTaskIds();
+        if (taskIds.length === 0) {
+            container.createDiv({ cls: 'plan-week-task-empty', text: t('panel.planWeekTaskEmpty') });
+            return;
+        }
+        for (const taskId of taskIds) {
+            const task = tasks.get(taskId);
+            if (!task) continue;
+            const row = container.createDiv({ cls: 'plan-week-task-item' });
+            row.dataset.taskId = task.id;
+            row.toggleClass('is-selected', task.id === this.selectedTaskId);
+            const dot = row.createSpan({ cls: 'plan-week-task-dot' });
+            dot.style.background = categories.find((category) => category.id === task.categoryId)?.color
+                ?? '#888888';
+            row.createSpan({ cls: 'plan-week-task-name', text: task.name });
+            // 已排布到本周某一天：末尾显示标识图标
+            if (scheduled.has(task.id)) {
+                const iconEl = row.createSpan({ cls: 'plan-week-task-scheduled' });
+                setIcon(iconEl, 'calendar-check');
+                iconEl.setAttribute('aria-label', t('panel.planWeekTaskScheduled'));
+            }
+            row.addEventListener('click', () => {
+                // 与左侧任务树共用同一个选中状态
+                if (task.id === this.selectedTaskId) this.clearTaskSelection();
+                else this.selectTask(task.id);
+            });
+        }
+    }
+
+    /** 同步周任务面板条目的选中态（与左侧任务树共用选中状态） */
+    private refreshWeekTaskSelection(): void {
+        if (!this.weekTaskPanelEl) return;
+        this.weekTaskPanelEl.querySelectorAll('.plan-week-task-item').forEach((el) => {
+            const row = el as HTMLElement;
+            row.toggleClass('is-selected', row.dataset.taskId === this.selectedTaskId);
+        });
+    }
+
+    /** 周任务面板贴着按钮右侧定位（右侧空间不足时翻到左侧，纵向收敛在视口内） */
+    private placeWeekTaskPanel(): void {
+        if (!this.weekTaskPanelEl || !this.weekTaskButtonEl) return;
+        const rect = this.weekTaskButtonEl.getBoundingClientRect();
+        const width = this.weekTaskPanelEl.offsetWidth;
+        const height = this.weekTaskPanelEl.offsetHeight;
+        let left = rect.right + 8;
+        if (left + width > window.innerWidth - 8) left = rect.left - width - 8;
+        let top = rect.top;
+        if (top + height > window.innerHeight - 8) top = window.innerHeight - height - 8;
+        this.weekTaskPanelEl.style.left = `${Math.max(8, left)}px`;
+        this.weekTaskPanelEl.style.top = `${Math.max(8, top)}px`;
     }
 
     private createNavButton(container: HTMLElement, text: string, onClick: () => void): void {

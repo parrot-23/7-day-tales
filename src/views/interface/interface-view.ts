@@ -16,6 +16,7 @@ import { CheckPanel } from '../../component/panel/check/check-panel';
 import { CollectPanel } from '../../component/panel/collect/collect-panel';
 import { DataPanel } from '../../component/panel/check/data-panel';
 import { GalleryPanel } from '../../component/panel/gallery/gallery-panel';
+import { GoalPanel } from '../../component/panel/goal/goal-panel';
 import { PlanPanel } from '../../component/panel/plan/plan-panel';
 import { TaskSectionsPanel } from '../../component/panel/task/task-sections-panel';
 import { TaskDetailPanel } from '../../component/panel/task/task-detail-panel';
@@ -26,6 +27,7 @@ import { WeekCalendarPanel } from '../../component/panel/calendar/week-calendar-
 import { ThemePanel } from '../../component/panel/interface/theme-panel';
 import type { BaseRepo } from '../../repos/base-repo';
 import type { CategoryRepo } from '../../repos/category-repo';
+import type { PlanAssignmentRepo } from '../../repos/plan-assignment-repo';
 import type { PrototypeTaskRepo } from '../../repos/prototype-task-repo';
 import type { TaskExecutionRepo } from '../../repos/task-execution-repo';
 import type { ThemeRepo } from '../../repos/theme-repo';
@@ -68,6 +70,8 @@ export class InterfaceView {
     private plugin: Plugin;
     /** 日期卡片对应的周历面板（懒创建，复用同一个实例） */
     private datePanel: WeekCalendarPanel | null = null;
+    /** 任务目标面板（懒创建，复用同一个实例） */
+    private goalPanel: GoalPanel | null = null;
     /** 任务卡片对应的任务面板 */
     private taskPanel: TaskPanel | null = null;
     /** 任务详情面板（按任务 id 复用） */
@@ -159,11 +163,22 @@ export class InterfaceView {
             this.datePanel = new WeekCalendarPanel({
                 startWeekKey: weekKey,
                 highlightDayKey,
+                getTasks: () => this.prototypeTaskRepo.tasks,
+                getCategories: () => this.categoryData.categories,
+                planAssignmentRepo: (this.plugin as Plugin & { planAssignmentRepo: PlanAssignmentRepo }).planAssignmentRepo,
             });
         } else {
             this.datePanel.showWeek(weekKey, highlightDayKey);
         }
         this.datePanel.open();
+    }
+
+    /** 打开任务目标面板（懒创建，复用同一实例） */
+    openGoalPanel(): void {
+        this.goalPanel ??= new GoalPanel({
+            getTasks: () => this.prototypeTaskRepo.tasks,
+        });
+        this.goalPanel.open();
     }
 
     /** 顶部工具栏切换日期：写入界面统一日期并广播（卡片未创建时由初始化参数生效） */

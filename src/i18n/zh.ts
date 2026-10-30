@@ -81,6 +81,10 @@ export const zh = {
 
     // 面板
     'panel.weekCalendarTitle': '周历',
+    'panel.weekCalendarTasks': '本周任务',
+    'panel.weekCalendarNoTask': '本周暂无任务',
+    'panel.goalPanelTitle': '任务目标',
+    'panel.goalPanelEmpty': '暂无设置目标的任务',
     'panel.timeBoxTitle': '时间盒',
     'panel.planPanelTitle': '计划',
     'panel.checkPanelTitle': '检查',
@@ -127,6 +131,9 @@ export const zh = {
     'panel.planWeekLabel': '第{week}周',
     'panel.planTaskInfo': '信息',
     'panel.planSetHabit': '习惯',
+    'panel.planWeekTask': '周任务 {done}/{total}',
+    'panel.planWeekTaskEmpty': '本周暂无任务',
+    'panel.planWeekTaskScheduled': '已排布',
     'panel.planHabitEnable': '启用习惯',
     'panel.planHabitTime': '时间',
     'panel.taskBoardTitle': '任务板块',
@@ -231,6 +238,7 @@ export const zh = {
     'nav.prevDay': '前一天',
     'nav.nextDay': '后一天',
     'nav.openCalendar': '打开周历',
+    'nav.openGoalPanel': '任务目标',
     'nav.openSettings': '设置',
     'nav.today': '今天',
     'nav.yesterday': '昨天',

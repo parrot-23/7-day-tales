@@ -90,6 +90,8 @@ export class FileEditorPanel extends FloatingPanel {
     private editor: MarkdownEditorLike | null = null;
     /** 写回防抖定时器 */
     private saveTimer: number | undefined;
+    /** 最近一次写回（或初始读取）时的内容，用于判断是否真的有改动 */
+    private lastSavedValue: string | null = null;
     /** 输入监听的清理函数 */
     private inputCleanup: (() => void) | null = null;
     /** 手动绘制的光标元素 */
@@ -156,6 +158,7 @@ export class FileEditorPanel extends FloatingPanel {
                 return;
             }
             editor.set?.(initial);
+            this.lastSavedValue = initial;
 
             // 内容变化写回文件（DOM input 事件 + 防抖）
             this.bindChange(editor);
@@ -404,6 +407,8 @@ export class FileEditorPanel extends FloatingPanel {
         target.addEventListener('cut', handler);
         target.addEventListener('paste', handler);
         target.addEventListener('drop', handler);
+        // 删除类操作（退格 / 删除 / 撤销 / 重做）在部分情况下不派发 input，统一按键盘事件兜底
+        target.addEventListener('keydown', handler);
 
         // 光标跟随：输入 / 键盘移动 / 滚动时重绘手动光标
         // 统一延后一帧，等 CM6 把选区写进 state 后再读，避免读到旧状态
@@ -431,6 +436,7 @@ export class FileEditorPanel extends FloatingPanel {
             target.removeEventListener('cut', handler);
             target.removeEventListener('paste', handler);
             target.removeEventListener('drop', handler);
+            target.removeEventListener('keydown', handler);
             target.removeEventListener('input', repaint);
             target.removeEventListener('keyup', repaint);
             target.removeEventListener('mouseup', onClickRepaint);
@@ -440,8 +446,16 @@ export class FileEditorPanel extends FloatingPanel {
         };
     }
 
-    /** 防抖写回文件 */
+    /**
+     * 防抖写回文件。
+     * 以「编辑器内容 vs 最近一次写回内容」判断是否有改动，而不是依赖事件类型：
+     * 删除文字、撤销 / 重做、拖拽移动等操作不一定派发 input 事件，按内容比对才不会漏判。
+     */
     private scheduleSave(editor: MarkdownEditorLike): void {
+        const value = this.readEditorValue(editor);
+        // 内容与已保存内容一致（如只按了方向键、删了又撤回）：不标记未保存，也不写回
+        if (value !== null && value === this.lastSavedValue) return;
+
         this.setStatus(t('panel.fileUnsaved'));
         if (this.saveTimer !== undefined) window.clearTimeout(this.saveTimer);
         this.saveTimer = window.setTimeout(() => {
@@ -454,6 +468,12 @@ export class FileEditorPanel extends FloatingPanel {
     private flushSave(editor: MarkdownEditorLike): void {
         const value = this.readEditorValue(editor);
         if (value === null) return;
+        // 内容没有实际变化：不写文件，状态保持已保存
+        if (value === this.lastSavedValue) {
+            this.setStatus(t('panel.fileSaved'));
+            return;
+        }
+        this.lastSavedValue = value;
         void this.editorApp.vault.process(this.file, () => value)
             .then(() => this.setStatus(t('panel.fileSaved')))
             .catch((error) => log('写回任务文件失败', error));
@@ -480,9 +500,9 @@ export class FileEditorPanel extends FloatingPanel {
         if (this.saveTimer !== undefined) {
             window.clearTimeout(this.saveTimer);
             this.saveTimer = undefined;
-            // 关闭面板时防抖尚未到期：立即写回，避免最后一次编辑丢失
-            if (this.editor) this.flushSave(this.editor);
         }
+        // 关闭面板时防抖尚未到期：立即写回，避免最后一次编辑丢失（内容未变时不会写文件）
+        if (this.editor) this.flushSave(this.editor);
         this.inputCleanup?.();
         this.inputCleanup = null;
         if (this.paintFrame !== undefined) {

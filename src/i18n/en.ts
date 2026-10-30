@@ -83,6 +83,10 @@ export const en: I18nMessages = {
 
     // Panels
     'panel.weekCalendarTitle': 'Week Calendar',
+    'panel.weekCalendarTasks': 'This week tasks',
+    'panel.weekCalendarNoTask': 'No tasks this week',
+    'panel.goalPanelTitle': 'Task goals',
+    'panel.goalPanelEmpty': 'No tasks with goals',
     'panel.timeBoxTitle': 'Time Box',
     'panel.planPanelTitle': 'Plan',
     'panel.checkPanelTitle': 'Check',
@@ -129,6 +133,9 @@ export const en: I18nMessages = {
     'panel.planWeekLabel': 'Week {week}',
     'panel.planTaskInfo': 'Info',
     'panel.planSetHabit': 'Habit',
+    'panel.planWeekTask': 'Week tasks {done}/{total}',
+    'panel.planWeekTaskEmpty': 'No tasks this week',
+    'panel.planWeekTaskScheduled': 'Scheduled',
     'panel.planHabitEnable': 'Enable habit',
     'panel.planHabitTime': 'Time',
     'panel.taskBoardTitle': 'Task Board',
@@ -233,6 +240,7 @@ export const en: I18nMessages = {
     'nav.prevDay': 'Previous day',
     'nav.nextDay': 'Next day',
     'nav.openCalendar': 'Open week calendar',
+    'nav.openGoalPanel': 'Task goals',
     'nav.openSettings': 'Settings',
     'nav.today': 'Today',
     'nav.yesterday': 'Yesterday',

@@ -88,6 +88,7 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
         this.topBar = new TopBar({
             onDateChange: (date) => this.interfaceView.setSelectedDate(date),
             onOpenCalendar: (date) => this.interfaceView.openDatePanel(date),
+            onOpenGoalPanel: () => this.interfaceView.openGoalPanel(),
             onOpenSettings: () => this.openSettingsPanel(),
             onOpenHelp: () => this.openHelpModal(),
         });
@@ -185,24 +186,28 @@ export class MainView extends ItemView implements ThemeColorsConsumer {
     private renderInterfaceTools(container: HTMLElement): void {
         const group = container.createDiv({ cls: 'interface-tool-group' });
 
-        const addBtn = group.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
-        setIcon(addBtn, 'plus');
-        addBtn.onclick = () => this.interfaceView.openCardPicker();
-
-        group.createDiv({ cls: 'interface-tool-divider' });
-
-        const themeBtn = group.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
-        setIcon(themeBtn, 'palette');
-        themeBtn.onclick = () => this.interfaceView.openThemePanel();
-
-        group.createDiv({ cls: 'interface-tool-divider' });
-
+        // 布局按钮固定在原位；「添加 / 主题」放在它左侧的绝对定位容器里，
+        // 展开时向左生长，不参与工具栏布局，因此不会挤动日期居中与布局按钮位置
         const layoutBtn = group.createEl('button', { cls: 'interface-tool-btn interface-layout-btn', attr: { type: 'button' } });
         setIcon(layoutBtn, 'layout-panel-top');
         layoutBtn.onclick = () => {
             this.interfaceView.toggleEditMode();
             this.updateInterfaceTools();
         };
+
+        const extra = group.createDiv({ cls: 'interface-tool-extra' });
+
+        const addBtn = extra.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
+        setIcon(addBtn, 'plus');
+        addBtn.onclick = () => this.interfaceView.openCardPicker();
+
+        extra.createDiv({ cls: 'interface-tool-divider' });
+
+        const themeBtn = extra.createEl('button', { cls: 'interface-tool-btn', attr: { type: 'button' } });
+        setIcon(themeBtn, 'palette');
+        themeBtn.onclick = () => this.interfaceView.openThemePanel();
+
+        extra.createDiv({ cls: 'interface-tool-divider' });
 
         this.interfaceToolGroupEl = group;
         this.addCardToolBtn = addBtn;
