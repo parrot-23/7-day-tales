@@ -186,9 +186,8 @@ export class GoalPanel extends FloatingPanel {
     }
 
     /**
-     * 任务组内的目标：同一行内从左到右依次排布（图标 + 文字 + 白色横线 + 下一个图标 …）。
-     * 文字最多延伸到下一个目标图标所在列之前，避免遮挡后面的目标；
-     * 一行放不下时换到下一行继续排布。
+     * 任务组内的目标：每个目标独占一行，图标画在截止周，文字向右延伸（可跨列）。
+     * 同一周有多个目标时也各占一行，避免互相遮挡。
      */
     private renderGoalRows(
         groupEl: HTMLElement,
@@ -203,22 +202,13 @@ export class GoalPanel extends FloatingPanel {
             .sort((a, b) => a.index - b.index);
 
         const chartWidth = weekKeys.length * COLUMN_WIDTH;
-        let row: HTMLElement | null = null;
-        let rowIndex = -1;
-        // 当前行已占用的最右位置（下一个目标图标必须在其右侧）
-        let cursor = 0;
 
+        // 每个目标独占一行；文字右边界取「下一个不同列目标的图标列」，没有则到图表末尾
         placed.forEach((item, i) => {
             const iconLeft = item.index * COLUMN_WIDTH;
-            // 图标落在当前行已占用位置左侧时换行
-            if (!row || iconLeft < cursor) {
-                rowIndex += 1;
-                row = groupEl.createDiv({ cls: 'goal-lane-goal' });
-                row.style.top = `${rowIndex * (GOAL_ROW_HEIGHT + GOAL_ROW_GAP)}px`;
-                row.style.height = `${GOAL_ROW_HEIGHT}px`;
-                cursor = 0;
-            }
-            const rowEl = row;
+            const rowEl = groupEl.createDiv({ cls: 'goal-lane-goal' });
+            rowEl.style.top = `${i * (GOAL_ROW_HEIGHT + GOAL_ROW_GAP)}px`;
+            rowEl.style.height = `${GOAL_ROW_HEIGHT}px`;
             if (item.goal.done) rowEl.addClass('is-done');
 
             const iconEl = rowEl.createSpan({ cls: 'goal-lane-icon' });
@@ -226,67 +216,81 @@ export class GoalPanel extends FloatingPanel {
             iconEl.style.width = `${ICON_WIDTH}px`;
             setIcon(iconEl, item.goal.done ? 'circle-check' : 'target');
 
-            // 文字右边界：下一个目标图标所在列之前（没有下一个则到图表末尾）
-            const next = placed[i + 1];
+            // 下一个不同列的目标（同一周有多个目标时，跳过同列目标，避免文字被压成 0 宽）
+            const next = placed.slice(i + 1).find((p) => p.index !== item.index);
             const textLeft = iconLeft + ICON_WIDTH + TEXT_GAP;
             const textRight = next ? next.index * COLUMN_WIDTH : chartWidth;
             const textEl = rowEl.createSpan({ cls: 'goal-lane-text', text: item.goal.text });
             textEl.style.left = `${textLeft}px`;
             textEl.style.maxWidth = `${Math.max(textRight - textLeft - TEXT_PADDING, 0)}px`;
 
-            // 相邻目标之间：从当前文字末端到下一个图标之间画白色横线
-            if (next) {
+            // 白色横线：只在该周（该列）最后一个目标后面画，避免同一周多个目标时出现多条横线
+            const isLastInColumn = !placed.slice(i + 1).some((p) => p.index === item.index);
+            if (next && isLastInColumn) {
                 const line = rowEl.createSpan({ cls: 'goal-lane-link' });
                 line.style.left = `${textLeft}px`;
                 line.style.width = `${Math.max(next.index * COLUMN_WIDTH - textLeft, 0)}px`;
             }
-
-            this.attachGoalTooltip(rowEl, iconLeft, item.goal, task, byId);
-            cursor = next ? next.index * COLUMN_WIDTH : chartWidth;
         });
+
+        // 悬浮提示：按「任务 + 截止周」聚合，同一周的所有目标显示在同一个面板里
+        const byWeek = new Map<number, TaskGoalEntry[]>();
+        for (const item of placed) {
+            const list = byWeek.get(item.index);
+            if (list) list.push(item.goal);
+            else byWeek.set(item.index, [item.goal]);
+        }
+        for (const [index, goals] of Array.from(byWeek.entries())) {
+            this.attachWeekTooltip(groupEl, index, goals, task, byId);
+        }
     }
 
-    /** 悬浮详情：目标名称、完成状态、截止日期、所属任务、绑定的子任务 */
-    private attachGoalTooltip(
-        rowEl: HTMLElement,
-        anchorLeft: number,
-        goal: TaskGoalEntry,
+    /** 悬浮详情：同一任务在同一周截止的所有目标，聚合在一个面板里展示 */
+    private attachWeekTooltip(
+        groupEl: HTMLElement,
+        columnIndex: number,
+        goals: TaskGoalEntry[],
         task: PrototypeTask,
         byId: Map<string, PrototypeTask>,
     ): void {
-        const tip = rowEl.createDiv({ cls: 'goal-lane-tooltip' });
-        // 悬浮面板对齐目标图标所在列，而不是行首
-        tip.style.left = `${anchorLeft}px`;
-        const title = tip.createDiv({ cls: 'goal-lane-tooltip-title' });
-        setIcon(title.createSpan({ cls: 'goal-lane-tooltip-icon' }), goal.done ? 'circle-check' : 'target');
-        title.createSpan({ cls: 'goal-lane-tooltip-name', text: goal.text });
+        const tip = groupEl.createDiv({ cls: 'goal-lane-tooltip' });
+        // 悬浮面板对齐该周所在列
+        tip.style.left = `${columnIndex * COLUMN_WIDTH}px`;
 
-        const meta = tip.createDiv({ cls: 'goal-lane-tooltip-meta' });
-        meta.createSpan({
-            cls: 'goal-lane-tooltip-status',
-            text: goal.done ? t('panel.goalMarkUndone') : t('panel.goalMarkDone'),
-        });
-        if (goal.dueDate) {
-            meta.createSpan({ cls: 'goal-lane-tooltip-due', text: this.formatDue(goal.dueDate) });
+        for (const goal of goals) {
+            const item = tip.createDiv({ cls: 'goal-lane-tooltip-item' });
+            const title = item.createDiv({ cls: 'goal-lane-tooltip-title' });
+            setIcon(title.createSpan({ cls: 'goal-lane-tooltip-icon' }), goal.done ? 'circle-check' : 'target');
+            title.createSpan({ cls: 'goal-lane-tooltip-name', text: goal.text });
+
+            const meta = item.createDiv({ cls: 'goal-lane-tooltip-meta' });
+            meta.createSpan({
+                cls: 'goal-lane-tooltip-status',
+                text: goal.done ? t('panel.goalMarkUndone') : t('panel.goalMarkDone'),
+            });
+            if (goal.dueDate) {
+                meta.createSpan({ cls: 'goal-lane-tooltip-due', text: this.formatDue(goal.dueDate) });
+            }
+
+            const subtasks = (goal.subtaskIds ?? [])
+                .map((id) => byId.get(id))
+                .filter((item): item is PrototypeTask => item !== undefined);
+            if (subtasks.length > 0) {
+                const list = item.createDiv({ cls: 'goal-lane-tooltip-subtasks' });
+                for (const subtask of subtasks) {
+                    const tag = list.createSpan({ cls: 'goal-lane-tooltip-subtask' });
+                    setIcon(tag.createSpan({ cls: 'goal-lane-tooltip-subtask-icon' }), 'git-branch');
+                    tag.createSpan({ cls: 'goal-lane-tooltip-subtask-name', text: subtask.name });
+                }
+            }
         }
 
+        // 所属任务：放在面板底部，只显示一次
         const path = this.getParentPath(task, byId);
         tip.createDiv({
             cls: 'goal-lane-tooltip-task',
             text: path ? `${path} > ${task.name}` : task.name,
         });
-
-        const subtasks = (goal.subtaskIds ?? [])
-            .map((id) => byId.get(id))
-            .filter((item): item is PrototypeTask => item !== undefined);
-        if (subtasks.length > 0) {
-            const list = tip.createDiv({ cls: 'goal-lane-tooltip-subtasks' });
-            for (const subtask of subtasks) {
-                const tag = list.createSpan({ cls: 'goal-lane-tooltip-subtask' });
-                setIcon(tag.createSpan({ cls: 'goal-lane-tooltip-subtask-icon' }), 'git-branch');
-                tag.createSpan({ cls: 'goal-lane-tooltip-subtask-name', text: subtask.name });
-            }
-        }
     }
 
     /** 任务组高度：至少与左侧卡片等高，目标多时按目标行数撑开 */

@@ -8711,6 +8711,8 @@ button.swimlane-section-card-settings {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    /* 绝对定位元素默认按内容宽度收缩，需显式撑满可用宽度，否则会被压成 0 宽而看不到文字 */
+    width: max-content;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -8734,7 +8736,7 @@ button.swimlane-section-card-settings {
     pointer-events: none;
 }
 
-/* 悬浮详情：默认隐藏，悬浮目标行时显示 */
+/* 悬浮详情：默认隐藏，悬浮任务组时显示（同一周的目标聚合在一个面板里） */
 .goal-lane-tooltip {
     position: absolute;
     left: 0;
@@ -8742,7 +8744,7 @@ button.swimlane-section-card-settings {
     z-index: 20;
     display: none;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
     min-width: 160px;
     max-width: 260px;
     padding: 8px 10px;
@@ -8753,8 +8755,21 @@ button.swimlane-section-card-settings {
     pointer-events: none;
 }
 
-.goal-lane-goal:hover .goal-lane-tooltip {
+.goal-lane-group:hover .goal-lane-tooltip {
     display: flex;
+}
+
+/* 单个目标条目：名称 + 状态 / 截止 + 绑定子任务 */
+.goal-lane-tooltip-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* 多个目标之间加分隔线 */
+.goal-lane-tooltip-item + .goal-lane-tooltip-item {
+    padding-top: 8px;
+    border-top: 1px solid var(--sdt-card-border, var(--background-modifier-border));
 }
 
 .goal-lane-tooltip-title {

@@ -76,7 +76,9 @@ export class TaskSectionsPanel extends FloatingPanel {
     /** 打开并展示指定任务 */
     openForTask(taskId: string): void {
         this.taskId = taskId;
-        this.section = 'checklist';
+        // 默认选中第一个选项卡：清单为空时「任务文件」排在最左，此时直接打开任务文件
+        const task = this.sectionsOptions.getTask(taskId);
+        this.section = (task?.checklist ?? []).length > 0 ? 'checklist' : 'file';
         this.fileCreateMode = false;
         this.render();
         this.open();
