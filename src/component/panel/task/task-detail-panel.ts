@@ -865,6 +865,7 @@ export class TaskDetailPanel extends FloatingPanel {
         this.fileEditorPanel = new FileEditorPanel({
             app: this.panelOptions.app,
             file,
+            container: this.panelOptions.container,
             onClose: () => {
                 if (this.filesBodyEl?.isConnected) this.renderFiles(this.filesBodyEl);
             },

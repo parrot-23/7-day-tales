@@ -8374,17 +8374,30 @@ button.swimlane-section-card-settings {
 .week-calendar-cell-task {
     position: absolute;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     height: 16px;
     padding: 0 4px;
-    border-left: 2px solid var(--week-calendar-task-color, var(--interactive-accent));
     border-radius: 2px;
-    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    /* 分类淡色背景：分类色与卡片底色混合，保证文字可读 */
+    background: color-mix(
+        in srgb,
+        var(--week-calendar-task-color, var(--interactive-accent)) 22%,
+        var(--sdt-interactive-bg, var(--interactive-normal))
+    );
     font-size: 10px;
     line-height: 16px;
     color: var(--sdt-text-primary, var(--text-normal));
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.week-calendar-cell-task-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* 今天：边框高亮 */
@@ -8660,8 +8673,8 @@ button.swimlane-section-card-settings {
     color: var(--text-faint);
 }
 
-/* 任务行：相对定位，目标图标按列宽绝对定位；行高与左侧卡片一致 */
-.goal-lane-row {
+/* 任务组：相对定位，组内每个目标一行；高度与左侧卡片一致 */
+.goal-lane-group {
     position: relative;
     flex: 0 0 auto;
     box-sizing: border-box;
@@ -8670,38 +8683,152 @@ button.swimlane-section-card-settings {
     background: var(--sdt-card-bg, var(--background-secondary));
 }
 
-.goal-lane-cell {
+/* 单个目标行：图标落在截止周，文字向右延伸 */
+.goal-lane-goal {
     position: absolute;
-    top: 0;
-    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 1px;
-    padding: 2px 4px;
-    box-sizing: border-box;
-    border-right: 1px dashed var(--sdt-card-border, var(--background-modifier-border));
-    overflow: hidden;
 }
 
 .goal-lane-icon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--interactive-accent);
 }
 
 .goal-lane-icon .svg-icon {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
 }
 
 .goal-lane-text {
-    max-width: 100%;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 10px;
+    font-size: 11px;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 已完成的目标：文字置灰加删除线 */
+.goal-lane-goal.is-done .goal-lane-text {
     color: var(--sdt-text-secondary, var(--text-muted));
+    text-decoration: line-through;
+}
+
+/* 相邻目标之间的白色连接横线 */
+.goal-lane-link {
+    position: absolute;
+    top: 50%;
+    height: 1px;
+    background: var(--sdt-text-primary, var(--text-normal));
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+/* 悬浮详情：默认隐藏，悬浮目标行时显示 */
+.goal-lane-tooltip {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+    max-width: 260px;
+    padding: 8px 10px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 6px;
+    background: var(--sdt-card-bg, var(--background-secondary));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+}
+
+.goal-lane-goal:hover .goal-lane-tooltip {
+    display: flex;
+}
+
+.goal-lane-tooltip-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sdt-text-primary, var(--text-normal));
+}
+
+.goal-lane-tooltip-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--interactive-accent);
+}
+
+.goal-lane-tooltip-icon .svg-icon {
+    width: 13px;
+    height: 13px;
+}
+
+.goal-lane-tooltip-name {
+    min-width: 0;
+    word-break: break-word;
+}
+
+.goal-lane-tooltip-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.goal-lane-tooltip-task {
+    font-size: 11px;
+    color: var(--text-faint);
+    word-break: break-word;
+}
+
+.goal-lane-tooltip-subtasks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.goal-lane-tooltip-subtask {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 100%;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--sdt-interactive-bg, var(--interactive-normal));
+    font-size: 11px;
+    color: var(--sdt-text-secondary, var(--text-muted));
+}
+
+.goal-lane-tooltip-subtask-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.goal-lane-tooltip-subtask-icon .svg-icon {
+    width: 11px;
+    height: 11px;
+}
+
+.goal-lane-tooltip-subtask-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ======================== 时间盒面板（panel/time-box-panel） ======================== */
@@ -9530,16 +9657,16 @@ button.task-detail-todo-tool-btn:disabled {
     cursor: default;
 }
 
-/* 待办清单条目：浅灰背景 + 点击选中态 */
+/* 待办清单条目：跟随主题变量（深色主题下不再出现白底）+ 点击选中态 */
 .gtd-collect-card.task-detail-todo-card {
-    background: #fafafa;
-    border-color: #e8e8e8;
-    color: #333;
+    background: var(--sdt-card-bg, var(--background-secondary));
+    border-color: var(--sdt-card-border, var(--background-modifier-border));
+    color: var(--sdt-text-primary, var(--text-normal));
     cursor: pointer;
 }
 
 .gtd-collect-card.task-detail-todo-card:hover {
-    border-color: #d8d8d8;
+    border-color: var(--background-modifier-border-hover);
 }
 
 .gtd-collect-card.task-detail-todo-card.is-selected {
@@ -9548,25 +9675,25 @@ button.task-detail-todo-tool-btn:disabled {
 }
 
 .gtd-collect-card.task-detail-todo-card .gtd-collect-card-content {
-    color: #333;
+    color: var(--sdt-text-primary, var(--text-normal));
 }
 
 .gtd-collect-card.task-detail-todo-card.is-done .task-detail-todo-text {
-    color: #999;
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 .gtd-collect-card.task-detail-todo-card .gtd-collect-card-status {
-    background: #ececec;
-    color: #666;
+    background: var(--sdt-card-border, var(--background-modifier-border));
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 .gtd-collect-card.task-detail-todo-card .gtd-collect-card-delete {
-    color: #999;
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 .gtd-collect-card.task-detail-todo-card .gtd-collect-card-delete:hover {
-    background: #ececec;
-    color: #333;
+    background: var(--sdt-hover-bg, var(--background-modifier-hover));
+    color: var(--sdt-text-primary, var(--text-normal));
 }
 
 /* 待办清单：截止日期相关标签 */
@@ -9574,8 +9701,8 @@ button.task-detail-todo-tool-btn:disabled {
     font-size: 11px;
     padding: 1px 8px;
     border-radius: 10px;
-    background: #ececec;
-    color: #555;
+    background: var(--sdt-card-border, var(--background-modifier-border));
+    color: var(--sdt-text-secondary, var(--text-muted));
 }
 
 .task-detail-todo-due-tag.is-overdue {
@@ -9970,11 +10097,23 @@ button.task-detail-todo-tool-btn:disabled {
 .goal-list-item-name {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    /* 名称允许换行完整展示，长单词也强制断行 */
+    overflow-wrap: anywhere;
     font-size: 12px;
     color: var(--sdt-text-primary, var(--text-normal));
+}
+
+/* 名称原地编辑输入框：替换名称文本，占满剩余宽度 */
+.goal-list-item-name-input {
+    flex: 1;
+    min-width: 0;
+    height: 22px;
+    padding: 0 4px;
+    border: 1px solid var(--sdt-card-border, var(--background-modifier-border));
+    border-radius: 3px;
+    background: var(--sdt-control-bg, var(--background-primary));
+    color: var(--sdt-text-primary, var(--text-normal));
+    font-size: 12px;
 }
 
 /* 已绑定的子任务标签 */
@@ -10012,6 +10151,8 @@ button.task-detail-todo-tool-btn:disabled {
 
 .goal-list-item-due {
     flex: 0 0 auto;
+    /* 截止日期固定在第二行末尾 */
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -10054,6 +10195,18 @@ button.task-detail-todo-tool-btn:disabled {
     opacity: 1;
 }
 
+/* 名称末尾的编辑图标：与其它操作图标一致，悬浮条目时显示 */
+.goal-list-item-edit-btn {
+    flex: 0 0 auto;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.goal-list-item:hover .goal-list-item-edit-btn,
+.goal-list-item-edit-btn:focus {
+    opacity: 1;
+}
+
 .goal-list-item-action {
     display: flex;
     align-items: center;
@@ -10077,6 +10230,18 @@ button.task-detail-todo-tool-btn:disabled {
 /* 已绑定子任务的图标激活态 */
 .goal-list-item-action.is-active {
     color: var(--interactive-accent);
+}
+
+/* 完成标记图标：已完成的条目常显，未完成时随操作区悬浮显示 */
+.goal-list-item-action.goal-list-item-done-btn.is-active {
+    opacity: 1;
+    color: var(--interactive-accent);
+}
+
+/* 已完成的目标：名称置灰并加删除线 */
+.goal-list-item.is-done .goal-list-item-name {
+    color: var(--sdt-text-secondary, var(--text-muted));
+    text-decoration: line-through;
 }
 
 .goal-list-item-action .svg-icon {
@@ -11469,7 +11634,6 @@ button.task-record-dropdown-item.is-selected {
 .plan-year-cell-task {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 4px;
     padding: 1px 4px;
     border-radius: 3px;
@@ -11480,6 +11644,14 @@ button.task-record-dropdown-item.is-selected {
     white-space: nowrap;
     overflow: hidden;
     cursor: pointer;
+}
+
+/* 任务名称：占满剩余宽度并省略，保证末尾的 × 始终可见 */
+.plan-year-cell-task-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .plan-year-cell-task:hover {
@@ -11897,13 +12069,15 @@ button.task-record-dropdown-item.is-selected {
     color: var(--sdt-text-primary, var(--text-normal));
 }
 
-/* 挂在非 body 容器内时使用绝对定位 */
+/* 挂在非 body 容器内时使用绝对定位（层级由 JS 内联写入，保证后打开 / 点击的面板置顶） */
 .floating-panel.is-absolute {
     position: absolute;
-    z-index: 50;
     max-width: none;
     max-height: none;
 }
+
+/* 文件编辑面板：内部嵌入原生编辑器，右键菜单 / 补全等浮层挂在 body 上（层级低于面板），
+   面板通过 zIndex 选项固定为 800，压在 Obsidian 浮层（.menu 等，约 1000）之下，保证菜单显示在面板上方 */
 
 .floating-panel-header {
     display: flex;

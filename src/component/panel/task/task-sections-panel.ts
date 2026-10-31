@@ -91,7 +91,7 @@ export class TaskSectionsPanel extends FloatingPanel {
                 return;
             }
             this.renderHead(body, task);
-            this.renderSections(body);
+            this.renderSections(body, task);
             this.renderContent(body, task);
         });
         // 文件板块：按任务树惰性确保目录存在，目录有更新时重绘一次
@@ -118,10 +118,14 @@ export class TaskSectionsPanel extends FloatingPanel {
         });
     }
 
-    /** 第二行：板块选项卡 */
-    private renderSections(body: HTMLElement): void {
+    /** 第二行：板块选项卡（清单为空时「任务文件」排到第一位） */
+    private renderSections(body: HTMLElement, task: PrototypeTask): void {
         const tabs = body.createDiv({ cls: 'task-sections-tabs' });
-        for (const item of TASK_SECTIONS) {
+        const hasChecklist = (task.checklist ?? []).length > 0;
+        const ordered = hasChecklist
+            ? TASK_SECTIONS
+            : [...TASK_SECTIONS].sort((a, b) => (a.key === 'file' ? -1 : b.key === 'file' ? 1 : 0));
+        for (const item of ordered) {
             const button = tabs.createEl('button', {
                 cls: 'interface-bottom-tab',
                 text: t(item.labelKey),
@@ -295,6 +299,7 @@ export class TaskSectionsPanel extends FloatingPanel {
         this.fileEditorPanel = new FileEditorPanel({
             app: this.sectionsOptions.app,
             file,
+            container: this.sectionsOptions.container,
             onClose: () => {
                 if (this.taskId) this.render();
             },

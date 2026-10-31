@@ -5,7 +5,7 @@ import type { App } from 'obsidian';
 
 import { t } from '../../../i18n';
 import { THEME_DEFINITIONS } from '../../../themestory/registry';
-import { FloatingPanel } from '../basic/floating-panel';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 左侧菜单项 */
 type ThemeMenuKey = 'official' | 'local';
@@ -17,7 +17,7 @@ const MENU_ITEMS: { key: ThemeMenuKey; labelKey: Parameters<typeof t>[0] }[] = [
 ];
 
 /** 主题管理面板配置 */
-export interface ThemePanelOptions {
+export interface ThemePanelOptions extends Pick<FloatingPanelOptions, 'container'> {
     /** Obsidian App（读取主题素材资源路径） */
     app: App;
     /** 插件目录（vault 相对路径） */
@@ -39,6 +39,7 @@ export class ThemePanel extends FloatingPanel {
         super({
             title: t('theme.panelTitle'),
             width: 640,
+            container: options.container,
         });
         this.panelOptions = options;
 

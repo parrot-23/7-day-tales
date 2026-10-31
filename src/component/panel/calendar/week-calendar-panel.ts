@@ -117,11 +117,10 @@ export class WeekCalendarPanel extends FloatingPanel {
             // 纵向：按泳道序号堆叠
             chip.style.top = `${TASK_CARD_GAP + segment.lane * (TASK_CARD_HEIGHT + TASK_CARD_GAP)}px`;
             chip.title = segment.task.name;
-            chip.setText(segment.task.name);
-            chip.style.setProperty(
-                '--week-calendar-task-color',
-                categories.find((category) => category.id === segment.task.categoryId)?.color ?? '#888888',
-            );
+            // 分类淡色背景 + 任务名称
+            const color = categories.find((category) => category.id === segment.task.categoryId)?.color ?? '#888888';
+            chip.style.setProperty('--week-calendar-task-color', color);
+            chip.createSpan({ cls: 'week-calendar-cell-task-name', text: segment.task.name });
         }
 
         this.renderTaskBox(body);

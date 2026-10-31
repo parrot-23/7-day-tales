@@ -27,6 +27,8 @@ export interface TaskGoalEntry {
     dueDate?: string;
     /** 绑定的子任务 id 列表（可选，目标达成即推进对应子任务） */
     subtaskIds?: string[];
+    /** 是否已手动标记完成（可选，缺省视为未完成） */
+    done?: boolean;
 }
 
 /** 原型任务 */

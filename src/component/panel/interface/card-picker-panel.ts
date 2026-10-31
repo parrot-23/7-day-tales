@@ -3,7 +3,7 @@
 import { setIcon } from 'obsidian';
 
 import { t } from '../../../i18n';
-import { FloatingPanel } from '../basic/floating-panel';
+import { FloatingPanel, type FloatingPanelOptions } from '../basic/floating-panel';
 
 /** 可添加的卡片：id + 图标 + 文案 key */
 const CARD_ITEMS: { id: string; icon: string; labelKey: Parameters<typeof t>[0] }[] = [
@@ -15,11 +15,12 @@ const CARD_ITEMS: { id: string; icon: string; labelKey: Parameters<typeof t>[0] 
 ];
 
 export class CardPickerPanel extends FloatingPanel {
-    constructor(onPick: (cardId: string) => void) {
+    constructor(onPick: (cardId: string) => void, options: Pick<FloatingPanelOptions, 'container'> = {}) {
         super({
             title: t('interface.cardPickerTitle'),
             width: 360,
             closeOnBlur: true,
+            container: options.container,
         });
 
         this.setContent((body) => {

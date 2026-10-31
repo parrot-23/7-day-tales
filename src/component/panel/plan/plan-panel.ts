@@ -619,7 +619,8 @@ export class PlanPanel extends FloatingPanel {
                 for (const assignment of assignments) {
                     const task = tasks.get(assignment.taskId);
                     if (!task) continue;
-                    const chip = list.createDiv({ cls: 'plan-year-cell-task', text: task.name });
+                    const chip = list.createDiv({ cls: 'plan-year-cell-task' });
+                    chip.createSpan({ cls: 'plan-year-cell-task-name', text: task.name });
                     chip.title = task.name;
                     chip.dataset.taskId = task.id;
                     // 信息面板激活时，高亮下方正在展示的任务 / 周对应的卡片

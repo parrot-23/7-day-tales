@@ -10,7 +10,10 @@ import type { ThemeColors } from '../../../themestory/theme-definition';
 export interface FloatingPanelOptions {
     /** 面板标题（可选） */
     title?: string;
-    /** 挂载容器，默认 document.body（挂到 body 时用 fixed 定位，否则用 absolute） */
+    /**
+     * 挂载容器，默认 document.body（挂到 body 时用 fixed 定位，否则用 absolute）。
+     * 传入容器即把面板限制在该容器内显示（拖动范围也限制在容器内）。
+     */
     container?: HTMLElement;
     /** 面板宽度（px），默认 480 */
     width?: number;
@@ -20,6 +23,11 @@ export interface FloatingPanelOptions {
     closeOnBlur?: boolean;
     /** 标题栏是否显示钉住按钮（钉住后点击面板外不再关闭），默认 false */
     pinnable?: boolean;
+    /**
+     * 固定层级：设置后该面板不参与置顶递增，始终使用此 z-index。
+     * 用于需要压在 Obsidian 原生浮层（右键菜单等）之下的面板（如文件编辑面板）。
+     */
+    zIndex?: number;
     /** 关闭回调 */
     onClose?: () => void;
 }
@@ -28,9 +36,18 @@ export interface FloatingPanelOptions {
 const BASE_PANEL_Z_INDEX = 900;
 /** 面板层级上限：超过后重排，保证仍低于下拉浮层（1000+）等更高层元素 */
 const MAX_PANEL_Z_INDEX = 1090;
+/**
+ * 挂在容器内（absolute 定位）时的层级基数：容器自身可能处在较低的层叠上下文里，
+ * 用 900 起步会盖住 Obsidian 原生浮层（右键菜单等），因此容器内面板从 50 起步。
+ */
+const BASE_HOSTED_PANEL_Z_INDEX = 50;
+/** 容器内面板层级上限：超过后重排 */
+const MAX_HOSTED_PANEL_Z_INDEX = 240;
 
 /** 当前最高层级：每次激活面板时递增，保证最后操作的面板在最上面 */
 let topPanelZIndex = BASE_PANEL_Z_INDEX;
+/** 容器内面板的当前最高层级（与 body 面板分开计数，互不影响） */
+let topHostedPanelZIndex = BASE_HOSTED_PANEL_Z_INDEX;
 
 /**
  * 悬浮面板组件：本质是一张可拖动的卡片，首次打开居中，之后保留拖动位置。
@@ -91,10 +108,16 @@ export class FloatingPanel {
         this.root = this.host.createDiv({ cls: 'floating-panel' });
         if (!this.hostIsBody) {
             this.root.addClass('is-absolute');
+            // 层级用内联样式写入：CSS 里 .floating-panel.is-absolute 的 z-index 优先级高于内联样式，
+            // 不覆盖的话 bringToFront() 设置的层级会失效（后打开的面板无法置顶）
+            this.root.style.zIndex = String(options.zIndex ?? BASE_HOSTED_PANEL_Z_INDEX);
             // absolute 定位需要容器本身可作为定位参照
             if (getComputedStyle(this.host).position === 'static') {
                 this.host.style.position = 'relative';
             }
+        } else if (options.zIndex !== undefined) {
+            // 固定层级面板：直接写入内联层级，不参与置顶递增
+            this.root.style.zIndex = String(options.zIndex);
         }
         this.root.style.display = 'none';
         if (options.width) this.root.style.width = `${options.width}px`;
@@ -215,6 +238,9 @@ export class FloatingPanel {
         this.root.style.display = 'flex';
         if (this.left === null || this.top === null) {
             this.center();
+        } else {
+            // 已定位过：容器尺寸可能已变化，重新夹取到容器范围内
+            this.clampIntoHost();
         }
         // 新打开的面板默认在最上层
         this.bringToFront();
@@ -253,10 +279,19 @@ export class FloatingPanel {
 
     /** 置顶：把面板层级提到当前所有面板之上（点击 / 打开时调用） */
     private bringToFront(): void {
-        // 层级只在小范围内递增，超过上限时重排一次，避免盖住下拉浮层等更高层元素
-        if (topPanelZIndex >= MAX_PANEL_Z_INDEX) this.renormalizeZIndex();
-        topPanelZIndex += 1;
-        this.root.style.zIndex = String(topPanelZIndex);
+        if (this.hostIsBody) {
+            // 固定层级面板（如文件编辑面板）不参与置顶递增，始终压在原生浮层之下
+            if (this.options.zIndex !== undefined) return;
+            // 层级只在小范围内递增，超过上限时重排一次，避免盖住下拉浮层等更高层元素
+            if (topPanelZIndex >= MAX_PANEL_Z_INDEX) this.renormalizeZIndex();
+            topPanelZIndex += 1;
+            this.root.style.zIndex = String(topPanelZIndex);
+            return;
+        }
+        // 容器内面板：只在同一容器内比较层级，避免不同容器之间互相干扰
+        if (topHostedPanelZIndex >= MAX_HOSTED_PANEL_Z_INDEX) this.renormalizeHostedZIndex();
+        topHostedPanelZIndex += 1;
+        this.root.style.zIndex = String(topHostedPanelZIndex);
     }
 
     /** 重排所有已打开面板的层级，恢复连续递增的初始区间 */
@@ -267,6 +302,16 @@ export class FloatingPanel {
         let zIndex = BASE_PANEL_Z_INDEX;
         for (const el of panels) el.style.zIndex = String(++zIndex);
         topPanelZIndex = zIndex;
+    }
+
+    /** 重排同一容器内已打开面板的层级（容器内面板单独计数） */
+    private renormalizeHostedZIndex(): void {
+        const panels = Array.from(this.host.querySelectorAll<HTMLElement>('.floating-panel'))
+            .filter((el) => el.style.display !== 'none')
+            .sort((a, b) => Number(a.style.zIndex || BASE_HOSTED_PANEL_Z_INDEX) - Number(b.style.zIndex || BASE_HOSTED_PANEL_Z_INDEX));
+        let zIndex = BASE_HOSTED_PANEL_Z_INDEX;
+        for (const el of panels) el.style.zIndex = String(++zIndex);
+        topHostedPanelZIndex = zIndex;
     }
 
     /** 初始居中 */
@@ -294,6 +339,15 @@ export class FloatingPanel {
         this.top = Math.max(0, Math.min(top, maxTop));
         this.root.style.left = `${this.left}px`;
         this.root.style.top = `${this.top}px`;
+    }
+
+    /**
+     * 挂载容器尺寸变化时重新夹取位置：容器变小后把面板拉回可视范围内，
+     * 避免面板被裁到容器外（限制在容器内显示时尤其明显）。
+     */
+    private clampIntoHost(): void {
+        if (this.left === null || this.top === null) return;
+        this.setPosition(this.left, this.top);
     }
 
     private handlePointerDown = (evt: PointerEvent): void => {

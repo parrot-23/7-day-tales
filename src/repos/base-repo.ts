@@ -376,6 +376,7 @@ function parseTaskGoals(raw: unknown): TaskGoalEntry[] | null {
             createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
             ...(typeof r.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.dueDate) ? { dueDate: r.dueDate } : {}),
             ...(subtaskIds.length > 0 ? { subtaskIds } : {}),
+            ...(r.done === true ? { done: true } : {}),
         });
     }
     return goals.length > 0 ? goals : null;

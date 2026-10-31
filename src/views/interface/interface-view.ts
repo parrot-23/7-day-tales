@@ -155,12 +155,18 @@ export class InterfaceView {
         return manifest.dir ?? `.obsidian/plugins/${manifest.id}`;
     }
 
+    /** 面板挂载容器：限制在插件界面内显示（视图未渲染时退回 body） */
+    private get panelContainer(): HTMLElement {
+        return this.viewEl ?? document.body;
+    }
+
     /** 打开周历面板：默认本周 / 今天，传入日期则定位到该日期所在周并高亮该日 */
     openDatePanel(date?: Date): void {
         const weekKey = date ? makeWeekKey(date.getFullYear(), getISOWeek(date)) : getCurrentWeekKey();
         const highlightDayKey = date ? makeDayKey(date) : undefined;
         if (!this.datePanel) {
             this.datePanel = new WeekCalendarPanel({
+                container: this.panelContainer,
                 startWeekKey: weekKey,
                 highlightDayKey,
                 getTasks: () => this.prototypeTaskRepo.tasks,
@@ -176,6 +182,7 @@ export class InterfaceView {
     /** 打开任务目标面板（懒创建，复用同一实例） */
     openGoalPanel(): void {
         this.goalPanel ??= new GoalPanel({
+            container: this.panelContainer,
             getTasks: () => this.prototypeTaskRepo.tasks,
         });
         this.goalPanel.open();
@@ -203,6 +210,7 @@ export class InterfaceView {
     private openTaskPanel(): void {
         if (!this.taskPanel) {
             this.taskPanel = new TaskPanel({
+                container: this.panelContainer,
                 tasks: this.rootPrototypeTasks(),
                 onSubmit: (payload) => this.addPrototypeTask(payload.name, payload.type),
                 onTaskClick: (task) => this.openTaskDetail(task),
@@ -222,6 +230,7 @@ export class InterfaceView {
                 saveAll: () => Promise<void>;
             };
             this.timeBoxPanel = new TimeBoxPanel({
+                container: this.panelContainer,
                 app: this.app,
                 categoryData: this.categoryData,
                 categoryRepo: (this.plugin as Plugin & { categoryRepo: CategoryRepo }).categoryRepo,
@@ -240,6 +249,7 @@ export class InterfaceView {
                 saveAll: () => Promise<void>;
             };
             this.planPanel = new PlanPanel({
+                container: this.panelContainer,
                 getTasks: () => this.prototypeTaskRepo.tasks,
                 getCategories: () => this.categoryData.categories,
                 planAssignmentRepo: holder.planAssignmentRepo,
@@ -266,6 +276,7 @@ export class InterfaceView {
                 timeBoxRepo: ConstructorParameters<typeof CheckPanel>[0]['timeBoxRepo'];
             };
             this.checkPanel = new CheckPanel({
+                container: this.panelContainer,
                 app: this.app,
                 categoryData: this.categoryData,
                 timeBoxRepo: holder.timeBoxRepo,
@@ -284,6 +295,7 @@ export class InterfaceView {
             saveAll: () => Promise<void>;
         };
         this.collectPanel ??= new CollectPanel({
+            container: this.panelContainer,
             gtdRepo: holder.gtdRepo,
             save: () => holder.saveAll(),
             getTasks: () => this.prototypeTaskRepo.tasks,
@@ -293,19 +305,19 @@ export class InterfaceView {
 
     /** 点击画廊卡片：打开画廊面板 */
     private openGalleryPanel(): void {
-        this.galleryPanel ??= new GalleryPanel();
+        this.galleryPanel ??= new GalleryPanel({ container: this.panelContainer });
         this.galleryPanel.open();
     }
 
     /** 点击成就榜单卡片：打开成就榜单面板 */
     private openAchievementPanel(): void {
-        this.achievementPanel ??= new AchievementPanel();
+        this.achievementPanel ??= new AchievementPanel({ container: this.panelContainer });
         this.achievementPanel.open();
     }
 
     /** 打开数据面板（由检查面板顶部的「数据」按钮触发） */
     private openDataPanel(): void {
-        this.dataPanel ??= new DataPanel();
+        this.dataPanel ??= new DataPanel({ container: this.panelContainer });
         this.dataPanel.open();
     }
 
@@ -314,6 +326,7 @@ export class InterfaceView {
         let panel = this.detailPanels.get(task.id);
         if (!panel) {
             panel = new TaskDetailPanel({
+                container: this.panelContainer,
                 task,
                 tasks: this.prototypeTaskRepo.tasks,
                 categoryData: this.categoryData,
@@ -423,6 +436,7 @@ export class InterfaceView {
     /** 打开任务配置面板（名称 / 描述 / 类型 / 任务目录），关闭后销毁 */
     private openTaskConfig(task: PrototypeTask): void {
         const panel: TaskConfigPanel = new TaskConfigPanel({
+            container: this.panelContainer,
             task,
             getTaskDir: () => this.taskDirOf(task),
             onSave: (payload) => this.saveTaskConfig(task, payload),
@@ -563,7 +577,7 @@ export class InterfaceView {
 
     /** 打开卡片选择面板 */
     openCardPicker(): void {
-        this.cardPickerPanel ??= new CardPickerPanel((cardId) => this.showPickedCard(cardId));
+        this.cardPickerPanel ??= new CardPickerPanel((cardId) => this.showPickedCard(cardId), { container: this.panelContainer });
         this.cardPickerPanel.open();
     }
 
@@ -571,6 +585,7 @@ export class InterfaceView {
     openThemePanel(): void {
         if (!this.themePanel) {
             this.themePanel = new ThemePanel({
+                container: this.panelContainer,
                 app: this.app,
                 pluginDir: this.pluginDir,
                 getCurrentThemeId: () => this.themeRepo.currentThemeId,
@@ -745,6 +760,7 @@ export class InterfaceView {
     /** 打开任务板块信息面板：展示指定任务的收集篮子 / 待办改进 / 文件目录 */
     private openTaskBoard(taskId: string): void {
         this.taskSectionsPanel ??= new TaskSectionsPanel({
+            container: this.panelContainer,
             app: this.app,
             getTask: (id) => this.prototypeTaskRepo.tasks.find((item) => item.id === id),
             getTasks: () => this.prototypeTaskRepo.tasks,

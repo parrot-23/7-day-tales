@@ -75,15 +75,19 @@ export class GoalListView {
     /** 渲染单个目标条目：第一行名称 + 操作图标，第二行绑定的子任务与截止日期 */
     private renderRow(goal: TaskGoalEntry): void {
         const row = this.listEl.createDiv({ cls: 'goal-list-item' });
+        row.toggleClass('is-done', goal.done === true);
 
         const main = row.createDiv({ cls: 'goal-list-item-main' });
         setIcon(main.createSpan({ cls: 'goal-list-item-icon' }), 'target');
-        main.createSpan({ cls: 'goal-list-item-name', text: goal.text });
+        const nameEl = main.createSpan({ cls: 'goal-list-item-name', text: goal.text });
 
         const boundTasks = this.boundTasks(goal);
 
-        // 截止日期标签：紧贴操作图标左侧，位于日历图标左边
-        if (goal.dueDate) this.renderDueTag(main, goal);
+        // 名称末尾的编辑图标：悬浮条目时显示，点击后原地编辑名称
+        const editBtn = this.createAction(main, 'pencil', t('panel.goalEditName'), false, () => {
+            this.startRename(goal, nameEl);
+        });
+        editBtn.addClass('goal-list-item-edit-btn');
 
         // 悬停时显示：设置截止时间 / 绑定子任务 / 删除
         const actions = main.createDiv({ cls: 'goal-list-item-actions' });
@@ -93,16 +97,27 @@ export class GoalListView {
         this.createAction(actions, 'link-2', t('panel.goalBindSubtask'), boundTasks.length > 0, () => {
             this.openSubtaskPicker(goal);
         });
+        // 完成标记：点击切换完成状态，已完成的图标常显
+        const done = goal.done === true;
+        const doneBtn = this.createAction(
+            actions,
+            done ? 'circle-check' : 'circle',
+            done ? t('panel.goalMarkUndone') : t('panel.goalMarkDone'),
+            done,
+            () => void this.toggleDone(goal),
+        );
+        doneBtn.toggleClass('goal-list-item-done-btn', true);
         this.createAction(actions, 'x', t('common.delete'), false, () => void this.removeGoal(goal.id));
 
-        // 第二行：绑定的子任务标签（没有绑定时不占位）
-        if (boundTasks.length === 0) return;
+        // 第二行：绑定的子任务标签 + 末尾的截止日期（都为空时不占位）
+        if (boundTasks.length === 0 && !goal.dueDate) return;
         const meta = row.createDiv({ cls: 'goal-list-item-meta' });
         for (const task of boundTasks) {
             const tag = meta.createSpan({ cls: 'goal-list-item-subtask', attr: { title: task.name } });
             setIcon(tag.createSpan({ cls: 'goal-list-item-subtask-icon' }), 'git-branch');
             tag.createSpan({ cls: 'goal-list-item-subtask-name', text: task.name });
         }
+        if (goal.dueDate) this.renderDueTag(meta, goal);
     }
 
     /** 截止日期标签：悬浮时末尾出现清除按钮 */
@@ -197,6 +212,52 @@ export class GoalListView {
         this.onChanged?.();
         this.render();
         this.container.querySelector<HTMLInputElement>('.goal-list-input')?.focus();
+    }
+
+    /** 切换目标完成状态 */
+    private async toggleDone(goal: TaskGoalEntry): Promise<void> {
+        if (goal.done) delete goal.done;
+        else goal.done = true;
+        await this.save();
+        this.onChanged?.();
+        this.render();
+    }
+
+    /** 原地编辑目标名称：名称处替换为输入框，Enter 或失焦保存，Esc 取消 */
+    private startRename(goal: TaskGoalEntry, nameEl: HTMLElement): void {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'goal-list-item-name-input';
+        input.value = goal.text;
+        nameEl.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let finished = false;
+        const finish = (commit: boolean): void => {
+            if (finished) return;
+            finished = true;
+            const next = input.value.trim();
+            if (!commit || !next || next === goal.text) {
+                input.replaceWith(nameEl);
+                return;
+            }
+            goal.text = next;
+            void this.save().then(() => {
+                this.onChanged?.();
+                this.render();
+            });
+        };
+        input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                finish(true);
+            } else if (evt.key === 'Escape') {
+                evt.preventDefault();
+                finish(false);
+            }
+        });
+        input.addEventListener('blur', () => finish(true));
     }
 
     /** 删除目标条目 */

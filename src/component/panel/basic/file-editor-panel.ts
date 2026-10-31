@@ -16,6 +16,8 @@ import { FloatingPanel } from './floating-panel';
 export interface FileEditorPanelOptions {
     app: App;
     file: TFile;
+    /** 挂载容器（与其它面板一致，限制在插件界面内显示） */
+    container?: HTMLElement;
     /** 面板关闭后回调（文件列表需要刷新修改时间） */
     onClose?: () => void;
 }
@@ -105,6 +107,9 @@ export class FileEditorPanel extends FloatingPanel {
         super({
             width: 760,
             title: options.file.basename,
+            container: options.container,
+            // 固定层级：压在 Obsidian 原生浮层（右键菜单等，约 1000）之下，避免菜单被面板遮挡
+            zIndex: 800,
             onClose: () => {
                 this.teardown();
                 options.onClose?.();
